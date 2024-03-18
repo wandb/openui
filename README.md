@@ -6,7 +6,7 @@ Building UI components can be a slog.  OpenUI aims to make the process fun, fast
 
 ![Example Pricing Table](./assets/example-pricing-table.png)
 
-OpenUI let's you describe UI using your imagination, then see it rendered live.  You can ask for changes and convert HTML to React, Svelte, Web Components, etc.  It's like [v0](https://v0.dev) but open source and not as polished :lol:.
+OpenUI let's you describe UI using your imagination, then see it rendered live.  You can ask for changes and convert HTML to React, Svelte, Web Components, etc.  It's like [v0](https://v0.dev) but open source and not as polished :stuck_out_tongue_closed_eyes:.
 
 ## Demo
 
