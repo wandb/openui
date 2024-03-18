@@ -438,8 +438,7 @@ export default function HTMLAnnotator({
 								media === 'tablet' && 'max-w-lg'
 							} ${media === 'mobile' && 'max-w-sm'}`}
 							style={{ height: preview && !error ? '100%' : 0 }}
-							/* TODO: put me on a different domain */
-							src='/annotator/index.html'
+							src='https://wandb.github.io/openui/index.html'
 						/>
 						{!preview &&
 							// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

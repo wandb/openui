@@ -422,12 +422,14 @@ app.mount(
     StaticFiles(directory=Path(__file__).parent / "dist" / "assets", html=True),
     name="spa",
 )
-# TODO: move to a different port
-app.mount(
-    "/annotator",
-    StaticFiles(directory=Path(__file__).parent / "dist" / "annotator", html=True),
-    name="annotator",
-)
+
+# we can serve our annotation iframe from the same domain in development
+if config.ENV != config.Env.PROD:
+    app.mount(
+        "/openui",
+        StaticFiles(directory=Path(__file__).parent / "dist" / "annotator", html=True),
+        name="annotator",
+    )
 
 
 @app.get("/{full_path:path}", include_in_schema=False)
