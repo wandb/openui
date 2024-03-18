@@ -455,8 +455,16 @@ if not wandb_enabled:
 
 
 class Server(uvicorn.Server):
+    # TODO: this still isn't working for some reason, can't ctrl-c when not in dev mode
     def install_signal_handlers(self):
-        pass
+        import signal
+
+        def shutdown_signal_handler(signum, frame):
+            logger.warning("Shutting it down...")
+            self.should_exit = True
+
+        signal.signal(signal.SIGINT, shutdown_signal_handler)
+        signal.signal(signal.SIGTERM, shutdown_signal_handler)
 
     def run_with_wandb(self):
         if wandb_enabled:

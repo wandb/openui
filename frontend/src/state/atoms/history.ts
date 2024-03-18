@@ -164,7 +164,27 @@ export const useSaveHistory = () => {
 		dispatch({
 			type: 'serialize',
 			callback: value => {
-				localStorage.setItem('serializedHistory', value)
+				let safeValue = value
+				if (value.length > 4_000_000) {
+					console.warn('History too large, removing largest payload')
+					const parsed = JSON.parse(value) as SavedHistory
+					let largestKey = ''
+					let largestLen = 0
+					for (const key of Object.keys(parsed.historyMap)) {
+						const html = parsed.historyMap[key]?.html ?? ''
+						if (html.length > largestLen) {
+							largestLen = html.length
+							largestKey = key
+						}
+					}
+					if (parsed.historyMap[largestKey]) {
+						// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+						delete parsed.historyMap[largestKey]
+						parsed.history = parsed.history.filter(h => h !== largestKey)
+					}
+					safeValue = JSON.stringify(parsed)
+				}
+				localStorage.setItem('serializedHistory', safeValue)
 			}
 		})
 	}

@@ -234,7 +234,10 @@ export default function CodeViewer({ id, code }: ViewerProps) {
 					</div>
 				</div>
 				<div className='relative bg-zinc-50 dark:bg-zinc-900'>
-					<div className='h-[22vh] overflow-scroll pb-8 text-sm' tabIndex={-1}>
+					<div
+						className='max-h-[24vh] overflow-scroll pb-8 text-sm'
+						tabIndex={-1}
+					>
 						<Suspense fallback={<Scaffold loading />}>
 							{/* TODO: jsx editing */}
 							{code ? (

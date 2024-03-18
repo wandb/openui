@@ -61,6 +61,7 @@ function removeCommentNodes(element: HTMLElement) {
 }
 
 function newChapter(prompt: string) {
+	console.log('New Chapter called', prompt)
 	return `\n\n---\nprompt: ${prompt}\n---\n\n`
 }
 
@@ -94,7 +95,7 @@ export default function Builder() {
 	const [pendingScreenshot, setPendingScreenshot] = useState<
 		string | undefined
 	>()
-	const [pureHTML, setPureHTML] = useState<string>('')
+	const [pureHTML, setPureHTML] = useState<string>(item.html ?? '')
 	const [renderError, setRenderError] = useState<string | undefined>()
 	const [js, setJs] = useState<Script[]>([])
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -103,8 +104,7 @@ export default function Builder() {
 	const [rendering, setRendering] = useState<boolean>(false)
 	const [llmHidden, setLLMHidden] = useState<boolean>(markdown !== '')
 	// TODO: likely replace with item.components
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const [jsx, setJSX] = useState<string>('')
+	// const [jsx, setJSX] = useState<string>('')
 	const throttledMD = useThrottle(markdown)
 	const bigEnough = useMediaQuery(`(min-width: ${MOBILE_WIDTH}px)`)
 
@@ -150,12 +150,29 @@ export default function Builder() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [params.id])
 
+	// Save our streamed markdown
+	const saveMarkdown = useCallback(
+		(final: string) => {
+			// The empty markdown check is rather important, without it we get into an
+			// infinite re-render
+			if (final.trim() !== '') {
+				console.log('Saving:', final)
+				setItem(it => ({
+					...it,
+					markdown: (it.markdown ?? '') + final
+				}))
+				saveHistory()
+			}
+		},
+		[saveHistory, setItem]
+	)
+
 	const streamResponse = useCallback(
 		(query?: string, html?: string, clearSession = false) => {
+			setRendering(true)
 			setMarkdown('')
 			setAnnotatedHTML('')
 			setRenderError(undefined)
-			setRendering(true)
 			if (queryRef.current) {
 				queryRef.current.value = ''
 			}
@@ -172,33 +189,15 @@ export default function Builder() {
 					setMarkdown(prevMD => (prevMD || '') + md)
 				}
 			)
-				.then(() => {
-					setMarkdown(md => {
-						setItem(it => ({
-							...it,
-							markdown: (it.markdown ?? '') + md
-						}))
-						saveHistory()
-						return md
-					})
+				.then(final => {
 					setPendingScreenshot(undefined)
 					setRendering(false)
+					saveMarkdown(final)
 				})
 				.catch((error: Error) => {
 					setRendering(false)
 					setPendingScreenshot(undefined)
-					setMarkdown(md => {
-						// This is rather important, without it we get into an
-						// infinite re-render
-						if (md.trim() !== '') {
-							setItem(it => ({
-								...it,
-								markdown: (it.markdown ?? '') + md
-							}))
-						}
-						saveHistory()
-						return md
-					})
+					saveMarkdown('')
 					console.error(error)
 					setRenderError(error.message)
 				})
@@ -207,10 +206,12 @@ export default function Builder() {
 			model,
 			pendingScreenshot,
 			systemPrompt,
-			setItem,
+			setMarkdown,
+			setRendering,
+			setRenderError,
 			setPendingScreenshot,
 			setAnnotatedHTML,
-			saveHistory,
+			saveMarkdown,
 			temperature
 		]
 	)
@@ -231,17 +232,20 @@ export default function Builder() {
 
 	useEffect(() => {
 		try {
-			if (!markdown) {
+			if (!markdown || params.id === 'new') {
 				setPureHTML('')
 				return
 			}
 			setRenderError(undefined)
-			const result = parseMarkdown(markdown)
+			// TODO: maybe pass down html and skip parsing?
+			const result = parseMarkdown(markdown, {
+				name: item.name,
+				emoji: item.emoji
+			})
 			if (result.html) {
-				setItem(it => {
-					console.log('UPD', it, result)
-					return { ...it, ...result }
-				})
+				// TODO: this is getting called three times on render, refactor
+				console.log('MD Render', item.name, result.html.length)
+				setItem(it => ({ ...it, ...result }))
 				setPureHTML(fixHTML(result.html))
 			} else if (!rendering) {
 				setRenderError(
@@ -249,10 +253,12 @@ export default function Builder() {
 				)
 			}
 		} catch (error) {
+			setItem(it => ({ ...it, name: 'Error' }))
 			console.error(error)
 		}
+		// we only key off throttledMD while referencing markdown
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [throttledMD, rendering])
+	}, [throttledMD])
 
 	// screenshot
 	useEffect(() => {
@@ -316,6 +322,7 @@ export default function Builder() {
 		}
 		if (iterating) {
 			setMarkdown('')
+			console.log('Submit', item.name)
 			setItem(it => ({
 				...it,
 				markdown: it.markdown + newChapter(query),
@@ -349,9 +356,10 @@ export default function Builder() {
 		const parser = new DOMParser()
 		const dom = parser.parseFromString(pureHTML, 'text/html')
 		removeCommentNodes(dom.body)
+		console.log('HTML Parsed', item.name)
 		setItem(it => ({ ...it, html: dom.body.innerHTML }))
 		setJs(parseJs(dom))
-	}, [pureHTML, setItem, params.id])
+	}, [pureHTML, setItem, params.id, item.name])
 
 	// convert HTML to a framework
 	useEffect(() => {
@@ -407,6 +415,7 @@ export default function Builder() {
 			setPendingScreenshot(screenshot)
 			setScreenshot('')
 		} else if (annotatedHTML !== '') {
+			console.log('Auto Submit', item.name)
 			setItem(it => ({
 				...it,
 				markdown: it.markdown + newChapter(comments[0])
@@ -423,6 +432,7 @@ export default function Builder() {
 		setAnnotatedHTML,
 		setComments,
 		setItem,
+		item.name,
 		setScreenshot,
 		streamResponse
 	])
@@ -443,7 +453,7 @@ export default function Builder() {
 					// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 					historyIds.length <= 2 && (
 						<Examples
-							className={cn('absolute', llmHidden && 'bottom-0 opacity-0')}
+							className={cn('absolute', llmHidden && '-bottom-10 opacity-0')}
 							style={{
 								bottom: bigEnough ? '130px' : '230px'
 							}}
@@ -498,7 +508,7 @@ export default function Builder() {
 					id='llm-input'
 					className={cn(
 						`absolute left-[calc(50%)] z-0 flex w-11/12 -translate-x-1/2 justify-center rounded-full bg-background px-8 py-4 align-middle transition-all duration-500 lg:max-w-full`,
-						llmHidden && 'translate-y-8 opacity-0'
+						llmHidden && 'translate-y-24 opacity-0'
 					)}
 					style={
 						/* calc(45px + env(safe-area-inset-bottom, 0px)) */ {

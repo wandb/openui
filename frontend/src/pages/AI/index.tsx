@@ -72,7 +72,12 @@ export default function LayoutWithSidebar() {
 						variant='ghost'
 						className='ml-auto inline-flex p-2 hover:bg-inherit'
 					>
-						<a aria-label='GitHub' href='https://github.com/wandb/openui'>
+						<a
+							aria-label='GitHub'
+							rel='noreferrer'
+							target='_blank'
+							href='https://github.com/wandb/openui'
+						>
 							<GitHubLogoIcon className='h-5 w-5' />
 						</a>
 					</Button>

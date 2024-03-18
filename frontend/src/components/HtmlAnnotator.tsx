@@ -120,6 +120,10 @@ export default function HTMLAnnotator({
 	rendering,
 	imageUploadRef
 }: HTMLAnnotatorProps) {
+	const iframeSrc =
+		import.meta.env.MODE === 'production'
+			? 'https://wandb.github.io'
+			: 'http://127.0.0.1:7878'
 	const iframeRef = useRef<HTMLIFrameElement | null>(null)
 	const item = useAtomValue(historyAtomFamily({ id }))
 
@@ -152,10 +156,10 @@ export default function HTMLAnnotator({
 					darkMode,
 					action: 'hydrate'
 				},
-				'*'
+				iframeSrc
 			)
 		}
-	}, [bufferedHTML, darkMode, js, rendering])
+	}, [bufferedHTML, darkMode, js, rendering, iframeSrc])
 
 	useEffect(() => {
 		if (iframeRef.current) {
@@ -180,12 +184,13 @@ export default function HTMLAnnotator({
 	// iframe listeners and dark mode
 	useEffect(() => {
 		const listener = (event: MessageEvent<IFrameEvent>) => {
-			// TODO: verify origin, action and maybe id
+			// Only listen to events from our iframe
+			if (event.origin !== iframeSrc) return
 			if (event.data.action === 'ready') {
 				if (bufferedHTML) {
 					iframeRef.current?.contentWindow?.postMessage(
 						{ html: bufferedHTML, js, darkMode, action: 'hydrate' },
-						'*'
+						iframeSrc
 					)
 				}
 			} else if (event.data.screenshot) {
@@ -200,7 +205,15 @@ export default function HTMLAnnotator({
 		}
 		window.addEventListener('message', listener)
 		return () => window.removeEventListener('message', listener)
-	}, [bufferedHTML, comments, js, darkMode, setAnnotatedHTML, setComments])
+	}, [
+		bufferedHTML,
+		comments,
+		js,
+		darkMode,
+		setAnnotatedHTML,
+		setComments,
+		iframeSrc
+	])
 
 	return (
 		<>
@@ -215,7 +228,7 @@ export default function HTMLAnnotator({
 										setInspectorEnabled(!inspectorEnabled)
 										iframeRef.current?.contentWindow?.postMessage(
 											{ html: bufferedHTML, action: 'toggle-inspector' },
-											'*'
+											iframeSrc
 										)
 									}}
 									size='icon'
@@ -334,9 +347,12 @@ export default function HTMLAnnotator({
 									onClick={() => {
 										if (iframeRef.current) {
 											setDarkMode(!darkMode)
-											iframeRef.current.contentWindow?.postMessage({
-												action: 'toggle-dark-mode'
-											})
+											iframeRef.current.contentWindow?.postMessage(
+												{
+													action: 'toggle-dark-mode'
+												},
+												iframeSrc
+											)
 										}
 									}}
 									variant='outline'
@@ -383,7 +399,7 @@ export default function HTMLAnnotator({
 								<TooltipContent>View chat history</TooltipContent>
 							</Tooltip>
 
-							<SheetContent className='w-[800px] overflow-scroll sm:max-w-[50%]'>
+							<SheetContent className='w-[100%] overflow-scroll sm:max-lg:max-w-[75%] md:max-w-[50%]'>
 								<SheetHeader>
 									<SheetTitle>Chat history</SheetTitle>
 									<SheetDescription asChild>
@@ -426,9 +442,9 @@ export default function HTMLAnnotator({
 
 			<div className='code-preview-wrapper'>
 				<div className='code-preview flex border-x bg-background bg-gradient-to-r p-0'>
-					{/* max-w-lg and max-w-sm for responsive
-					  TODO: replace allow-same-origin with allow-scripts */}
+					{/* max-w-lg and max-w-sm for responsive */}
 					<div className='code-responsive-wrapper h-[60vh] w-full overflow-auto'>
+						{/* we allow-same-origin so the iframe can keep state */}
 						{/* eslint-disable-next-line react/iframe-missing-sandbox */}
 						<iframe
 							title='HTML preview'
@@ -438,7 +454,7 @@ export default function HTMLAnnotator({
 								media === 'tablet' && 'max-w-lg'
 							} ${media === 'mobile' && 'max-w-sm'}`}
 							style={{ height: preview && !error ? '100%' : 0 }}
-							src='https://wandb.github.io/openui/index.html'
+							src={`${iframeSrc}/openui/index.html?buster=123`}
 						/>
 						{!preview &&
 							// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

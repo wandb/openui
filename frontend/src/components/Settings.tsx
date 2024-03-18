@@ -3,6 +3,7 @@ import { getModels } from 'api/ollama'
 import { Button } from 'components/ui/button'
 import {
 	Dialog,
+	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogHeader,
@@ -48,7 +49,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 				<DialogHeader>
 					<DialogTitle>Settings</DialogTitle>
 					<DialogDescription>
-						Make changes to your settings here.
+						Make changes to your settings or logout
 					</DialogDescription>
 				</DialogHeader>
 				<div className='grid gap-4 py-4'>
@@ -69,7 +70,9 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 								<SelectGroup>
 									<SelectLabel>OpenAI</SelectLabel>
 									<SelectItem value='gpt-3.5-turbo'>GPT-3.5 Turbo</SelectItem>
-									<SelectItem value='gpt-4-turbo'>GPT-4 Turbo</SelectItem>
+									<SelectItem value='gpt-4-turbo-preview'>
+										GPT-4 Turbo
+									</SelectItem>
 								</SelectGroup>
 								<SelectGroup>
 									{isPending || (data && data.length > 0) ? (
@@ -124,7 +127,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 					<div className='mt-3 grid grid-cols-4 items-center gap-4'>
 						<div className='col-start-4 flex justify-end'>
 							<Button
-								size='sm'
+								variant='secondary'
 								onClick={() => {
 									fetch('/v1/session', { method: 'DELETE' })
 										.then(() => document.location.reload())
@@ -133,6 +136,11 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							>
 								Logout
 							</Button>
+							<DialogClose asChild>
+								<Button type='button' className='ml-2'>
+									Update
+								</Button>
+							</DialogClose>
 						</div>
 					</div>
 				</div>

@@ -105,9 +105,13 @@ emoji: 🎉
 		stream: true,
 		max_tokens: GPT4_MAX_TOKENS
 	})
+	let markdown = ''
 	for await (const chunk of response) {
-		callback(chunk.choices[0]?.delta?.content ?? '')
+		const part = chunk.choices[0]?.delta?.content ?? ''
+		markdown += part
+		callback(part)
 	}
+	return markdown
 }
 
 const systemPromptConvert = `You're a frontend web developer that specializes in $FRAMEWORK.

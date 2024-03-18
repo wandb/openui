@@ -10,7 +10,10 @@ interface ParsedMarkdown {
 }
 
 // eslint-disable-next-line import/prefer-default-export
-export function parseMarkdown(markdown: string): ParsedMarkdown {
+export function parseMarkdown(
+	markdown: string,
+	existing: ParsedMarkdown = {}
+): ParsedMarkdown {
 	// TODO: this already a little tricky, refactor me
 	const result: ParsedMarkdown = {}
 	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
@@ -54,12 +57,9 @@ export function parseMarkdown(markdown: string): ParsedMarkdown {
 			?.replace('emoji: ', '')
 		result.name = fName
 		result.emoji = fEmoji
-	} else {
-		// TODO: maybe set default name and emoji
-		// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+	} else if (markdown.length > 50 && !existing.emoji) {
+		// TODO: maybe set default name and emoji?
 		console.warn('No frontmatter', markdown.slice(0, 100))
-		// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-		console.log(parsed.children[0], parsed.children[1])
 	}
 	const htmlBlocks = parsed.children.filter(
 		c => c.type === 'code' || c.type === 'html'

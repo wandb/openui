@@ -71,6 +71,7 @@ export default function HistoryItem({
 								onClick={() => {
 									setHistoryIds(prev => prev.filter(prevId => prevId !== id))
 									historyAtomFamily.remove({ id })
+									navigate('/ai/new')
 								}}
 							>
 								Delete
@@ -81,7 +82,7 @@ export default function HistoryItem({
 				<Button
 					onClick={() => navigate(`/ai/${id}`)}
 					className={cn(
-						'absolute -right-[58px] z-50 top-0 ml-auto inline-flex h-8 w-8 p-2 hover:scale-110 hover:bg-inherit',
+						'absolute -right-[58px] top-0 z-50 ml-auto inline-flex h-8 w-8 p-2 hover:scale-110 hover:bg-inherit',
 						collapsed && 'ml-10',
 						active && 'bg-zinc-900'
 					)}

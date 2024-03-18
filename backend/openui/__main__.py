@@ -33,7 +33,7 @@ if __name__ == "__main__":
     api_server = server.Server(
         Config(
             "openui.server:app",
-            host="127.0.0.1",
+            host="0.0.0.0" if config.ENV == config.Env.PROD else "127.0.0.1",
             log_config=str(config_file) if ui else None,
             port=7878,
             reload=reload,
@@ -46,11 +46,15 @@ if __name__ == "__main__":
     else:
         logger.info("Running API Server")
         mkcert_dir = Path.home() / ".vite-plugin-mkcert"
-        uvicorn.run(
-            "openui.server:app",
-            host="0.0.0.0" if config.ENV == config.Env.PROD else "127.0.0.1",
-            port=7878,
-            reload=reload,
-        )
-        # TODO: hot reload wasn't working :/
-        # api_server.run_with_wandb()
+
+        if reload:
+            # TODO: hot reload wasn't working with the server approach, and ctrl-C doesn't
+            # work with the uvicorn.run approach, so here we are
+            uvicorn.run(
+                "openui.server:app",
+                host="0.0.0.0" if config.ENV == config.Env.PROD else "127.0.0.1",
+                port=7878,
+                reload=reload,
+            )
+        else:
+            api_server.run_with_wandb()
