@@ -20,7 +20,6 @@ import uvicorn
 import contextlib
 import threading
 import time
-import json
 import getpass
 from peewee import IntegrityError
 
@@ -29,7 +28,7 @@ import wandb
 from starlette.middleware.sessions import SessionMiddleware
 from .session import DBSessionStore, SessionData
 from .logs import logger
-from .models import ChatCompletionRequest, ShareRequest
+from .models import count_tokens, ShareRequest
 from .ollama import ollama_stream_generator, openai_to_ollama
 from .openai import openai_stream_generator
 from .db.models import User, Usage
@@ -88,7 +87,7 @@ app.add_middleware(
 )
 async def chat_completions(
     request: Request,
-    chat_request: ChatCompletionRequest,  # ChatCompletion verification failed with image_url
+    # chat_request: CompletionCreateParams,  # TODO: lots' fo weirdness here, just using raw json
     # ctx: Any = Depends(weave_context),
 ):
     if request.session.get("user_id") is None:
@@ -102,8 +101,8 @@ async def chat_completions(
             detail="You've exceeded our usage quota, come back tomorrow to generate more UI.",
         )
     try:
-        data = chat_request.model_dump(exclude_unset=True)
-        input_tokens = chat_request.count_tokens()
+        data = await request.json()#chat_request.model_dump(exclude_unset=True)
+        input_tokens = count_tokens(data["messages"])
         # TODO: we always assume 4096 max tokens (random fudge factor here)
         data["max_tokens"] = 4096 - input_tokens - 20
         if data.get("model").startswith("gpt"):
@@ -126,7 +125,7 @@ async def chat_completions(
             response = await ollama.chat(
                 **data,
             )
-            gen = await ollama_stream_generator(response, chat_request)
+            gen = await ollama_stream_generator(response, data)
             return StreamingResponse(gen(), media_type="text/event-stream")
         raise HTTPException(status=404, detail="Invalid model")
     except (ResponseError, APIStatusError) as e:

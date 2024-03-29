@@ -118,6 +118,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 						<Slider
 							min={0}
 							max={1}
+							step={0.05}
 							onValueChange={val => setTemperature(val[0])}
 							value={[temperature]}
 							className='col-span-3'

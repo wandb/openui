@@ -21,7 +21,7 @@ interface CreateOptions {
 	image?: string
 }
 
-export const systemPrompt = `You're a frontend web developer that specializes in tailwindcss. Given a description, generate HTML with tailwindcss. You should support both dark and light mode. It should render nicely on desktop, tablet, and mobile. Keep your responses concise and just return HTML that would appear in the <body> no need for <head>. Use placehold.co for placeholder images. If the user asks for interactivity, use modern ES6 javascript and native browser apis to handle events.`
+export const systemPrompt = `You're a frontend web developer that specializes in tailwindcss. Given a description or an image, generate HTML with tailwindcss. You should support both dark and light mode. It should render nicely on desktop, tablet, and mobile. Keep your responses concise and just return HTML that would appear in the <body> no need for <head>. Use placehold.co for placeholder images. If the user asks for interactivity, use modern ES6 javascript and native browser apis to handle events.`
 
 const GPT4_MAX_TOKENS = 4096
 
@@ -51,7 +51,7 @@ emoji: 🎉
 
 	if (image) {
 		// TODO: configurable
-		if (model === 'gpt-3.5-turbo') {
+		if (model.startsWith('gpt')) {
 			model = 'gpt-4-vision-preview'
 		}
 		let imageUrl = image
@@ -70,8 +70,7 @@ emoji: 🎉
 				{
 					type: 'image_url',
 					image_url: {
-						url: imageUrl,
-						detail: 'auto'
+						url: imageUrl
 					}
 				}
 			]

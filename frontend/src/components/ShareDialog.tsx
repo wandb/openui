@@ -38,14 +38,11 @@ export default function ShareDialog() {
 	}, [id, item, open])
 
 	return (
-		<Dialog open={open}>
+		<Dialog onOpenChange={open_ => setOpen(open_)}>
 			<DialogTrigger asChild>
 				<button
 					type='button'
 					aria-label='Share'
-					onClick={() => {
-						setOpen(!open)
-					}}
 					className='flex items-center border-l px-3 text-sm text-secondary-foreground hover:bg-background'
 				>
 					<Share1Icon />
