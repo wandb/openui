@@ -122,7 +122,9 @@ export default function Builder({ shared }: { shared?: boolean }) {
 	useEffect(() => {
 		if (shared) {
 			;(async () => {
-				setItem(await getShare(id))
+				const sharedItem = await getShare(id)
+				setItem(sharedItem)
+				setPureHTML(sharedItem.html ?? '')
 			})().catch((error: Error) => {
 				console.error(error)
 				setTimeout(() => setRenderError(error.toString()), 1000)
@@ -206,7 +208,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 					if (queryRef.current) {
 						queryRef.current.value = ''
 					}
-					setLLMHidden(true)
+					// setLLMHidden(true)
 				})
 				.catch((error: Error) => {
 					setRendering(false)
@@ -258,7 +260,6 @@ export default function Builder({ shared }: { shared?: boolean }) {
 			})
 			if (result.html) {
 				// TODO: this is getting called three times on render, refactor
-				console.log('MD Render', item.name, result.html.length)
 				setItem(it => ({ ...it, ...result }))
 				setPureHTML(fixHTML(result.html))
 			} else if (!rendering) {
@@ -372,7 +373,6 @@ export default function Builder({ shared }: { shared?: boolean }) {
 		const parser = new DOMParser()
 		const dom = parser.parseFromString(pureHTML, 'text/html')
 		removeCommentNodes(dom.body)
-		console.log('HTML Parsed', item.name)
 		setItem(it => ({ ...it, html: dom.body.innerHTML }))
 		setJs(parseJs(dom))
 	}, [pureHTML, setItem, params.id, item.name])
@@ -436,7 +436,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 				...it,
 				markdown: it.markdown + newChapter(comments[0])
 			}))
-			setLLMHidden(true)
+			// setLLMHidden(true)
 			setComments([])
 			streamResponse('html-comments-only', annotatedHTML)
 		}

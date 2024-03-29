@@ -159,7 +159,7 @@ export default function HTMLAnnotator({
 				'*'
 			)
 		}
-	}, [bufferedHTML, darkMode, js, rendering, iframeSrc])
+	}, [bufferedHTML, darkMode, js, rendering, iframeRef])
 
 	useEffect(() => {
 		if (iframeRef.current) {
@@ -455,7 +455,7 @@ export default function HTMLAnnotator({
 								media === 'tablet' && 'max-w-lg'
 							} ${media === 'mobile' && 'max-w-sm'}`}
 							style={{ height: preview && !error ? '100%' : 0 }}
-							src={`${iframeSrc}/openui/index.html?buster=103`}
+							src={`${iframeSrc}/openui/index.html?buster=113`}
 						/>
 						{!preview &&
 							// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
