@@ -5,7 +5,7 @@
 	"version": "0.0.1",
 	"scripts": {
 		"build": "vite build",
-		"postbuild": "cp -r dist/* ../backend/openui/dist/",
+		"postbuild": "rm -rf ../backend/openui/dist && cp -r dist ../backend/openui/dist",
 		"commit": "cz",
 		"dev": "vite --open",
 		"prepare": "husky install",
