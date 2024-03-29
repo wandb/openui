@@ -1,5 +1,6 @@
 import { DownloadIcon, PlusCircledIcon } from '@radix-ui/react-icons'
 import copyTextToClipboard from '@uiw/copy-to-clipboard'
+import ShareDialog from 'components/ShareDialog'
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -62,9 +63,10 @@ ${render
 interface ViewerProps {
 	id: string
 	code: string
+	shared: boolean
 }
 
-export default function CodeViewer({ id, code }: ViewerProps) {
+export default function CodeViewer({ id, code, shared }: ViewerProps) {
 	const item = useAtomValue(historyAtomFamily({ id }))
 	const [framework, setFramework] = useAtom(selectedFrameworkAtom)
 	const [convertFramework, setConvertFramework] = useAtom(convertFrameworkAtom)
@@ -197,6 +199,7 @@ export default function CodeViewer({ id, code }: ViewerProps) {
 						>
 							Save
 						</button> */}
+						{id !== 'new' && !shared && <ShareDialog />}
 						<button
 							type='button'
 							aria-label='Download'

@@ -1,9 +1,48 @@
+import type { HistoryItem } from '../state/atoms/history'
+
 export interface SessionData {
 	username?: string
 	token_count?: number
 }
 
+interface ErrorBody {
+	error: {
+		code: string
+		message: string
+	}
+}
+
 const API_HOST = (import.meta.env.VITE_API_HOST ?? '/v1') as string
+
+export async function share(id: string, item: HistoryItem) {
+	const r = await fetch(`${API_HOST}/share/${id}`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			prompt: item.prompt,
+			html: item.html,
+			name: item.name,
+			emoji: item.emoji
+		})
+	})
+	if (r.status !== 201) {
+		const body = (await r.json()) as ErrorBody
+		throw new Error(body.error.message)
+	}
+}
+
+export async function getShare(id: string): Promise<HistoryItem> {
+	const r = await fetch(`${API_HOST}/share/${id}`)
+	if (r.status !== 200) {
+		const body = (await r.json()) as ErrorBody
+		throw new Error(body.error.message)
+	}
+	const body = (await r.json()) as HistoryItem
+	body.createdAt = new Date()
+	return body
+}
 
 export async function saveSession(session: SessionData): Promise<void> {
 	try {

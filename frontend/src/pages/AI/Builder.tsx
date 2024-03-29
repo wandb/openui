@@ -5,6 +5,7 @@ import {
 	ResumeIcon
 } from '@radix-ui/react-icons'
 import { convert, createOrRefine } from 'api/openai'
+import { getShare } from 'api/openui'
 import CodeViewer from 'components/CodeViewer'
 import Examples from 'components/Examples'
 import HTMLAnnotator, { type Script } from 'components/HtmlAnnotator'
@@ -65,7 +66,7 @@ function newChapter(prompt: string) {
 	return `\n\n---\nprompt: ${prompt}\n---\n\n`
 }
 
-export default function Builder() {
+export default function Builder({ shared }: { shared?: boolean }) {
 	// Global state
 	const params = useParams()
 	const [searchParams, setSearchParams] = useSearchParams()
@@ -108,7 +109,7 @@ export default function Builder() {
 	const throttledMD = useThrottle(markdown)
 	const bigEnough = useMediaQuery(`(min-width: ${MOBILE_WIDTH}px)`)
 
-	// Update terminal state
+	// Update terminal state, TODO: decide if we want to bring this back
 	useEffect(() => {
 		/* saveSession({
 			html: pureHTML,
@@ -116,6 +117,18 @@ export default function Builder() {
 			markdown: item.markdown
 		}).catch(error => console.error(error)) */
 	}, [pureHTML, item])
+
+	// Load shared item
+	useEffect(() => {
+		if (shared) {
+			;(async () => {
+				setItem(await getShare(id))
+			})().catch((error: Error) => {
+				console.error(error)
+				setTimeout(() => setRenderError(error.toString()), 1000)
+			})
+		}
+	}, [shared, id, setItem])
 
 	// persist deleted history TODO: move me somewhere better
 	useEffect(() => {
@@ -173,9 +186,6 @@ export default function Builder() {
 			setMarkdown('')
 			setAnnotatedHTML('')
 			setRenderError(undefined)
-			if (queryRef.current) {
-				queryRef.current.value = ''
-			}
 			createOrRefine(
 				{
 					query: query ?? 'image-upload',
@@ -193,6 +203,10 @@ export default function Builder() {
 					setPendingScreenshot(undefined)
 					setRendering(false)
 					saveMarkdown(final)
+					if (queryRef.current) {
+						queryRef.current.value = ''
+					}
+					setLLMHidden(true)
 				})
 				.catch((error: Error) => {
 					setRendering(false)
@@ -293,11 +307,14 @@ export default function Builder() {
 	}, [markdown])
 
 	const newComponent = useCallback(
-		(query: string, clear = true) => {
+		(prompt: string, clear = true) => {
 			// New state management
 			const newId = nanoid()
+			if (queryRef.current) {
+				queryRef.current.value = prompt
+			}
 			setMarkdown('')
-			historyAtomFamily({ id: newId, prompt: query, createdAt: new Date() })
+			historyAtomFamily({ id: newId, prompt, createdAt: new Date() })
 			setHistoryIds(prev => [newId, ...prev])
 			navigation(`/ai/${newId}?gen=1&clear=${clear}`)
 		},
@@ -311,7 +328,6 @@ export default function Builder() {
 		if (!markdown || (e as React.KeyboardEvent).shiftKey) {
 			iterating = false
 		}
-		setLLMHidden(true)
 		let query = 'html-comments-only'
 		if (e.target instanceof HTMLFormElement) {
 			const formData = new FormData(e.target)
@@ -448,24 +464,20 @@ export default function Builder() {
 					imageUploadRef={imageFileRef}
 					rendering={rendering}
 				/>
-				<CodeViewer id={id} code={pureHTML} />
+				<CodeViewer id={id} code={pureHTML} shared={shared ?? false} />
 				{
 					// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 					historyIds.length <= 2 && (
 						<Examples
-							className={cn('absolute', llmHidden && '-bottom-10 opacity-0')}
+							className={cn(
+								'absolute left-[calc(50%)] w-11/12 -translate-x-1/2',
+								llmHidden && '-bottom-10 opacity-0'
+							)}
 							style={{
 								bottom: bigEnough ? '130px' : '230px'
 							}}
 							callback={(prompt: string) => {
-								if (queryRef.current) {
-									queryRef.current.value = prompt
-									const event = new Event('submit', {
-										bubbles: true, // Event will bubble up through the DOM
-										cancelable: true // Event can be canceled
-									})
-									formRef.current?.dispatchEvent(event)
-								}
+								newComponent(prompt)
 							}}
 						/>
 					)
@@ -475,7 +487,7 @@ export default function Builder() {
 				// eslint-disable-next-line react/jsx-handler-names
 				onClick={() => {
 					const hiding = !llmHidden
-					setLLMHidden(!llmHidden)
+					setLLMHidden(hiding)
 					if (queryRef.current && !hiding) {
 						queryRef.current.focus()
 					}
@@ -546,21 +558,29 @@ export default function Builder() {
 						>
 							<UploadIcon className='h-4 w-4' />
 						</Button> */}
-						<Button
-							className='h-8 w-8 flex-none'
-							variant='outline'
-							size='icon'
-							type='submit'
-						>
-							{editing ? (
-								<ResumeIcon className='h-4 w-4' />
-							) : (
-								<PlayIcon className='h-4 w-4' />
-							)}
-						</Button>
+						{rendering ? (
+							<div className='h-8 w-8 flex-none animate-spin rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-red-500' />
+						) : (
+							<Button
+								className='h-8 w-8 flex-none'
+								variant='outline'
+								size='icon'
+								type='submit'
+							>
+								{editing ? (
+									<ResumeIcon className='h-4 w-4' />
+								) : (
+									<PlayIcon className='h-4 w-4' />
+								)}
+							</Button>
+						)}
 					</div>
 				</div>
 			</Form>
 		</div>
 	)
+}
+
+Builder.defaultProps = {
+	shared: false
 }

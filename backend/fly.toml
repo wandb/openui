@@ -21,6 +21,7 @@ destination = "/root/.openui"
 [env]
 OPENUI_ENVIRONMENT = "production"
 OPENUI_HOST = "https://openui.fly.dev"
+GITHUB_CLIENT_ID = "3af8fbeb90d06484dff0"
 
 [[vm]]
 memory = '1gb'

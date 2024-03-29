@@ -71,6 +71,8 @@ export default function HistoryItem({
 								onClick={() => {
 									setHistoryIds(prev => prev.filter(prevId => prevId !== id))
 									historyAtomFamily.remove({ id })
+									localStorage.removeItem(`${id}.html`)
+									localStorage.removeItem(`${id}.md`)
 									navigate('/ai/new')
 								}}
 							>

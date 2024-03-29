@@ -185,7 +185,8 @@
 			prompt.dataset.commentIdx = commentIdx
 			prompt.classList.add('scale-100')
 			prompt.style.top = event.clientY + 'px'
-			prompt.style.left = event.clientX + 'px'
+			prompt.style.left = '50%' // event.clientX + 'px'
+			prompt.style.marginLeft = `-200px`
 			let input = prompt.querySelector('input')
 			input.focus()
 			prompt.querySelector('button').addEventListener('click', () => {

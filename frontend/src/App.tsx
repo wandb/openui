@@ -2,8 +2,8 @@ import ErrorBoundary from 'components/ErrorBoundary'
 import LoadingOrError from 'components/LoadingOrError'
 import { TooltipProvider } from 'components/ui/tooltip'
 import { useMediaQuery } from 'hooks'
-import type { ReactElement } from 'react'
 
+import type { ReactElement } from 'react'
 import { lazy, Suspense, useEffect } from 'react'
 import {
 	createBrowserRouter,
@@ -24,6 +24,7 @@ const router = createBrowserRouter(
 			<Route path='/ai' element={<AI />}>
 				<Route path=':id' element={<Builder />} />
 			</Route>
+			<Route path='/ai/shared/:id' element={<Builder shared />} />
 		</>
 	)
 )

@@ -4,34 +4,24 @@ from fastapi.responses import (
     JSONResponse,
     HTMLResponse,
     FileResponse,
+    RedirectResponse,
     Response,
 )
-from fastapi.middleware.cors import CORSMiddleware
+from botocore.exceptions import ClientError
 from fastapi.routing import APIRouter
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
+from fastapi_sso.sso.github import GithubSSO
 from datetime import datetime, timedelta
 import uuid
 import uvicorn
 import contextlib
 import threading
 import time
+import json
 import getpass
-import webauthn
-from webauthn.helpers import options_to_json
-from webauthn.helpers.structs import (
-    RegistrationCredential,
-    PublicKeyCredentialCreationOptions,
-    PublicKeyCredentialRequestOptions,
-    AuthenticationCredential,
-    UserVerificationRequirement,
-    AuthenticatorSelectionCriteria,
-    ResidentKeyRequirement,
-    PublicKeyCredentialDescriptor,
-)
-import base64
 from peewee import IntegrityError
 
 import weave
@@ -39,12 +29,13 @@ import wandb
 from starlette.middleware.sessions import SessionMiddleware
 from .session import DBSessionStore, SessionData
 from .logs import logger
-from .models import ChatCompletionRequest
+from .models import ChatCompletionRequest, ShareRequest
 from .ollama import ollama_stream_generator, openai_to_ollama
 from .openai import openai_stream_generator
-from .db.models import User, Credential, Usage
+from .db.models import User, Usage
+from .util import storage
 from . import config
-from pydantic import ValidationError, validator
+from pydantic import ValidationError
 from multiprocessing import Queue
 from openai import AsyncOpenAI, APIStatusError, AsyncStream
 from openai.types.chat import (
@@ -78,19 +69,9 @@ openai = AsyncOpenAI()
 ollama = AsyncClient()  # AsyncOpenAI(base_url="http://127.0.0.1:11434/v1")
 router = APIRouter()
 session_store = DBSessionStore()
-
-# TODO: needed?
-"""
-origins = ["*"]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+github_sso = GithubSSO(
+    config.GITHUB_CLIENT_ID, config.GITHUB_CLIENT_SECRET, f"{config.HOST}/v1/callback"
 )
-"""
 
 app.add_middleware(
     SessionMiddleware,
@@ -178,6 +159,30 @@ async def validation_exception_handler(
         ),
     )
 
+@app.exception_handler(ClientError)
+async def boto3_error_handler(request: Request, exc: ClientError):
+    logger.exception("Boto3 Error: %s", exc)
+    error_code = exc.response['Error']['Code']
+    error_message = exc.response['Error']['Message']
+
+    status_code_map = {
+        'NoSuchKey': 404,
+        'NoSuchBucket': 404,
+        'AccessDenied': 403,
+        # TODO: maybe add more...
+    }
+    status_code = status_code_map.get(error_code, 500)
+
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error": {
+                "code": error_code,
+                "message": error_message,
+            }
+        },
+    )
+
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
@@ -215,150 +220,77 @@ class SessionUpdate(Message):
 """
 
 
-@router.get(
-    "/v1/register/{username:str}",
-    tags=["openui/register"],
-)
-async def register_get(request: Request, username: str):
-    user = User.get_or_none(User.username == username)
-    if user is None:
-        user = User.create(
-            username=username, created_at=datetime.now(), id=uuid.uuid4().bytes
+@router.get("/v1/login", tags="openui/login")
+async def login(
+    request: Request,
+):
+    with github_sso:
+        return await github_sso.get_login_redirect(
+            redirect_uri=f"{config.HOST}/v1/callback"
         )
-        # Need to get the user so we have a proper uuid
-        user = User.get(User.id == user.id)
-    if len(user.credentials) > 0:
-        raise HTTPException(status_code=403, detail="User already exists")
-    # authenticator_attachment=AuthenticatorAttachment.CROSS_PLATFORM,
-    public_key = webauthn.generate_registration_options(
-        rp_id=config.RP_ID,
-        rp_name="OpenUI",
-        user_id=user.id.bytes,
-        user_name=username,
-        user_display_name=username,
-        authenticator_selection=AuthenticatorSelectionCriteria(
-            resident_key=ResidentKeyRequirement.REQUIRED,
-            user_verification=UserVerificationRequirement.PREFERRED,
-        ),
-    )
-    request.session["webauthn_register_challenge"] = base64.b64encode(
-        public_key.challenge
-    ).decode()
-    return Response(content=options_to_json(public_key), media_type="application/json")
 
 
-def b64decode(s: str) -> bytes:
-    return base64.urlsafe_b64decode(s.encode())
-
-
-class CustomRegistrationCredential(RegistrationCredential):
-    @validator("raw_id", pre=True)
-    def convert_raw_id(cls, v: str):
-        assert isinstance(v, str), "raw_id is not a string"
-        return b64decode(v)
-
-    @validator("response", pre=True)
-    def convert_response(cls, data: dict):
-        assert isinstance(data, dict), "response is not a dictionary"
-        return {k: b64decode(v) for k, v in data.items()}
-
-
-@app.post("/v1/register/{username:str}")
-async def register_post(
-    request: Request, username: str, credential: CustomRegistrationCredential
+@router.get("/v1/callback",  tags="openui/oauth")
+async def callback(
+    request: Request,
+    error: str = "",
+    error_description: str = ""
 ):
-    expected_challenge = base64.b64decode(
-        request.session["webauthn_register_challenge"].encode()
-    )
-    registration = webauthn.verify_registration_response(
-        credential=credential,
-        expected_challenge=expected_challenge,
-        expected_rp_id=config.RP_ID,
-        expected_origin=config.HOST,
-    )
-    user = User.get_or_none(User.username == username)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    Credential.create(
-        user=user,
-        credential_id=base64.urlsafe_b64encode(registration.credential_id),
-        public_key=base64.urlsafe_b64encode(registration.credential_public_key),
-        aaguid=registration.aaguid,
-        user_verified=registration.user_verified,
-        sign_count=registration.sign_count,
-    )
+    try:
+        # if we've been given an error
+        if error != "":
+            logger.error("Oauth Error (%s): %s", error, error_description)
+            message = "An error occurred when attempting to login with GitHub, please try again."
+            if error == "bad_verification_code":
+                message = "The code passed is incorrect or expired."
+            elif error == "unverified_user_email":
+                message = "You must verify your email address with GitHub to login."
+            elif error == "redirect_uri_mismatch":
+                message = "GitHub is not configured with the appropriate redirect url."
+            elif error == "incorrect_client_credentials":
+                message = "The application is not configured to login with GitHub, invalid client credentials"
+            elif error == "application_suspended":
+                message = "This application has been suspended by GitHub and can't accept new logins."
+            elif error == "access_denied":
+                message = "You've denied us access to verify your email with GitHub."
+            raise ValueError(message)
+        with github_sso:
+            id_token = await github_sso.verify_and_process(request)
+        # TODO: should probably key off email / update info
+        user = User.get_or_none(User.username == id_token.display_name)
+        if user is None:
+            user_id = uuid.uuid4()
+            user = User.create(
+                id=user_id.bytes,
+                username=id_token.display_name,
+                email=id_token.email,
+                created_at=datetime.now(),
+            )
+            user.id = user_id
+        elif not user.email:
+            user.email = id_token.email
+            user.save()
+        request.session["session_id"] = session_store.generate_session_id()
+        request.session["user_id"] = str(user.id)
+        session_store.write(
+            request.session["session_id"],
+            str(user.id),
+            SessionData(username=user.username, token_count=0),
+        )
+        return RedirectResponse(url="/ai/new")
+    except Exception as e:
+        response = RedirectResponse(url="/ai/new")
+        response.set_cookie("error", str(e))
+        return response
 
+@router.post("/v1/share/{id:str}", status_code=status.HTTP_201_CREATED, tags="openui/create_share")
+async def create_share(id: str, payload: ShareRequest):
+    storage.upload(f"{id}.json", payload.model_dump_json())
+    return payload
 
-@app.get("/v1/auth/{username:str}", response_model=PublicKeyCredentialRequestOptions)
-async def auth_get(request: Request, username: str):
-    user = User.get_or_none(User.username == username)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    public_key = webauthn.generate_authentication_options(
-        rp_id=config.RP_ID,
-        allow_credentials=[
-            PublicKeyCredentialDescriptor(id=b64decode(cred.credential_id))
-            for cred in user.credentials
-        ],
-        user_verification=UserVerificationRequirement.PREFERRED,
-    )
-    request.session["webauthn_auth_challenge"] = base64.b64encode(
-        public_key.challenge
-    ).decode()
-    return Response(content=options_to_json(public_key), media_type="application/json")
-
-
-class CustomAuthenticationCredential(AuthenticationCredential):
-    @validator("raw_id", pre=True)
-    def convert_raw_id(cls, v: str):
-        assert isinstance(v, str), "raw_id is not a string"
-        return b64decode(v)
-
-    @validator("response", pre=True)
-    def convert_response(cls, data: dict):
-        assert isinstance(data, dict), "response is not a dictionary"
-        return {k: b64decode(v) for k, v in data.items()}
-
-
-@app.post("/v1/auth/{username:str}")
-async def auth_post(
-    request: Request, username: str, credential: CustomAuthenticationCredential
-):
-    session_challenge = request.session.get("webauthn_auth_challenge")
-    if session_challenge is None:
-        raise HTTPException(status_code=400, detail="Oh dear, couldn't authenticate")
-    expected_challenge = base64.b64decode(
-        request.session["webauthn_auth_challenge"].encode()
-    )
-    user = User.get_or_none(User.username == username)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    cred = Credential.get_or_none(
-        Credential.credential_id == base64.urlsafe_b64encode(credential.raw_id),
-        Credential.user == user,
-    )
-    if cred is None:
-        raise HTTPException(status_code=400, detail="Credential not found")
-
-    auth = webauthn.verify_authentication_response(
-        credential=credential,
-        expected_challenge=expected_challenge,
-        expected_rp_id=config.RP_ID,
-        expected_origin=config.HOST,
-        credential_public_key=b64decode(cred.public_key),
-        credential_current_sign_count=cred.sign_count,
-    )
-    cred.sign_count = auth.new_sign_count
-    cred.save()
-    request.session.pop("webauthn_auth_challenge")
-    request.session["session_id"] = session_store.generate_session_id()
-    request.session["user_id"] = str(user.id)
-    session_store.write(
-        request.session["session_id"],
-        str(user.id),
-        SessionData(username=user.username, token_count=0),
-    )
+@router.get("/v1/share/{id:str}", tags="openui/get_share")
+async def get_share(id: str):
+    return Response(storage.download(f"{id}.json"), media_type="application/json")
 
 
 @router.get(
@@ -372,15 +304,16 @@ async def get_session(
     if session_id is None:
         if config.ENV == config.Env.LOCAL:
             # Give local users a session automatically
-            session_id = session_store.generate_session_id()
-            request.session["session_id"] = session_id
+            request.session["session_id"] = session_store.generate_session_id()
             user_id = uuid.uuid4()
             try:
-                user = User.create(
-                    username=getpass.getuser(),
-                    created_at=datetime.now(),
-                    id=user_id.bytes,
-                )
+                user = User.get_or_none(User.username == getpass.getuser())
+                if user is None:
+                    user = User.create(
+                        username=getpass.getuser(),
+                        created_at=datetime.now(),
+                        id=user_id.bytes,
+                    )
             except IntegrityError:
                 user = User.get(User.username == getpass.getuser())
             request.session["user_id"] = str(user_id)

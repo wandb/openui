@@ -1,29 +1,22 @@
-import { auth, getSession, register } from 'api/openui'
+import { GitHubLogoIcon } from '@radix-ui/react-icons'
+import { getSession } from 'api/openui'
 import { Button } from 'components/ui/button'
 import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
-	DialogFooter,
 	DialogHeader,
 	DialogTitle
 } from 'components/ui/dialog'
-import { Input } from 'components/ui/input'
-import { Label } from 'components/ui/label'
+import Cookies from 'js-cookie'
 import { useEffect, useState } from 'react'
 
 // eslint-disable-next-line import/prefer-default-export
 export default function Register() {
-	const [username, setUsername] = useState('')
 	const [error, setError] = useState<string | undefined>()
 	const [open, setOpen] = useState(false)
-	const [registered, setRegistered] = useState(false)
 
 	useEffect(() => {
-		if (localStorage.getItem('username')) {
-			setUsername(localStorage.getItem('username') as string)
-			setRegistered(true)
-		}
 		const restoreSession = async () => {
 			const session = await getSession()
 			// check if the response was a 404
@@ -33,33 +26,15 @@ export default function Register() {
 				setOpen(false)
 			}
 		}
+		const errorMessage = Cookies.get('error')
+		if (errorMessage) {
+			setError(errorMessage)
+			Cookies.remove('error')
+		}
 		restoreSession().catch(error_ => console.error(error_))
 	}, [])
 
-	const performAuth = async (uname: string) => {
-		const success = await auth(uname)
-		if (success) {
-			localStorage.setItem('username', uname)
-			setOpen(false)
-		} else {
-			setError('Authentication failed, refresh the page or try again.')
-		}
-	}
-
-	const performRegistration = async (uname: string) => {
-		const success = await register(username)
-		if (success) {
-			localStorage.setItem('username', uname)
-			await performAuth(username)
-		} else {
-			setError(
-				"Account already exists, if you haven't registered before refresh this page and choose a new username."
-			)
-			setRegistered(true)
-		}
-	}
-
-	const title = registered ? 'Login' : 'Register'
+	const title = 'Login'
 
 	return (
 		<Dialog
@@ -69,7 +44,7 @@ export default function Register() {
 				console.log(op)
 			}}
 		>
-			<DialogContent className='sm:max-w-[425px]'>
+			<DialogContent noClose className='sm:max-w-[425px]'>
 				<DialogHeader>
 					<DialogTitle>{title}</DialogTitle>
 					{error ? (
@@ -78,59 +53,17 @@ export default function Register() {
 						</DialogDescription>
 					) : (
 						<DialogDescription>
-							{registered
-								? 'Start a new session'
-								: 'To enforce usage quotas an account is required.'}
+							To enforce usage quotas an account is required.
 						</DialogDescription>
 					)}
 				</DialogHeader>
-				<div className='grid gap-4 py-4'>
-					<div className='grid grid-cols-4 items-center gap-4'>
-						<Label htmlFor='username' className='text-right'>
-							Username
-						</Label>
-						<Input
-							id='username'
-							value={username}
-							onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-								setUsername(e.target.value)
-							}
-							className='col-span-3'
-						/>
-					</div>
-				</div>
-				<DialogFooter>
-					{registered ? (
-						<Button
-							variant='link'
-							onClick={() => {
-								localStorage.removeItem('username')
-								setRegistered(false)
-							}}
-						>
-							Register
-						</Button>
-					) : undefined}
-					<Button
-						type='submit'
-						onClick={() => {
-							// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-							if (username.length < 3) {
-								setError('Username must be atleast 3 characters')
-								return
-							}
-							;(async () =>
-								registered
-									? performAuth(username)
-									: performRegistration(username))().catch((error_: Error) => {
-								console.log('Error during registration', error)
-								setError(error_.toString())
-							})
-						}}
-					>
-						{title}
+				<div className='items-center'>
+					<Button asChild>
+						<a href='/v1/login'>
+							<GitHubLogoIcon className='mr-2' /> Login with GitHub
+						</a>
 					</Button>
-				</DialogFooter>
+				</div>
 			</DialogContent>
 		</Dialog>
 	)

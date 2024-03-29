@@ -156,7 +156,7 @@ export default function HTMLAnnotator({
 					darkMode,
 					action: 'hydrate'
 				},
-				iframeSrc
+				'*'
 			)
 		}
 	}, [bufferedHTML, darkMode, js, rendering, iframeSrc])
@@ -190,7 +190,7 @@ export default function HTMLAnnotator({
 				if (bufferedHTML) {
 					iframeRef.current?.contentWindow?.postMessage(
 						{ html: bufferedHTML, js, darkMode, action: 'hydrate' },
-						iframeSrc
+						'*'
 					)
 				}
 			} else if (event.data.screenshot) {
@@ -199,6 +199,7 @@ export default function HTMLAnnotator({
 			} else if (event.data.comment) {
 				setComments([...comments, event.data.comment])
 				setAnnotatedHTML(formatHTML(event.data.html.trim()))
+				setInspectorEnabled(false)
 			} else if (event.data.action === 'loaded') {
 				setPreview(event.data.preview)
 			}
@@ -228,7 +229,7 @@ export default function HTMLAnnotator({
 										setInspectorEnabled(!inspectorEnabled)
 										iframeRef.current?.contentWindow?.postMessage(
 											{ html: bufferedHTML, action: 'toggle-inspector' },
-											iframeSrc
+											'*'
 										)
 									}}
 									size='icon'
@@ -351,7 +352,7 @@ export default function HTMLAnnotator({
 												{
 													action: 'toggle-dark-mode'
 												},
-												iframeSrc
+												'*'
 											)
 										}
 									}}
@@ -454,7 +455,7 @@ export default function HTMLAnnotator({
 								media === 'tablet' && 'max-w-lg'
 							} ${media === 'mobile' && 'max-w-sm'}`}
 							style={{ height: preview && !error ? '100%' : 0 }}
-							src={`${iframeSrc}/openui/index.html?buster=123`}
+							src={`${iframeSrc}/openui/index.html?buster=103`}
 						/>
 						{!preview &&
 							// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

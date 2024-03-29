@@ -5,9 +5,10 @@ dependencies = [
     "ollama>=0.1.7",
     "itsdangerous>=2.0.1",
     "peewee>=3.0.0",
-    "webauthn>=2.0.0",
     "fastapi>=0.108.0",
     "uvicorn>=0.25.0",
+    "fastapi-sso>=0.13.0",
+    "boto3>=1.34.67",
 ]
 name = "openui"
 version = "0.1"

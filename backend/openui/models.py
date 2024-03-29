@@ -12,6 +12,12 @@ from openai.types.chat import (
     ChatCompletionToolParam,
 )
 
+class ShareRequest(BaseModel):
+    prompt: str
+    name: str
+    emoji: str
+    html: str
+
 
 class ChatCompletionRequest(BaseModel):
     messages: List[ChatCompletionMessageParam]

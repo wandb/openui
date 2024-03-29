@@ -41,11 +41,17 @@ type Callback = (value: HistoryItem) => HistoryItem
 const savedHist: SavedHistory = savedHistValue
 	? (JSON.parse(savedHistValue) as SavedHistory)
 	: { history: [], historyMap: {} }
-// cast createdAt
+// cast createdAt load markdown and html
 for (const k of Object.keys(savedHist.historyMap)) {
-	const item = savedHist.historyMap[k]
-	if (item?.createdAt) {
+	const item = savedHist.historyMap[k] as HistoryItem
+	if (item.createdAt) {
 		item.createdAt = new Date(item.createdAt)
+	}
+	if (!item.html) {
+		item.html = localStorage.getItem(`${k}.html`) ?? undefined
+	}
+	if (!item.markdown) {
+		item.markdown = localStorage.getItem(`${k}.md`) ?? undefined
 	}
 }
 
@@ -71,9 +77,9 @@ export const historyAtomFamily = atomFamily(
 					throw new Error("Can't set state for id: new")
 				}
 				set(histAtom, newHist)
-				const item = get(histAtom)
-				// TODO: this is a bit silly and can probably go away, I thought it would be cool
+				/* TODO: this is a bit silly and can probably go away, I thought it would be cool
 				// to write stuff to the OPFS file system but it's all in localStorage anyway...
+				const item = get(histAtom)
 				if (item.name && item.markdown) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 					;(async function save() {
@@ -114,7 +120,7 @@ export const historyAtomFamily = atomFamily(
 							await Promise.all(comps)
 						}
 					})().catch((error: Error) => console.error(error))
-				}
+				} */
 			}
 		)
 	},
@@ -165,9 +171,10 @@ export const useSaveHistory = () => {
 			type: 'serialize',
 			callback: value => {
 				let safeValue = value
+				const parsed = JSON.parse(value) as SavedHistory
+				// TODO: get rid of this lameness
 				if (value.length > 4_000_000) {
 					console.warn('History too large, removing largest payload')
-					const parsed = JSON.parse(value) as SavedHistory
 					let largestKey = ''
 					let largestLen = 0
 					for (const key of Object.keys(parsed.historyMap)) {
@@ -183,6 +190,19 @@ export const useSaveHistory = () => {
 						parsed.history = parsed.history.filter(h => h !== largestKey)
 					}
 					safeValue = JSON.stringify(parsed)
+				}
+				for (const key of Object.keys(parsed.historyMap)) {
+					const item = parsed.historyMap[key] as HistoryItem
+					const html = item.html ?? ''
+					if (html !== '') {
+						delete item.html
+						localStorage.setItem(`${key}.html`, html)
+					}
+					const markdown = item.markdown ?? ''
+					if (markdown !== '') {
+						delete item.markdown
+						localStorage.setItem(`${key}.md`, markdown)
+					}
 				}
 				localStorage.setItem('serializedHistory', safeValue)
 			}
