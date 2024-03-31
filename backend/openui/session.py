@@ -29,7 +29,10 @@ class DBSessionStore:
         return Session.get_or_none(Session.id == uuid.UUID(session_id).bytes)
 
     def get(self, session_id: str) -> Optional[SessionData]:
-        session = Session.get_or_none(Session.id == uuid.UUID(session_id).bytes)
+        if session_id:
+            session = Session.get_or_none(Session.id == uuid.UUID(session_id).bytes)
+        else:
+            session = None
         if session is None:
             return SessionData(token_count=0, username="")
         else:

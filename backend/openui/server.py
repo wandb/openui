@@ -304,7 +304,8 @@ async def get_session(
     if session_id is None:
         if config.ENV == config.Env.LOCAL:
             # Give local users a session automatically
-            request.session["session_id"] = session_store.generate_session_id()
+            session_id = session_store.generate_session_id()
+            request.session["session_id"] = session_id
             user_id = uuid.uuid4()
             try:
                 user = User.get_or_none(User.username == getpass.getuser())
@@ -314,8 +315,11 @@ async def get_session(
                         created_at=datetime.now(),
                         id=user_id.bytes,
                     )
+                else:
+                    user_id = user.id
             except IntegrityError:
                 user = User.get(User.username == getpass.getuser())
+                user_id = user.id
             request.session["user_id"] = str(user_id)
             session_store.write(
                 request.session["session_id"],
