@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 import uuid
 import uvicorn
 import contextlib
+import requests
 import threading
 import time
 import getpass
@@ -375,15 +376,20 @@ def spa(full_path: str):
         raise HTTPException(status_code=404, detail="Asset not found")
     return HTMLResponse((dist_dir / "index.html").read_bytes())
 
+def check_wandb_auth():
+    auth = requests.utils.get_netrc_auth("https://api.wandb.ai")
+    key = None
+    if auth:
+        key = auth[-1]
+    if os.getenv("WANDB_API_KEY"):
+        key = os.environ["WANDB_API_KEY"]
+    return key is not None
 
-wandb_enabled = True
-try:
-    wandb.Api()
-except wandb.errors.UsageError:
-    wandb_enabled = False
+wandb_enabled = check_wandb_auth()
 
 if not wandb_enabled:
-    weave.monitoring.openai.unpatch()
+    from weave.monitoring import openai
+    openai.unpatch()
 
 
 class Server(uvicorn.Server):
