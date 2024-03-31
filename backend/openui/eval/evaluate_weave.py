@@ -5,7 +5,7 @@ import textwrap
 import yaml
 import mistletoe
 from openai import AsyncOpenAI
-from weave.weaveflow import evaluate, Model
+from weave import Evaluation, Model
 
 # from .model import EvaluateQualityModel
 import weave
@@ -297,10 +297,10 @@ async def eval(mod="gpt-3.5-turbo"):
     model = OpenUIModel(SYSTEM_PROMPT, mod)
     pt("Loading dataset")
     dataset = weave.ref("eval").get()
-    evaluation = evaluate.Evaluation(
+    evaluation = Evaluation(
         dataset,
-        scores=[scores],
-        example_to_model_input=example_to_model_input,
+        scorers=[scores],
+        preprocess_model_input=example_to_model_input,
     )
     pt("Running evaluation")
     await evaluation.evaluate(model)

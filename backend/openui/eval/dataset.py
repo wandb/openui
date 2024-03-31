@@ -1,7 +1,7 @@
 import asyncio
 import csv
 import weave
-from weave import weaveflow
+from weave import Dataset
 from pathlib import Path
 import json
 import sys
@@ -43,7 +43,7 @@ async def flowbite():
         if abort:
             break
 
-    dataset = weaveflow.Dataset(ds)
+    dataset = Dataset(ds)
     print("Created dataset of ", len(ds))
     dataset_ref = weave.publish(dataset, "flowbite")
     print("Published dataset:", dataset_ref)

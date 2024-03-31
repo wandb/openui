@@ -3,18 +3,10 @@ import base64
 from datetime import datetime
 import uuid
 import traceback
-import weave
-from weave.monitoring.openai.util import (
-    reconstruct_completion,
-)
-from openai.types.chat import (
-    ChatCompletionChunk,
-)
+from openai.types import ChatCompletionChunk
 from .logs import logger
 
-
 date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
-
 
 # Ollama
 # {"model":"llava:latest","created_at":"2024-02-05T06:32:11.073667Z","message":{"role":"assistant","content":" "},"done":false}
@@ -87,29 +79,22 @@ async def ollama_stream_generator(response, inputs):
 
     async def generator():
         try:
-            with weave.start_as_current_span(
-                "ollama.chat.completions.create", inputs.model_dump()
-            ) as span:
-                nonlocal first_sse, response
-                if first_sse:
-                    yield first_sse[0]
-                    if first_sse[1]:
-                        yield "data: [DONE]\n\n"
-                        return
-                    first_sse = None
-                async for chunk in response:
-                    chunks.append(ollama_to_openai(chunk, id))
-                    sse, done = ollama_chunk_to_sse(chunk, id)
-                    yield sse
-                    if done:
-                        yield "data: [DONE]\n\n"
-                # TODO: maybe parse choices/messages for usage counts
-                result = reconstruct_completion([], chunks)
-                span.finish(result.model_dump(exclude_unset=True))
-                chunks.clear()
+            nonlocal first_sse, response
+            if first_sse:
+                yield first_sse[0]
+                if first_sse[1]:
+                    yield "data: [DONE]\n\n"
+                    return
+                first_sse = None
+            async for chunk in response:
+                chunks.append(ollama_to_openai(chunk, id))
+                sse, done = ollama_chunk_to_sse(chunk, id)
+                yield sse
+                if done:
+                    yield "data: [DONE]\n\n"
+            chunks.clear()
         except Exception as e:
             logger.error("Ollama gen error: %s", e)
-            span.fail(e)
             # TODO: can we do something better here?
             yield f"error: {str(e)}"  # ResponseError(f"Error: something weird", 400)
 

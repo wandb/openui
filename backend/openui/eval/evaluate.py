@@ -1,7 +1,7 @@
 import asyncio
 import sys
 import textwrap
-from weave.weaveflow import evaluate, Model
+from weave import Evaluation, Model
 
 # from .model import EvaluateQualityModel
 import weave
@@ -177,10 +177,10 @@ async def eval(ds="gpt-3.5-turbo"):
     weave.init("openui-test-21")
     pt("Loading dataset", ds)
     dataset = weave.ref(ds).get()
-    evaluation = evaluate.Evaluation(
+    evaluation = Evaluation(
         dataset,
-        scores=[media_score, contrast_score, overall_score],
-        example_to_model_input=example_to_model_input,
+        scorers=[media_score, contrast_score, overall_score],
+        preprocess_model_input=example_to_model_input,
     )
     pt("Running evaluation")
     await evaluation.evaluate(model)

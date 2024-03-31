@@ -20,5 +20,4 @@ async def openai_stream_generator(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
     )
-    print("Updated tokens with", user_id, input_tokens, output_tokens)
     yield "data: [DONE]\n\n"

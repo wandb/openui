@@ -1,4 +1,4 @@
-from weave.weaveflow import Model
+from weave import Model
 import weave
 import json
 from pathlib import Path
