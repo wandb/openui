@@ -6,6 +6,7 @@
 	"scripts": {
 		"build": "vite build",
 		"postbuild": "rm -rf ../backend/openui/dist && cp -r dist ../backend/openui/dist",
+		"deploy": "npm run build -- --mode hosted && fly deploy ../backend",
 		"commit": "cz",
 		"dev": "vite --open",
 		"prepare": "husky install",

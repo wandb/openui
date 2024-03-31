@@ -4,6 +4,22 @@
 	class="text-zinc-900 antialiased dark:bg-zinc-800 dark:text-white"
 >
 	<head>
+		<script>
+			// Only add google analytics when built for hosting
+			if ('%MODE%' === 'hosted') {
+				const script = document.createElement('script')
+				script.src = 'https://www.googletagmanager.com/gtag/js?id=G-FDHP7DEY94'
+				script.async = true
+				document.head.appendChild(script)
+			}
+			window.dataLayer = window.dataLayer || []
+			function gtag() {
+				dataLayer.push(arguments)
+			}
+			gtag('js', new Date())
+
+			gtag('config', 'G-FDHP7DEY94')
+		</script>
 		<meta charset="UTF-8" />
 		<link rel="icon" type="image/png" href="/favicon.png" />
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
