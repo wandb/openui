@@ -3,7 +3,7 @@ import base64
 from datetime import datetime
 import uuid
 import traceback
-from openai.types import ChatCompletionChunk
+from openai.types.chat import ChatCompletionChunk
 from .logs import logger
 
 date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
