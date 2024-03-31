@@ -388,8 +388,8 @@ def check_wandb_auth():
 wandb_enabled = check_wandb_auth()
 
 if not wandb_enabled:
-    from weave.monitoring import openai
-    openai.unpatch()
+    from weave.monitoring import openai as wandb_openai
+    wandb_openai.unpatch()
 
 
 class Server(uvicorn.Server):

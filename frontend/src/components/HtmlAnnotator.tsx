@@ -121,7 +121,7 @@ export default function HTMLAnnotator({
 	imageUploadRef
 }: HTMLAnnotatorProps) {
 	const iframeSrc =
-		import.meta.env.MODE === 'production'
+		import.meta.env.MODE === 'hosted'
 			? 'https://wandb.github.io'
 			: 'http://127.0.0.1:7878'
 	const iframeRef = useRef<HTMLIFrameElement | null>(null)
