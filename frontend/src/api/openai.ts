@@ -32,7 +32,7 @@ export async function createOrRefine(
 	let { model, systemPrompt: sp } = options
 	const { temperature, query, html, image } = options
 	// Add instructions for frontmatter unless we're iterating on existing html
-	// Some models don't support this being in a seperate system message so we append
+	// Some models don't support this being in a separate system message so we append
 	if (!html) {
 		sp += `\n\nAlways start your response with frontmatter wrapped in ---.  Set name: with a 2 to 5 word description of the component. Set emoji: with an emoji for the component, i.e.:
 ---
