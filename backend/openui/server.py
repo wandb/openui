@@ -293,6 +293,10 @@ async def get_share(id: str):
     return Response(storage.download(f"{id}.json"), media_type="application/json")
 
 
+@router.get("/v1/ollama/tags", tags="openui/ollama/tags")
+async def ollama_models():
+    return await ollama.list()
+
 @router.get(
     "/v1/session",
     tags=["openui/session"],
@@ -410,8 +414,7 @@ class Server(uvicorn.Server):
 
     def run_with_wandb(self):
         if wandb_enabled:
-            # Disabled for now as it's messing with co-routines
-            # weave.init("openui-test-21")
+            weave.init("openui-test-20")
             pass
         self.run()
 

@@ -244,6 +244,9 @@ devDependencies:
   npm-run-all:
     specifier: ^4.1.5
     version: 4.1.5
+  ollama:
+    specifier: ^0.5.0
+    version: 0.5.0
   postcss:
     specifier: ^8.4.38
     version: 8.4.38
@@ -8584,6 +8587,12 @@ packages:
       call-bind: 1.0.7
       define-properties: 1.2.1
       es-object-atoms: 1.0.0
+    dev: true
+
+  /ollama@0.5.0:
+    resolution: {integrity: sha512-CRtRzsho210EGdK52GrUMohA2pU+7NbgEaBG3DcYeRmvQthDO7E2LHOkLlUUeaYUlNmEd8icbjC02ug9meSYnw==}
+    dependencies:
+      whatwg-fetch: 3.6.20
     dev: true
 
   /once@1.4.0:
