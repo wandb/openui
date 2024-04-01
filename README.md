@@ -39,13 +39,13 @@ Now you can goto [http://localhost:7878](http://localhost:7878)
 
 ## Development
 
-A [https://github.com/wandb/openui/blob/main/.devcontainer/devcontainer.json](dev container) is configured in this repository which is the quickest way to get started.
+A [dev container](https://github.com/wandb/openui/blob/main/.devcontainer/devcontainer.json) is configured in this repository which is the quickest way to get started.
 
 ### Codespace
 
-Choose more options when creating a Codespace, then select **New with options...**.  Select the US West region if you want a really fast boot time.  You'll also want to configure your OPENAI_API_KEY secret or just set it to `xxx` if you want to try Ollama (you'll want at least 16GB of Ram).
+![New with options...](./assets/codespace.png)
 
-![New with options...](./assets/codespace.gif)
+Choose more options when creating a Codespace, then select **New with options...**.  Select the US West region if you want a really fast boot time.  You'll also want to configure your OPENAI_API_KEY secret or just set it to `xxx` if you want to try Ollama *(you'll want at least 16GB of Ram)*.
 
 Once inside the code space you can run the server in one terminal: `python -m openui --dev`.  Then in a new terminal:
 
