@@ -4,9 +4,6 @@
 mkdir -p $HOME/.cache
 sudo chown -R $USER $HOME/.cache
 
-# Ollama time
-curl -fsSL https://ollama.com/install.sh | sh
-
 # Install node packages
 cd /workspaces/openui/frontend
 pnpm install
