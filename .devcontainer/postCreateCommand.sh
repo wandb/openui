@@ -12,6 +12,9 @@ pnpm install
 cd /workspaces/openui/backend
 pip install -e .[test]
 
+# Pull a model for ollama, using llava for now as it's multi-modal
+ollama pull llava
+
 # addressing warning...
 git config --unset-all core.hooksPath
 pre-commit install --allow-missing-config
