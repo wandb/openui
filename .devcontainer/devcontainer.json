@@ -1,0 +1,62 @@
+{
+  "name": "OpenUI Development",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+
+  // More features: https://containers.dev/features.
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "nodeGypDependencies": true,
+      "version": "lts",
+      "nvmVersion": "latest"
+    },
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "latest",
+      "profile": "minimal"
+    }
+  },
+
+  "mounts": [
+    "source=codespaces-linux-cache,target=/home/vscode/.cache,consistency=delegated,type=volume"
+  ],
+
+  "customizations": {
+    "vscode": {
+      "settings": {},
+      "extensions": [
+        "ms-python.python",
+        "bungcip.better-toml",
+        "charliermarsh.ruff",
+        "ms-toolsai.jupyter",
+        "ms-azuretools.vscode-docker",
+        "GitHub.copilot",
+        "ms-python.black-formatter"
+      ]
+    }
+  },
+
+  "portsAttributes": {
+    "5173": {
+      "label": "OpenUI UI Dev Server"
+    },
+    "7878": {
+      "label": "OpenUI Server",
+      "onAutoForward": "notify"
+    }
+  },
+
+  "postCreateCommand": "bash ./.devcontainer/postCreateCommand.sh",
+
+  "secrets": {
+    "OPENAI_API_KEY": {
+      "description": "Your OpenAI API Key",
+      "documentationUrl": "https://platform.openai.com/api-keys"
+    },
+    "WANDB_API_KEY": {
+      "description": "Your W&B API Key",
+      "documentationUrl": "https://wandb.ai/authorize"
+    }
+  }
+
+  // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+  // "remoteUser": "root"
+}

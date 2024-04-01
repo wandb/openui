@@ -34,7 +34,7 @@ CI = "https://github.com/wandb/openui/actions"
 
 
 [project.optional-dependencies]
-test = ["pytest"]
+test = ["pytest", "pre-commit"]
 eval = [
     "Pillow>=8.3.1",
     "playwright>=1.41.0",
