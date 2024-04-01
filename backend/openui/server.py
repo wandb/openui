@@ -410,7 +410,9 @@ class Server(uvicorn.Server):
 
     def run_with_wandb(self):
         if wandb_enabled:
-            weave.init("openui-test-21")
+            # Disabled for now as it's messing with co-routines
+            # weave.init("openui-test-21")
+            pass
         self.run()
 
     @contextlib.contextmanager

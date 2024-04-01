@@ -50,7 +50,7 @@ Choose more options when creating a Codespace, then select **New with options...
 Once inside the code space you can run the server in one terminal: `python -m openui --dev`.  Then in a new terminal:
 
 ```bash
-cd /workspace/openui/frontend
+cd /workspaces/openui/frontend
 npm run dev
 ```
 
