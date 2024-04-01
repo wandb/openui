@@ -18,8 +18,19 @@ pip install .
 
 ## Usage
 
+You must set the `OPENAI_API_KEY` even if you just want to try Ollama models.  Just set it to `xxx` in that case like below.
+
 ```bash
-python -m openui
+OPENAI_API_KEY=xxx python -m openui
+```
+
+### Docker
+
+You can build and run the docker file from the `/backend` directory:
+
+```bash
+docker build . -t wandb/openui --load
+docker run -p 7878:7878 -e OPENAI_API_KEY wandb/openui
 ```
 
 ## Development
