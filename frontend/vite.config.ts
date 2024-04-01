@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import eslintPlugin from '@nabla/vite-plugin-eslint'
 import react from '@vitejs/plugin-react'
+import type { PluginOption } from 'vite'
 import { defineConfig, splitVendorChunkPlugin } from 'vite'
 import mkcert from 'vite-plugin-mkcert'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -35,6 +36,13 @@ const pwaPlugin = VitePWA({
 	}
 })
 
+const inCodespace = process.env.GITHUB_CODESPACE_TOKEN !== undefined
+const plugins: PluginOption[] = [eslintPlugin()]
+// Don't listen on SSL in codespaces
+if (!inCodespace) {
+	// eslint-disable-next-line @typescript-eslint/no-floating-promises
+	plugins.push(mkcert())
+}
 export default defineConfig(({ mode }) => ({
 	test: {
 		css: false,
@@ -66,6 +74,6 @@ export default defineConfig(({ mode }) => ({
 		tsconfigPaths(),
 		splitVendorChunkPlugin(),
 		react(),
-		...(mode === 'test' ? [] : [mkcert(), eslintPlugin()])
+		...(mode === 'test' ? [] : plugins)
 	]
 }))
