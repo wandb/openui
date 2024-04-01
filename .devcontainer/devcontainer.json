@@ -36,7 +36,8 @@
 
   "portsAttributes": {
     "5173": {
-      "label": "OpenUI UI Dev Server"
+      "label": "OpenUI UI Dev Server",
+      "onAutoForward": "notify"
     },
     "7878": {
       "label": "OpenUI Server",

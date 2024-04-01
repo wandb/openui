@@ -7,6 +7,10 @@ sudo chown -R $USER $HOME/.cache
 # Ollama time
 curl -fsSL https://ollama.com/install.sh | sh
 
+# Install node packages
+cd /workspaces/openui/frontend
+pnpm install
+
 # Install python packages
 cd /workspaces/openui/backend
 pip install -e .[test]
