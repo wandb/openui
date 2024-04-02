@@ -14,7 +14,7 @@ OpenUI let's you describe UI using your imagination, then see it rendered live. 
 
 ## Running Locally
 
-You can also run OpenUI locally and use models available to [Ollama](https://olama.com).  [Install Ollama](https://ollama.com/download) and pull a model like [CodeLlama](https://ollama.com/library/codellama), then assuming you have git and python installed:
+You can also run OpenUI locally and use models available to [Ollama](https://ollama.com).  [Install Ollama](https://ollama.com/download) and pull a model like [CodeLlama](https://ollama.com/library/codellama), then assuming you have git and python installed:
 
 ```bash
 git clone https://github.com/wandb/openui
