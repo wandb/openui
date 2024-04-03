@@ -32,7 +32,7 @@ You can build and run the docker file from the `/backend` directory:
 
 ```bash
 docker build . -t wandb/openui --load
-docker run -p 7878:7878 -e OPENUI_ENVIRONMENT=prod -e OPENAI_API_KEY wandb/openui
+docker run -p 7878:7878 -e OPENAI_API_KEY wandb/openui
 ```
 
 Now you can goto [http://localhost:7878](http://localhost:7878)
