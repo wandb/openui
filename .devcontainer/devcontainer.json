@@ -45,7 +45,10 @@
     }
   },
 
+  // Install Ollama in the prebuild step
+  "onCreateCommand": "curl -fsSL https://ollama.com/install.sh | sh",
   "postCreateCommand": "bash ./.devcontainer/postCreateCommand.sh",
+  "postStartCommand": "nohup bash -c 'ollama serve &'",
 
   "secrets": {
     "OPENAI_API_KEY": {

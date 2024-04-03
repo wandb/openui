@@ -4,9 +4,6 @@
 mkdir -p $HOME/.cache
 sudo chown -R $USER $HOME/.cache
 
-# Ollama time
-curl -fsSL https://ollama.com/install.sh | sh
-
 # Install node packages
 cd /workspaces/openui/frontend
 pnpm install
@@ -14,6 +11,9 @@ pnpm install
 # Install python packages
 cd /workspaces/openui/backend
 pip install -e .[test]
+
+# Pull a model for ollama, using llava for now as it's multi-modal
+ollama pull llava
 
 # addressing warning...
 git config --unset-all core.hooksPath
