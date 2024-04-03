@@ -43,7 +43,7 @@ A [dev container](https://github.com/wandb/openui/blob/main/.devcontainer/devcon
 
 ### Codespace
 
-![New with options...](./assets/codespace.png)
+<img src="./assets/codespace.png" alt="New with options..." width="500" />
 
 Choose more options when creating a Codespace, then select **New with options...**.  Select the US West region if you want a really fast boot time.  You'll also want to configure your OPENAI_API_KEY secret or just set it to `xxx` if you want to try Ollama *(you'll want at least 16GB of Ram)*.
 
@@ -58,7 +58,9 @@ This should open another service on port 5173, that's the service you'll want to
 
 ### Ollama
 
-The codespace installs ollama automaticaly and downloads the `llava` model.  To run it, open a new terminal and run `ollama serve`.  You can select Ollama models from the settings gear icon in the upper left corner of the application.  Any models you pull i.e. `ollama pull llama` will show up in the settings modal.
+The codespace installs ollama automaticaly and downloads the `llava` model.  You can verify Ollama is running with `ollama list` if that fails, open a new terminal and run `ollama serve`.  In Codespaces we pull llava on boot so you should see it in the list.  You can select Ollama models from the settings gear icon in the upper left corner of the application.  Any models you pull i.e. `ollama pull llama` will show up in the settings modal.
+
+<img src="./assets/ollama.png" width="500" alt="Select Ollama models" />
 
 
 ### Resources

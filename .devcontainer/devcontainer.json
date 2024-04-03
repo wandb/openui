@@ -24,7 +24,7 @@
       "settings": {},
       "extensions": [
         "ms-python.python",
-        "bungcip.better-toml",
+        "tamasfe.even-better-toml",
         "charliermarsh.ruff",
         "ms-toolsai.jupyter",
         "ms-azuretools.vscode-docker",
