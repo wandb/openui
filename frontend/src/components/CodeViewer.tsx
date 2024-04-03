@@ -16,6 +16,7 @@ import {
 	convertFrameworkAtom,
 	historyAtomFamily,
 	selectedFrameworkAtom,
+	FRAMEWORKS,
 	type Framework
 } from 'state'
 import { downloadStringAsFile } from '../lib/utils'
@@ -146,41 +147,16 @@ export default function CodeViewer({ id, code, shared }: ViewerProps) {
 								<DropdownMenuContent side='top'>
 									<DropdownMenuLabel>Convert to</DropdownMenuLabel>
 									<DropdownMenuSeparator />
-									<DropdownMenuItem
-										onClick={() => {
-											setConvertFramework('web component')
-										}}
-									>
-										Web Component
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onClick={() => {
-											setConvertFramework('react')
-										}}
-									>
-										React
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onClick={() => {
-											setConvertFramework('preact')
-										}}
-									>
-										Preact
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onClick={() => {
-											setConvertFramework('svelte')
-										}}
-									>
-										Svelte
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onClick={() => {
-											setConvertFramework('vue')
-										}}
-									>
-										Vue
-									</DropdownMenuItem>
+									{FRAMEWORKS.map(f => (
+										<DropdownMenuItem
+											key={f}
+											onClick={() => {
+												setConvertFramework(f)
+											}}
+										>
+											{f.toLocaleUpperCase()}
+										</DropdownMenuItem>
+									))}
 								</DropdownMenuContent>
 							</DropdownMenu>
 						</li>

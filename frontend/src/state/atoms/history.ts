@@ -10,6 +10,8 @@ export type Framework =
 	| 'vue'
 	| 'web component'
 
+export const FRAMEWORKS: Framework[] = ['preact', 'react', 'svelte', 'vue', 'web component'];
+
 export type FrameworkMap = {
 	[K in Framework]?: string
 }
