@@ -1,6 +1,6 @@
 {
-  "name": "OpenUI Development",
-  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "name": "Zali Ai",
+  "image": "https://drive.google.com/file/d/1-XLorMnsJnUn1mYSZR_JqX0LYFRJUZ8T/view?usp=drive_link",
 
   // More features: https://containers.dev/features.
   "features": {
@@ -52,7 +52,7 @@
 
   "secrets": {
     "OPENAI_API_KEY": {
-      "description": "Your OpenAI API Key",
+      "description": "کشت و صنعت نیشکر دهخدا",
       "documentationUrl": "https://platform.openai.com/api-keys"
     },
     "WANDB_API_KEY": {
