@@ -56,26 +56,11 @@ npm run dev
 
 This should open another service on port 5173, that's the service you'll want to visit.  All changes to both the frontend and backend will automatically be reloaded and reflected in your browser.
 
-<<<<<<< HEAD
 ### Ollama
 
-The codespace should have ollama running and automatically downloads the `llava` model.  You can select this model from the settings gear icon in the upper left corner of the application.  Any models you pull i.e. `ollama pull llama` will show up in the settings modal.
+The codespace installs ollama automaticaly and downloads the `llava` model.  To run it, open a new terminal and run `ollama serve`.  You can select Ollama models from the settings gear icon in the upper left corner of the application.  Any models you pull i.e. `ollama pull llama` will show up in the settings modal.
 
-||||||| parent of e35b585 (postStartCommand isnt working, tell users to run Ollama)
-=======
-<<<<<<< Updated upstream
-||||||| Stash base
-### Ollama
 
-The codespace should have ollama running and automatically downloads the `llava` model.  You can select this model from the settings gear icon in the upper left corner of the application.  Any models you pull i.e. `ollama pull llama` will show up in the settings modal.
-
-=======
-### Ollama
-
-The codespace installs ollama automaticaly and downloads the `llava` model.  To run it, open a new terminal and run `ollama serve` from it.  You can select Ollama models from the settings gear icon in the upper left corner of the application.  Any models you pull i.e. `ollama pull llama` will show up in the settings modal.
-
->>>>>>> Stashed changes
->>>>>>> e35b585 (postStartCommand isnt working, tell users to run Ollama)
 ### Resources
 
 See the readmes in the [frontend](./frontend/README.md) and [backend](./backend/README.md) directories.
