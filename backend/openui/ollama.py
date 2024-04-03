@@ -3,6 +3,7 @@ import base64
 from datetime import datetime
 import uuid
 import traceback
+import time
 from openai.types.chat import ChatCompletionChunk
 from .logs import logger
 
@@ -13,10 +14,13 @@ date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
 # OpenAI
 # data: {"id":"chatcmpl-8omUbwmXu2rsLNcpMQWB0Q9gm0RHZ","object":"chat.completion.chunk","created":1707113497,"model":"gpt-3.5-turbo-0613","system_fingerprint":null,"choices":[{"index":0,"delta":{"content":" you"},"logprobs":null,"finish_reason":null}]}
 def ollama_to_openai(chunk, id):
-    # Truncate the nanoseconds to microseconds
-    date_truncated = chunk["created_at"][:26] + 'Z'
-    date = datetime.strptime(date_truncated, date_format)
-    unix = int(date.timestamp())
+    try:
+        # Truncate the nanoseconds to microseconds
+        date_truncated = chunk["created_at"][:26] + 'Z'
+        date = datetime.strptime(date_truncated, date_format)
+        unix = int(date.timestamp())
+    except Exception:
+        unix = int(time.time())
     data = {
         "id": str(id),
         "object": "chat.completion.chunk",
