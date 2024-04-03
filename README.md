@@ -58,7 +58,7 @@ This should open another service on port 5173, that's the service you'll want to
 
 ### Ollama
 
-The codespace should have ollama running and automatically downloads the `llava` model.  You can select this model from the settings gear icon in the upper left corner of the application.  Any models you pull i.e. `ollama pull llama` will show up in the settings modal.
+The codespace installs ollama automaticaly and downloads the `llava` model.  To run it, open a new terminal and run `ollama serve` from it.  You can select Ollama models from the settings gear icon in the upper left corner of the application.  Any models you pull i.e. `ollama pull llama` will show up in the settings modal.
 
 ### Resources
 
