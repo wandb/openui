@@ -1,10 +1,10 @@
 import {
 	DoubleArrowDownIcon,
 	DoubleArrowUpIcon,
-	PlayIcon,
-	ResumeIcon
+	ArrowRightIcon,
+	CheckIcon
 } from '@radix-ui/react-icons'
-import { convert, createOrRefine } from 'api/openai'
+import { Action, convert, createOrRefine } from 'api/openai'
 import { getShare } from 'api/openui'
 import CodeViewer from 'components/CodeViewer'
 import Examples from 'components/Examples'
@@ -84,26 +84,22 @@ export default function Builder({ shared }: { shared?: boolean }) {
 	const model = useAtomValue(modelAtom)
 	const temperature = useAtomValue(temperatureAtom)
 	const systemPrompt = useAtomValue(systemPromptAtom)
-
-	const imageFileRef = useRef<HTMLInputElement>(null)
+	const imageUploadRef = useRef<HTMLInputElement>(null)
 	const queryRef = useRef<HTMLTextAreaElement>(null)
-	const formRef = useRef<HTMLFormElement>(null)
 	// TODO: this is rather hacky to support history
 	const curMarkdown = (item.markdown ?? '').split(/---\nprompt:.+\n---/gm).pop()
 	const [markdown, setMarkdown] = useState<string>(curMarkdown ?? '')
 
-	// Local state
-	const [pendingScreenshot, setPendingScreenshot] = useState<
-		string | undefined
-	>()
 	const [pureHTML, setPureHTML] = useState<string>(item.html ?? '')
 	const [renderError, setRenderError] = useState<string | undefined>()
 	const [js, setJs] = useState<Script[]>([])
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const [imageEl, setImageEl] = useState<HTMLImageElement | undefined>()
 	const [editing, setEditing] = useState<boolean>(markdown !== '')
 	const [rendering, setRendering] = useState<boolean>(false)
 	const [llmHidden, setLLMHidden] = useState<boolean>(markdown !== '')
+	// Create for new, refine for existed
+	const action: Action = editing ? 'refine' : 'create';
+
 	// TODO: likely replace with item.components
 	// const [jsx, setJSX] = useState<string>('')
 	const throttledMD = useThrottle(markdown)
@@ -121,7 +117,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 	// Load shared item
 	useEffect(() => {
 		if (shared) {
-			;(async () => {
+			; (async () => {
 				const sharedItem = await getShare(id)
 				setItem(sharedItem)
 				setPureHTML(sharedItem.html ?? '')
@@ -183,18 +179,19 @@ export default function Builder({ shared }: { shared?: boolean }) {
 	)
 
 	const streamResponse = useCallback(
-		(query?: string, html?: string, clearSession = false) => {
+		(query: string, html?: string, clearSession = false) => {
 			setRendering(true)
 			setMarkdown('')
 			setAnnotatedHTML('')
 			setRenderError(undefined)
 			createOrRefine(
 				{
-					query: query ?? 'image-upload',
+					query,
 					model,
+					action,
 					systemPrompt,
 					html: clearSession ? undefined : html,
-					image: clearSession ? undefined : pendingScreenshot,
+					image: clearSession ? undefined : screenshot,
 					temperature
 				},
 				md => {
@@ -202,7 +199,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 				}
 			)
 				.then(final => {
-					setPendingScreenshot(undefined)
+					setScreenshot('');
 					setRendering(false)
 					saveMarkdown(final)
 					if (queryRef.current) {
@@ -212,7 +209,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 				})
 				.catch((error: Error) => {
 					setRendering(false)
-					setPendingScreenshot(undefined)
+					setScreenshot('')
 					saveMarkdown('')
 					console.error(error)
 					setRenderError(error.message)
@@ -220,12 +217,12 @@ export default function Builder({ shared }: { shared?: boolean }) {
 		},
 		[
 			model,
-			pendingScreenshot,
+			action,
+			screenshot,
 			systemPrompt,
 			setMarkdown,
 			setRendering,
 			setRenderError,
-			setPendingScreenshot,
 			setAnnotatedHTML,
 			saveMarkdown,
 			temperature
@@ -275,18 +272,6 @@ export default function Builder({ shared }: { shared?: boolean }) {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [throttledMD])
 
-	// screenshot
-	useEffect(() => {
-		// TODO: do something with this element
-		if (screenshot !== '') {
-			const img = new Image()
-			img.addEventListener('load', () => {
-				setImageEl(img)
-			})
-			img.src = screenshot
-		}
-	}, [screenshot])
-
 	// editing mode
 	useEffect(() => {
 		const keyDown = (e: KeyboardEvent) => {
@@ -311,9 +296,6 @@ export default function Builder({ shared }: { shared?: boolean }) {
 		(prompt: string, clear = true) => {
 			// New state management
 			const newId = nanoid()
-			if (queryRef.current) {
-				queryRef.current.value = prompt
-			}
 			setMarkdown('')
 			historyAtomFamily({ id: newId, prompt, createdAt: new Date() })
 			setHistoryIds(prev => [newId, ...prev])
@@ -324,31 +306,25 @@ export default function Builder({ shared }: { shared?: boolean }) {
 
 	const onSubmit = async (e: React.FormEvent | React.KeyboardEvent) => {
 		e.preventDefault()
-		let iterating = true
-		// TODO: !results is a little lame
-		if (!markdown || (e as React.KeyboardEvent).shiftKey) {
-			iterating = false
+
+		let query = queryRef.current?.value.trim() ?? '';
+		if (screenshot === '' && query === '') {
+			return;
 		}
-		let query = 'html-comments-only'
-		if (e.target instanceof HTMLFormElement) {
-			const formData = new FormData(e.target)
-			query = formData.get('query')?.toString() ?? ''
-		} else {
-			// TODO: handle empty textarea
-			query = (e.target as HTMLTextAreaElement).value
+
+		if (action === 'create') {
+			// Keep the screenshot
+			newComponent(query, screenshot === '');
+			return;
 		}
-		if (iterating) {
-			setMarkdown('')
-			console.log('Submit', item.name)
-			setItem(it => ({
-				...it,
-				markdown: it.markdown + newChapter(query),
-				prompts: [...(it.prompts ?? [it.prompt]), query]
-			}))
-			streamResponse(query, pureHTML)
-		} else {
-			newComponent(query)
-		}
+		setMarkdown('')
+		console.log('Submit', item.name)
+		setItem(it => ({
+			...it,
+			markdown: it.markdown + newChapter(query),
+			prompts: [...(it.prompts ?? [it.prompt]), query]
+		}))
+		streamResponse(query, pureHTML)
 	}
 
 	function parseJs(dom: Document): Script[] {
@@ -421,37 +397,17 @@ export default function Builder({ shared }: { shared?: boolean }) {
 		pureHTML,
 		temperature
 	])
-
-	// auto submit for uploads / annotations
-	// TODO: careful here / this isn't really working anymore
+	// Auto submit for annotations
 	useEffect(() => {
-		if (screenshot !== '') {
-			// TODO: this state management is gross
-			newComponent('image-upload', false)
-			setPendingScreenshot(screenshot)
-			setScreenshot('')
-		} else if (annotatedHTML !== '') {
-			console.log('Auto Submit', item.name)
+		if (annotatedHTML !== '') {
 			setItem(it => ({
 				...it,
 				markdown: it.markdown + newChapter(comments[0])
 			}))
-			// setLLMHidden(true)
 			setComments([])
-			streamResponse('html-comments-only', annotatedHTML)
+			streamResponse('', annotatedHTML)
 		}
-	}, [
-		annotatedHTML,
-		comments,
-		newComponent,
-		screenshot,
-		setAnnotatedHTML,
-		setComments,
-		setItem,
-		item.name,
-		setScreenshot,
-		streamResponse
-	])
+	}, [annotatedHTML, comments])
 
 	return (
 		<div className='flex-col bg-secondary'>
@@ -461,7 +417,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 					html={pureHTML}
 					js={js}
 					error={renderError}
-					imageUploadRef={imageFileRef}
+					imageUploadRef={imageUploadRef}
 					rendering={rendering}
 				/>
 				<CodeViewer id={id} code={pureHTML} shared={shared ?? false} />
@@ -508,13 +464,23 @@ export default function Builder({ shared }: { shared?: boolean }) {
 				)}
 			</Button>
 			{/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-			<Form onSubmit={onSubmit} className='' ref={formRef}>
+			<Form onSubmit={onSubmit}>
 				<input
-					ref={imageFileRef}
+					ref={imageUploadRef}
 					id='file-input'
 					type='file'
 					className='hidden'
 					accept='image/*'
+					onChange={e => {
+						const file = e.target.files?.[0] ?? null;
+						if (file === null) {
+							return;
+						}
+						const reader = new FileReader();
+						reader.onload = () =>
+							setScreenshot(reader.result as string);
+						reader.readAsDataURL(file);
+					}}
 				/>
 				<div
 					id='llm-input'
@@ -535,42 +501,30 @@ export default function Builder({ shared }: { shared?: boolean }) {
 						placeholder={
 							editing
 								? 'Ask for changes to the current UI'
-								: 'Describe a UI you desire'
+								: screenshot ? 'Describe the screenshot you uploaded (Optional)' : 'Describe a UI you desire'
 						}
 						ref={queryRef}
 						// eslint-disable-next-line react/jsx-handler-names
-						onKeyDown={(e: React.KeyboardEvent) => {
+						onKeyDown={async (e: React.KeyboardEvent) => {
 							if (e.key === 'Enter') {
-								onSubmit(e).catch(error => console.error(error))
+								await onSubmit(e);
 							}
 						}}
 					/>
 					<div className='flex items-center'>
-						{/* <Button
-							className='mr-2 h-8 w-8 flex-none'
-							variant='outline'
-							size='icon'
-							// eslint-disable-next-line react/jsx-handler-names
-							onClick={(e: React.SyntheticEvent) => {
-								e.preventDefault()
-								imageFileRef.current?.click()
-							}}
-						>
-							<UploadIcon className='h-4 w-4' />
-						</Button> */}
 						{rendering ? (
 							<div className='h-8 w-8 flex-none animate-spin rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-red-500' />
 						) : (
 							<Button
-								className='h-8 w-8 flex-none'
+								className='h-8 w-8 flex-none rounded-full'
 								variant='outline'
 								size='icon'
 								type='submit'
 							>
 								{editing ? (
-									<ResumeIcon className='h-4 w-4' />
+									<CheckIcon className='h-6 w-6' />
 								) : (
-									<PlayIcon className='h-4 w-4' />
+									<ArrowRightIcon className='h-6 w-6' />
 								)}
 							</Button>
 						)}

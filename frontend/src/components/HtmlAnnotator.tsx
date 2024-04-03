@@ -30,6 +30,7 @@ import Scaffold from './Scaffold'
 
 import { MessageCircleMore } from 'lucide-react'
 import FileUpload from './FileUpload'
+import Screenshot from './Screenshot'
 
 const SyntaxHighlighter = lazy(async () => import('./SyntaxHighlighter'))
 const Markdown = lazy(async () => import('react-markdown'))
@@ -130,7 +131,7 @@ export default function HTMLAnnotator({
 
 	// global state
 	const setAnnotatedHTML = useSetAtom(annotatedHTMLAtom)
-	const setScreenshot = useSetAtom(screenshotAtom)
+	const [screenshot, setScreenshot] = useAtom(screenshotAtom)
 	const [comments, setComments] = useAtom(commentsAtom)
 	const [darkMode, setDarkMode] = useAtom(darkModeAtom)
 
@@ -362,9 +363,8 @@ export default function HTMLAnnotator({
 								>
 									<svg
 										data-toggle-icon='moon'
-										className={`${
-											!darkMode && 'hidden'
-										} inline-block h-3.5 w-3.5`}
+										className={`${!darkMode && 'hidden'
+											} inline-block h-3.5 w-3.5`}
 										aria-hidden='true'
 										xmlns='http://www.w3.org/2000/svg'
 										fill='currentColor'
@@ -374,9 +374,8 @@ export default function HTMLAnnotator({
 									</svg>
 									<svg
 										data-toggle-icon='sun'
-										className={`${
-											darkMode && 'hidden'
-										} inline-block h-3.5 w-3.5`}
+										className={`${darkMode && 'hidden'
+											} inline-block h-3.5 w-3.5`}
 										aria-hidden='true'
 										xmlns='http://www.w3.org/2000/svg'
 										fill='currentColor'
@@ -452,9 +451,8 @@ export default function HTMLAnnotator({
 							title='HTML preview'
 							sandbox='allow-same-origin allow-scripts allow-forms allow-popups allow-modals'
 							ref={iframeRef}
-							className={`iframe-code mx-auto max-h-[60vh] w-full bg-background ${
-								media === 'tablet' && 'max-w-lg'
-							} ${media === 'mobile' && 'max-w-sm'}`}
+							className={`iframe-code mx-auto max-h-[60vh] w-full bg-background ${media === 'tablet' && 'max-w-lg'
+								} ${media === 'mobile' && 'max-w-sm'}`}
 							style={{ height: preview && !error ? '100%' : 0 }}
 							src={`${iframeSrc}/openui/index.html?buster=113`}
 						/>
@@ -463,23 +461,19 @@ export default function HTMLAnnotator({
 							(rendering || error ? (
 								<Scaffold loading error={error} />
 							) : (
-								<FileUpload
-									callback={(browse, file) => {
-										if (browse) {
-											imageUploadRef?.current?.click()
-										} else if (file) {
-											const reader = new FileReader()
-											reader.addEventListener('load', e => {
-												setScreenshot(e.target?.result as string)
-											})
-											reader.readAsDataURL(file)
-											// TODO: could use this method and take the imageEl...
-											// setImage(URL.createObjectURL(file))
-										} else {
-											console.error('Unable to process file')
-										}
-									}}
-								/>
+
+								screenshot ?
+									<Screenshot />
+									:
+									<FileUpload
+										onClick={() => imageUploadRef?.current?.click()}
+										onDropFile={(file) => {
+											const reader = new FileReader();
+											reader.onload = () =>
+												setScreenshot(reader.result as string);
+											reader.readAsDataURL(file as File);
+										}}
+									/>
 							))}
 					</div>
 				</div>
