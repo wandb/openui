@@ -33,10 +33,14 @@ import {
 } from 'state'
 
 function fixHTML(html: string) {
-	/* replace any gray styles with zinc, fix placeholder images */
+	// replace any gray styles with zinc, fix placeholder images
 	let fixed = html.replaceAll('-gray-', '-zinc-')
+	// use placehold.co for images
 	fixed = fixed.replaceAll('via.placeholder.com', 'placehold.co')
+	// point to our own backend for mp3's / wav files
 	fixed = fixed.replaceAll(/"[^"]*\.(mp3|wav)"|'[^']*\.(mp3|wav)'/g, "\""+document.location.origin + "/openui/funky.mp3" + "\"")
+	// remove any comments in the HTML
+	fixed = fixed.replaceAll(/<!--[\s\S]*?-->/g, '')
 	return fixed
 }
 
