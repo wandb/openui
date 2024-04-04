@@ -12,6 +12,7 @@ const openai = new OpenAI({
 	dangerouslyAllowBrowser: true
 })
 
+export type Action = 'create' | 'refine';
 interface CreateOptions {
 	model: string
 	systemPrompt: string
@@ -19,6 +20,7 @@ interface CreateOptions {
 	temperature: number
 	html?: string
 	image?: string
+	action: Action
 }
 
 export const systemPrompt = `You're a frontend web developer that specializes in tailwindcss. Given a description or an image, generate HTML with tailwindcss. You should support both dark and light mode. It should render nicely on desktop, tablet, and mobile. Keep your responses concise and just return HTML that would appear in the <body> no need for <head>. Use placehold.co for placeholder images. If the user asks for interactivity, use modern ES6 javascript and native browser apis to handle events.`
@@ -30,7 +32,7 @@ export async function createOrRefine(
 	callback: (response: string) => void
 ) {
 	let { model, systemPrompt: sp } = options
-	const { temperature, query, html, image } = options
+	const { temperature, query, html, image, action } = options
 	// Add instructions for frontmatter unless we're iterating on existing html
 	// Some models don't support this being in a separate system message so we append
 	if (!html) {
@@ -48,47 +50,48 @@ emoji: 🎉
 			content: sp
 		}
 	]
-
-	if (image) {
-		// TODO: configurable
-		if (model.startsWith('gpt')) {
-			model = 'gpt-4-vision-preview'
-		}
-		let imageUrl = image
-		// OpenAI wants a data url, ollama just wants base64 bytes
-		if (model.startsWith('ollama/')) {
-			const parts = image.toString().split(',')
-			imageUrl = parts.pop() ?? ''
-		}
-		messages.push({
-			role: 'user',
-			content: [
-				{
-					type: 'text',
-					text: 'This is a screenshot of a web component I want to replicate.  Please generate HTML for it.'
-				},
-				{
-					type: 'image_url',
-					image_url: {
-						url: imageUrl
+	if (action === 'create') {
+		// Call the vision models only for creating action
+		if (image) {
+			// TODO: configurable
+			if (model.startsWith('gpt')) {
+				model = 'gpt-4-vision-preview'
+			}
+			let imageUrl = image
+			// OpenAI wants a data url, ollama just wants base64 bytes
+			if (model.startsWith('ollama/')) {
+				const parts = image.toString().split(',')
+				imageUrl = parts.pop() ?? ''
+			}
+			const textImageRequirements = query ?
+				`The following are some special requirements: \n ${query}`
+				: '';
+			messages.push({
+				role: 'user',
+				content: [
+					{
+						type: 'text',
+						text: `This is a screenshot of a web component I want to replicate.  Please generate HTML for it.\n ${textImageRequirements}`
+					},
+					{
+						type: 'image_url',
+						image_url: {
+							url: imageUrl
+						}
 					}
-				}
-			]
-		})
-	}
-
-	if (html === undefined || html === '') {
-		if (query !== 'image-upload') {
+				]
+			})
+		} else { 
 			messages.push({
 				role: 'user',
 				content: query
 			})
 		}
 	} else {
-		let userPrompt = 'Address the FIX comments.'
-		if (query !== 'html-comments-only') {
-			userPrompt = query
-		}
+		// Annotation comments should like <!--FIX (1): make the image larger-->
+		const hasAnnotationComments = /<!--FIX (\(\d+\)): (.+)-->/g.test(html as string);
+		let userPrompt = hasAnnotationComments ? 'Address the FIX comments.': query
+		
 		const instructions = `Given the following HTML:\n\n${html}\n\n${userPrompt}`
 		console.log('Providing instructions:\n', instructions)
 		messages.push({
