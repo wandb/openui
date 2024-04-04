@@ -102,15 +102,15 @@ async def chat_completions(
             detail="You've exceeded our usage quota, come back tomorrow to generate more UI.",
         )
     try:
-        data = await request.json()#chat_request.model_dump(exclude_unset=True)
+        data = await request.json()  # chat_request.model_dump(exclude_unset=True)
         input_tokens = count_tokens(data["messages"])
         # TODO: we always assume 4096 max tokens (random fudge factor here)
         data["max_tokens"] = 4096 - input_tokens - 20
         if data.get("model").startswith("gpt"):
-            response: AsyncStream[
-                ChatCompletionChunk
-            ] = await openai.chat.completions.create(
-                **data,
+            response: AsyncStream[ChatCompletionChunk] = (
+                await openai.chat.completions.create(
+                    **data,
+                )
             )
             return StreamingResponse(
                 openai_stream_generator(response, input_tokens, user_id),
@@ -159,16 +159,17 @@ async def validation_exception_handler(
         ),
     )
 
+
 @app.exception_handler(ClientError)
 async def boto3_error_handler(request: Request, exc: ClientError):
     logger.exception("Boto3 Error: %s", exc)
-    error_code = exc.response['Error']['Code']
-    error_message = exc.response['Error']['Message']
+    error_code = exc.response["Error"]["Code"]
+    error_message = exc.response["Error"]["Message"]
 
     status_code_map = {
-        'NoSuchKey': 404,
-        'NoSuchBucket': 404,
-        'AccessDenied': 403,
+        "NoSuchKey": 404,
+        "NoSuchBucket": 404,
+        "AccessDenied": 403,
         # TODO: maybe add more...
     }
     status_code = status_code_map.get(error_code, 500)
@@ -230,12 +231,8 @@ async def login(
         )
 
 
-@router.get("/v1/callback",  tags="openui/oauth")
-async def callback(
-    request: Request,
-    error: str = "",
-    error_description: str = ""
-):
+@router.get("/v1/callback", tags="openui/oauth")
+async def callback(request: Request, error: str = "", error_description: str = ""):
     try:
         # if we've been given an error
         if error != "":
@@ -283,10 +280,16 @@ async def callback(
         response.set_cookie("error", str(e))
         return response
 
-@router.post("/v1/share/{id:str}", status_code=status.HTTP_201_CREATED, tags="openui/create_share")
+
+@router.post(
+    "/v1/share/{id:str}",
+    status_code=status.HTTP_201_CREATED,
+    tags="openui/create_share",
+)
 async def create_share(id: str, payload: ShareRequest):
     storage.upload(f"{id}.json", payload.model_dump_json())
     return payload
+
 
 @router.get("/v1/share/{id:str}", tags="openui/get_share")
 async def get_share(id: str):
@@ -296,6 +299,7 @@ async def get_share(id: str):
 @router.get("/v1/ollama/tags", tags="openui/ollama/tags")
 async def ollama_models():
     return await ollama.list()
+
 
 @router.get(
     "/v1/session",
@@ -356,6 +360,13 @@ async def delete_session(
         status_code=200,
     )
 
+# Render a funky mp3 if we render one :)
+@router.get("/openui/{name}.mp3", tags=["openui/audio"])
+async def render_audio(name):
+    return FileResponse(
+        Path(__file__).parent / "assets" / "funky.mp3", media_type="audio/mpeg"
+    )
+
 
 app.include_router(router)
 app.mount(
@@ -384,6 +395,7 @@ def spa(full_path: str):
         raise HTTPException(status_code=404, detail="Asset not found")
     return HTMLResponse((dist_dir / "index.html").read_bytes())
 
+
 def check_wandb_auth():
     auth = requests.utils.get_netrc_auth("https://api.wandb.ai")
     key = None
@@ -393,10 +405,12 @@ def check_wandb_auth():
         key = os.environ["WANDB_API_KEY"]
     return key is not None
 
+
 wandb_enabled = check_wandb_auth()
 
 if not wandb_enabled:
     from weave.monitoring import openai as wandb_openai
+
     wandb_openai.unpatch()
 
 
@@ -414,8 +428,7 @@ class Server(uvicorn.Server):
 
     def run_with_wandb(self):
         if wandb_enabled:
-            weave.init("openui-test-20")
-            pass
+            weave.init(os.getenv("WANDB_PROJECT", "openui-dev"))
         self.run()
 
     @contextlib.contextmanager
