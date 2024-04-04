@@ -46,6 +46,8 @@ from pathlib import Path
 from typing import Optional
 import traceback
 import os
+from dotenv import load_dotenv
+load_dotenv(".env.development")
 
 
 @asynccontextmanager
