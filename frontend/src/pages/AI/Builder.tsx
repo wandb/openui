@@ -36,6 +36,7 @@ function fixHTML(html: string) {
 	/* replace any gray styles with zinc, fix placeholder images */
 	let fixed = html.replaceAll('-gray-', '-zinc-')
 	fixed = fixed.replaceAll('via.placeholder.com', 'placehold.co')
+	fixed = fixed.replaceAll(/"[^"]*\.(mp3|wav)"|'[^']*\.(mp3|wav)'/g, "\""+document.location.origin + "/openui/funky.mp3" + "\"")
 	return fixed
 }
 
