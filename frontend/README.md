@@ -5,8 +5,8 @@ This is the frontend for OpenUI. It's built using [vite](https://vitejs.dev), [R
 ## Development
 
 ```bash
-pnpm install
-pnpm run dev
+npm install
+npm run dev
 ```
 
 In a separate terminal navigate to the backend directory and run:
