@@ -1,6 +1,5 @@
 import asyncio
 import base64
-from datetime import datetime
 import uuid
 import traceback
 import time
@@ -8,6 +7,8 @@ from openai.types.chat import ChatCompletionChunk
 from .logs import logger
 
 date_format = "%Y-%m-%dT%H:%M:%S.%fZ"
+# 🥱 three minutes
+MAX_OLLAMA_WAIT_SECONDS=180
 
 # Ollama
 # {"model":"llava:latest","created_at":"2024-02-05T06:32:11.073667Z","message":{"role":"assistant","content":" "},"done":false}
@@ -68,7 +69,7 @@ async def ollama_stream_generator(response, inputs):
     first_sse = None
     try:
         logger.debug("Booting up ollama...")
-        buffer = await asyncio.wait_for(response.__anext__(), 20)
+        buffer = await asyncio.wait_for(response.__anext__(), MAX_OLLAMA_WAIT_SECONDS)
         chunks.append(ollama_to_openai(buffer, id))
         first_sse = ollama_chunk_to_sse(buffer, id)
     except Exception as e:

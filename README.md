@@ -26,6 +26,21 @@ export OPENAI_API_KEY=xxx
 python -m openui
 ```
 
+### Docker Compose
+
+> DISCLAIMER: This is going to likely be very slow.  If you have a GPU you may need to change the tag of the `ollama` container to one that supports it.  If you're running on a Mac, follow the instructions above and run llama natively to take advantage of the M1/M2.
+
+From the root directory you can run:
+
+```bash
+docker-compose up -d
+docker exec -it openui-ollama-1 ollama pull llava
+```
+
+If you have your OPENAI_API_KEY set in your environment already, just remove `=xxx` from the `OPENAI_API_KEY` line. You can also replace `llava` in the command above with your open source model of choice *(llava is one of the only Ollama models that support images currently)*.  You should now be able to access OpenUI at [http://localhost:7878](http://localhost:7878).
+
+If you make changes to the frontend or backend, you'll need to run `docker-compose build` to have them reflected in the service.
+
 ### Docker
 
 You can build and run the docker file from the `/backend` directory:
