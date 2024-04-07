@@ -159,6 +159,8 @@ export default function HTMLAnnotator({
 		if (!bufferedHTML) {
 			setPreview(false)
 		}
+		
+	
 		if (iframeRef.current) {
 			iframeRef.current.contentWindow?.postMessage(
 				{
@@ -457,7 +459,7 @@ export default function HTMLAnnotator({
 						{/* we allow-same-origin so the iframe can keep state */}
 						{/* eslint-disable-next-line react/iframe-missing-sandbox */}
 						<iframe
-							title='HTML preview'
+							title='页面预览'
 							sandbox='allow-same-origin allow-scripts allow-forms allow-popups allow-modals'
 							ref={iframeRef}
 							className={`iframe-code mx-auto max-h-[60vh] w-full bg-background ${media === 'tablet' && 'max-w-lg'

@@ -11,6 +11,7 @@ import HistoryItem from 'components/HistoryItem'
 import LoadingOrError from 'components/LoadingOrError'
 import Register from 'components/Register'
 import Settings from 'components/Settings'
+import Settings_llm from 'components/Settings_llm'
 import { Button } from 'components/ui/button'
 import { useMediaQuery } from 'hooks'
 import { useAtom, useAtomValue, useStore } from 'jotai'
@@ -58,7 +59,10 @@ export default function LayoutWithSidebar() {
 					!bigEnough && !isCollapsed && 'absolute z-50'
 				)}
 			>
+
+
 				<div className='flex items-center pb-2 pl-4'>
+					{/* 设置相关的 */}
 					<h2
 						className={`${
 							isCollapsed ? 'opacity-0' : 'opacity-100'
@@ -94,6 +98,20 @@ export default function LayoutWithSidebar() {
 								<GearIcon className='h-5 w-5' />
 							</Button>
 						}
+					/>
+					<Settings_llm
+						// trigger={
+						// 	<Button
+						// 		className={cn(
+						// 			'inline-flex p-2 hover:scale-110 hover:bg-inherit',
+						// 			!isCollapsed && '-ml-2	'
+						// 		)}
+						// 		variant='ghost'
+						// 		size='icon'
+						// 	>
+						// 		<GearIcon className='h-5 w-5' />
+						// 	</Button>
+						// }
 					/>
 					<Button
 						// eslint-disable-next-line react/jsx-handler-names

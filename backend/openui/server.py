@@ -23,10 +23,15 @@ import threading
 import time
 import getpass
 from peewee import IntegrityError
-
+ 
+import json
 import weave
 import wandb
 from starlette.middleware.sessions import SessionMiddleware
+
+from .util.GroupChat import GroupChat
+
+from .autogen_agent import autogen_stream_generator, openai_to_autogen
 from .session import DBSessionStore, SessionData
 from .logs import logger
 from .models import count_tokens, ShareRequest
@@ -34,6 +39,7 @@ from .ollama import ollama_stream_generator, openai_to_ollama
 from .openai import openai_stream_generator
 from .db.models import User, Usage
 from .util import storage
+from .util.SimpleChat import SimpleChat
 from . import config
 from pydantic import ValidationError
 from multiprocessing import Queue
@@ -108,7 +114,37 @@ async def chat_completions(
         input_tokens = count_tokens(data["messages"])
         # TODO: we always assume 4096 max tokens (random fudge factor here)
         data["max_tokens"] = 4096 - input_tokens - 20
+         #if data.get("agent").startswith("autogen"):
         if data.get("model").startswith("gpt"):
+            # data["model"] = data["model"].replace("ollama/", "")
+            # data["options"] = {
+            #     "temperature": data.pop("temperature", 0.7),
+            # }
+            # data.pop("max_tokens")
+            # data["messages"] = openai_to_autogen(data)
+            #替换成成我自己的autogen
+            # response = await ollama.chat(
+            #     **data,
+            # )
+
+            print("data",data)
+            promt=data["messages"][-1]["content"]
+            print("promt",promt)
+            #单代理聊天
+            # chat=SimpleChat()
+            # response=chat.initSimeDoubleChat(promt)
+            #多代理聊天
+            groupChat=GroupChat()
+            #groupChat.startGroupChat("帮我写一个登录页面")
+            response=groupChat.startqueueChat(promt)
+            # 使用 vars() 将 ChatResult 对象转换为字典
+            chat_result_dict = vars(response[-1])
+            # 将字典转换为 JSON 字符串
+            json_string = json.dumps(chat_result_dict, indent=4)
+            print("json_string",json_string)
+            gen = await autogen_stream_generator(chat_result_dict, data)
+            return StreamingResponse(gen(), media_type="text/event-stream")
+        elif data.get("model").startswith("gpt"):
             response: AsyncStream[ChatCompletionChunk] = (
                 await openai.chat.completions.create(
                     **data,

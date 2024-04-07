@@ -469,6 +469,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 				)}
 			</Button>
 			{/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+			{/* 图片上传 */}
 			<Form onSubmit={onSubmit}>
 				<input
 					ref={imageUploadRef}
@@ -498,7 +499,8 @@ export default function Builder({ shared }: { shared?: boolean }) {
 							bottom: `${bigEnough ? 45 : 145}px`
 						}
 					}
-				>
+				>    
+					{/* 输入提示词 */}
 					<Textarea
 						name='query'
 						rows={1}
