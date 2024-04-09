@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: Updating Code
 
 on:
   push:
@@ -10,9 +10,11 @@ jobs:
 
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build the Docker image
-      run: cd backend && docker run -p 7878:7878 -e OPENAI_API_KEY=${{ secrets.OPENUI_KEY }} wandb/openui
+    - name: Creating Image and Updating
+      run: |
+        cd backend 
+        docker run -p 7878:7878 -e OPENAI_API_KEY=${{ secrets.OPENUI_KEY }} wandb/openui
