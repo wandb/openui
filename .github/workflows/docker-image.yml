@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+      run: cd backend && docker run -p 7878:7878 -e OPENAI_API_KEY=${{ secrets.OPENUI_KEY }} wandb/openui
