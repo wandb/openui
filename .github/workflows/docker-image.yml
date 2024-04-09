@@ -17,8 +17,8 @@ jobs:
     - name: Creating Image and Updating
       run: |
         cd backend
-        sudo docker stop $(sudo docker ps -q)
-        sudo docker system prune -f
+        docker stop $(sudo docker ps -q)
+        docker system prune -f
         docker rmi wandb/openui
         docker build . -t wandb/openui --load
         docker run -d -p 7878:7878 -e OPENAI_API_KEY=${{ secrets.OPENUI_KEY }} wandb/openui
