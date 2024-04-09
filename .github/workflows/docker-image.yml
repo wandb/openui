@@ -18,4 +18,4 @@ jobs:
       run: |
         cd backend 
         docker build . -t wandb/openui --load
-        docker run -d -p 7878:7878 -e OPENAI_API_KEY=${{ secrets.OPENUI_KEY }} wandb/openui
+        docker run -p 7878:7878 -e OPENAI_API_KEY=${{ secrets.OPENUI_KEY }} wandb/openui
