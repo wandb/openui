@@ -27,7 +27,7 @@ default_db.parent.mkdir(exist_ok=True)
 DB = os.getenv("DATABASE", default_db)
 HOST = os.getenv(
     "OPENUI_HOST",
-    "https://localhost:5173" if ENV == Env.DEV else "http://localhost:7878",
+    "https://fusionstudio.maslow.ai" if ENV == Env.DEV else "https://fusionstudio.maslow.ai",
 )
 RP_ID = urlparse(HOST).hostname
 SESSION_KEY = os.getenv("OPENUI_SESSION_KEY")
