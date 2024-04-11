@@ -25,5 +25,7 @@ jobs:
         pnpm install
         pnpm run build
         cp /root/openui/docker-compose.yaml .
+        cat docker-compose.yaml 
+        echo "Moving for docker image"
         docker compose  build 
         docker compose up -d
