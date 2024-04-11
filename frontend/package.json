@@ -4,8 +4,9 @@
 	"private": true,
 	"version": "0.0.1",
 	"scripts": {
+		"build": "vite build",
 		"postbuild": "rm -rf ../backend/openui/dist && cp -r dist ../backend/openui/dist",
-		"build": "npm run build -- --mode hosted && fly deploy ../backend",
+		"deploy": "npm run build -- --mode hosted && fly deploy ../backend",
 		"commit": "cz",
 		"dev": "vite --open",
 		"prepare": "cd .. && husky install frontend/.husky",
