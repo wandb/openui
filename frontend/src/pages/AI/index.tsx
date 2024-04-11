@@ -64,7 +64,7 @@ export default function LayoutWithSidebar() {
 							isCollapsed ? 'opacity-0' : 'opacity-100'
 						} text-sm text-secondary-foreground transition-all duration-300`}
 					>
-						History
+						Fusion Studio
 					</h2>
 					<Button
 						asChild
@@ -76,7 +76,7 @@ export default function LayoutWithSidebar() {
 							aria-label='GitHub'
 							rel='noreferrer'
 							target='_blank'
-							href='https://github.com/wandb/openui'
+							href='https://github.com/letsgomaslow/fusionstudio/'
 						>
 							<GitHubLogoIcon className='h-5 w-5' />
 						</a>
