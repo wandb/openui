@@ -16,6 +16,10 @@ jobs:
     - uses: actions/checkout@v3
     - name: Creating Image and Updating
       run: |
+        npm install -g pnpm
+        cd frontend
+        pnpm install
+        pnpm run build
         cp /root/openui/docker-compose.yaml .
         docker compose  build 
         docker compose up -d
