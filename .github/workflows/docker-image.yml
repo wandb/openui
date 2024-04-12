@@ -20,13 +20,8 @@ jobs:
         node-version: 18 # optional
     - name: Creating Image and Updating
       run: |
-        npm install -g pnpm
-        cd frontend
-        pnpm install
-        pnpm run build
-        cd ..
-        cp /root/openui/docker-compose.yaml .
-        cat docker-compose.yaml 
-        echo "Moving for docker image"
-        docker compose  build 
-        docker compose up -d
+    - uses: actions/checkout@v3
+    - name: Creating Image and Updating
+      run: |
+        docker compose -f /root/openui/docker-compose.yaml build 
+        docker compose -f /root/openui/docker-compose.yaml up -d
