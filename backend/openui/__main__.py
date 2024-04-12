@@ -21,6 +21,9 @@ def is_running_in_docker():
     except Exception as e:
         pass
 
+    if config.ENV == config.Env.PROD:
+        return True
+
     return False
 
 if __name__ == "__main__":

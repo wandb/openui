@@ -79,12 +79,12 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 										<SelectLabel>Ollama</SelectLabel>
 									) : undefined}
 									{!!isPending && (
-										<SelectItem disabled value=''>
+										<SelectItem disabled value='loading'>
 											Loading...
 										</SelectItem>
 									)}
 									{!!isError && (
-										<SelectItem disabled value=''>
+										<SelectItem disabled value='error'>
 											Unable to load Ollama models, see console
 										</SelectItem>
 									)}

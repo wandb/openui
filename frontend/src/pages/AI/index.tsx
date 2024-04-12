@@ -62,10 +62,9 @@ export default function LayoutWithSidebar() {
 					<h2
 						className={`${
 							isCollapsed ? 'opacity-0' : 'opacity-100'
-							} text-sm text-secondary-foreground transition-all duration-300`}
-						
+						} text-sm text-secondary-foreground transition-all duration-300`}
 					>
-						Fusion Studio
+						History
 					</h2>
 					<Button
 						asChild
@@ -77,7 +76,7 @@ export default function LayoutWithSidebar() {
 							aria-label='GitHub'
 							rel='noreferrer'
 							target='_blank'
-							href='https://github.com/letsgomaslow/fusionstudio'
+							href='https://github.com/wandb/openui'
 						>
 							<GitHubLogoIcon className='h-5 w-5' />
 						</a>
@@ -87,12 +86,12 @@ export default function LayoutWithSidebar() {
 							<Button
 								className={cn(
 									'inline-flex p-2 hover:scale-110 hover:bg-inherit',
-									!isCollapsed && '-ml-4'
+									!isCollapsed && '-ml-2	'
 								)}
 								variant='ghost'
 								size='icon'
 							>
-								<GearIcon className='h-4 w-4' />
+								<GearIcon className='h-5 w-5' />
 							</Button>
 						}
 					/>
@@ -106,12 +105,12 @@ export default function LayoutWithSidebar() {
 						}}
 						className={cn(
 							'inline-flex p-2 hover:scale-110 hover:bg-inherit',
-							!isCollapsed && '-ml-4'
+							!isCollapsed && '-ml-2'
 						)}
 						variant='ghost'
 						size='icon'
 					>
-						<Pencil2Icon className='inline-block h-4 w-4' />
+						<Pencil2Icon className='inline-block h-5 w-5' />
 					</Button>
 				</div>
 				<div className='flex h-full max-h-full flex-col items-start justify-start overflow-y-auto overflow-x-hidden p-3'>
