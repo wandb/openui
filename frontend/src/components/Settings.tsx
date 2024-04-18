@@ -70,7 +70,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 								<SelectGroup>
 									<SelectLabel>OpenAI</SelectLabel>
 									<SelectItem value='gpt-3.5-turbo'>GPT-3.5 Turbo</SelectItem>
-									<SelectItem value='gpt-4-turbo-preview'>
+									<SelectItem value='gpt-4-turbo-2024-04-09'>
 										GPT-4 Turbo
 									</SelectItem>
 								</SelectGroup>

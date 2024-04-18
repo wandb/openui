@@ -55,7 +55,7 @@ emoji: 🎉
 		if (image) {
 			// TODO: configurable
 			if (model.startsWith('gpt')) {
-				model = 'gpt-4-vision-preview'
+				model = 'gpt-4-turbo-2024-04-09'
 			}
 			let imageUrl = image
 			// OpenAI wants a data url, ollama just wants base64 bytes

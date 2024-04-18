@@ -107,13 +107,17 @@ async def chat_completions(
         # TODO: we always assume 4096 max tokens (random fudge factor here)
         data["max_tokens"] = 4096 - input_tokens - 20
         if data.get("model").startswith("gpt"):
+            if data["model"] == "gpt-4" or data["model"] == "gpt-4-32k":
+                raise HTTPException(status=400, data="Model not supported")
             response: AsyncStream[ChatCompletionChunk] = (
                 await openai.chat.completions.create(
                     **data,
                 )
             )
+            # gpt-4 tokens are 20x more expensive
+            multiplier = 20 if "gpt-4" in data["model"] else 1
             return StreamingResponse(
-                openai_stream_generator(response, input_tokens, user_id),
+                openai_stream_generator(response, input_tokens, user_id, multiplier),
                 media_type="text/event-stream",
             )
         elif data.get("model").startswith("ollama/"):
