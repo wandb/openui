@@ -1,0 +1,29 @@
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+spec:
+  selector:
+    matchLabels:
+      app: backend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: openui-backend:latest  # Update this with your actual image path
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 7878
+        env:
+        - name: OLLAMA_HOST
+          value: "http://ollama-service:11434"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openai-api-key-secret
+              key: OPENAI_API_KEY
