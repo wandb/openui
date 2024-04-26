@@ -1,0 +1,4 @@
+apiVersion: v2
+name: openui
+version: 0.1.0
+description: A Helm chart for deploying the OpenUI application
