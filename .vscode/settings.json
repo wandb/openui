@@ -6,7 +6,9 @@
         "devcontainer",
         "devcontainers",
         "nohup",
+        "pydantic",
         "tamasfe",
+        "tiktoken",
         "toolsai"
     ]
 }
