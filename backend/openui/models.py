@@ -25,3 +25,6 @@ def count_tokens(messages):
             )
     num_tokens = len(encoding.encode(text))
     return num_tokens
+class Session:
+    def __init__(self, session_id):
+        self.session_id = session_id

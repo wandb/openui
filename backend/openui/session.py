@@ -3,6 +3,7 @@ import datetime
 from pydantic import BaseModel
 from typing import Optional
 from .db.models import Session, ensure_migrated, Usage
+from openui.db import models
 
 
 class SessionData(BaseModel):
