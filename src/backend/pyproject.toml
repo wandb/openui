@@ -1,0 +1,44 @@
+[project]
+dependencies = [
+    "weave@git+https://github.com/wandb/weave.git@fix/tiktoken-images",
+    "openai>=1.12.0",
+    "ollama>=0.1.7",
+    "itsdangerous>=2.0.1",
+    "peewee>=3.0.0",
+    "fastapi>=0.108.0",
+    "uvicorn>=0.25.0",
+    "fastapi-sso>=0.13.0",
+    "boto3>=1.34.67",
+]
+name = "openui"
+version = "0.2"
+description = "A backend service for generating HTML components with Ollama or OpenAI models"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [{ name = "Chris Van Pelt" }]
+license = { text = "Apache-2.0" }
+classifiers = ["License :: OSI Approved :: Apache Software License"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["openui"] #, "openui.util"]
+
+[project.urls]
+Homepage = "https://github.com/wandb/openui"
+Changelog = "https://github.com/wandb/openui/releases"
+Issues = "https://github.com/wandb/openui/issues"
+CI = "https://github.com/wandb/openui/actions"
+
+
+[project.optional-dependencies]
+test = ["pytest", "pre-commit"]
+eval = [
+    "Pillow>=8.3.1",
+    "playwright>=1.41.0",
+    "beautifulsoup4>=4.0.0",
+    "mistletoe>=1.0.0",
+]
+tui = ["textual[syntax]>=0.49.0", "pyperclip>=1.8.2"]

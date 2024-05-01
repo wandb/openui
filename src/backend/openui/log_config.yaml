@@ -1,0 +1,36 @@
+version: 1
+disable_existing_loggers: False
+formatters:
+  default:
+    # "()": uvicorn.logging.DefaultFormatter
+    format: "%(levelname)s:     %(message)s"
+    datefmt: "%H:%M:%S"
+  access:
+    # "()": uvicorn.logging.AccessFormatter
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    datefmt: "%H:%M:%S"
+handlers:
+  default:
+    formatter: default
+    class: logging.FileHandler
+    filename: /tmp/openui.log
+  access:
+    formatter: access
+    class: logging.FileHandler
+    filename: /tmp/openui.access.log
+loggers:
+  uvicorn.error:
+    level: INFO
+    handlers:
+      - default
+    propagate: no
+  uvicorn.access:
+    level: INFO
+    handlers:
+      - access
+    propagate: no
+root:
+  level: DEBUG
+  handlers:
+    - default
+  propagate: no

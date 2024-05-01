@@ -1,0 +1,42 @@
+<!doctype html>
+<html
+	lang="en"
+	class="text-zinc-900 antialiased dark:bg-zinc-800 dark:text-white"
+>
+	<head>
+		<script>
+			// Only add google analytics when built for hosting
+			if ('production' === 'hosted') {
+				const script = document.createElement('script')
+				script.src = 'https://www.googletagmanager.com/gtag/js?id=G-FDHP7DEY94'
+				script.async = true
+				document.head.appendChild(script)
+			}
+			window.dataLayer = window.dataLayer || []
+			function gtag() {
+				dataLayer.push(arguments)
+			}
+			gtag('js', new Date())
+
+			gtag('config', 'G-FDHP7DEY94')
+		</script>
+		<meta charset="UTF-8" />
+		<link rel="icon" type="image/png" href="/favicon.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="description" content="OpenUI" />
+		<meta
+			name="apple-mobile-web-app-status-bar-style"
+			content="black-translucent"
+		/>
+		<meta name="theme-color" content="rgb(217,87,155)" />
+		<title>OpenUI by W&B</title>
+		<script type="module" crossorigin src="/assets/index-6BqEBdFF.js"></script>
+		<link rel="modulepreload" crossorigin href="/assets/vendor-BGjp6CLF.js">
+		<link rel="stylesheet" crossorigin href="/assets/index-DspDvSlJ.css">
+	</head>
+	<body>
+		<noscript>You need to enable JavaScript to run this app.</noscript>
+		<div id="root"></div>
+	</body>
+</html>

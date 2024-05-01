@@ -1,0 +1,343 @@
+<html>
+	<head>
+		<script src="/openui/tailwindcss.min.js"></script>
+		<script type="text/javascript">
+			window.tailwind.config.darkMode = ['class', '.darkMode']
+		</script>
+		<style type="text/css">
+			.selected {
+				position: absolute;
+				z-index: 49;
+				border: 2px dashed orange;
+				border-radius: 3px;
+			}
+			.inspector-element {
+				position: absolute;
+				z-index: 100;
+				pointer-events: none;
+				border: 1px dashed rgb(139 92 246);
+				box-shadow: 0 0 3px rgb(139 92 246);
+				animation: pulseGlow 1s infinite ease-in-out;
+				border-radius: 2px;
+				transition: all 250ms ease-in-out;
+				background-color: rgba(250, 250, 250, 0.1);
+			}
+			#wrapper {
+				cursor: pointer;
+				padding-top: 20px;
+			}
+			@keyframes pulseGlow {
+				0% {
+					box-shadow: 0 0 3px rgb(139 92 246);
+				}
+				50% {
+					box-shadow: 0 0 8px rgb(139 92 200);
+				}
+				100% {
+					box-shadow: 0 0 3px rgb(139 92 246);
+				}
+			}
+		</style>
+	</head>
+	<body
+		class="no-select items-top flex h-full w-full justify-center bg-zinc-300 dark:bg-zinc-900"
+	>
+		<div class="no-select relative w-[80vw]" id="wrapper">${body}</div>
+		<div
+			id="prompt"
+			class="no-select absolute z-50 origin-top scale-0 transform rounded-md border border-zinc-200 bg-zinc-100 text-zinc-700 shadow-lg transition-all duration-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+		>
+			<div class="p-4 text-xs">
+				<h3 class="text-base font-semibold">How do you want this to change?</h3>
+				<input
+					type="text"
+					class="mt-2 w-[300px] rounded-md border border-zinc-200 px-4 py-2 text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-300"
+				/>
+				<button class="ml-2 mt-4 rounded-md bg-blue-500 p-2 text-white">
+					Submit
+				</button>
+			</div>
+		</div>
+	</body>
+	<script src="/openui/extra.min.js"></script>
+	<script type="text/javascript">
+		// Setup the room
+		window.theRoom.configure({
+			blockRedirection: false,
+			createInspector: true,
+			excludes: ['.no-select']
+		})
+		function clearInspector() {
+			const inspector = document.querySelector('.inspector-element')
+			if (inspector) {
+				inspector.style.top = '50%'
+				inspector.style.left = '50%'
+				inspector.style.width = ''
+				inspector.style.height = ''
+				inspector.style.border = 'none'
+				inspector.style.boxShadow = 'none'
+			}
+		}
+		let inspectorEnabled = false
+		// State TODO: maybe hydrate this from the parent
+		let commentIdx = 0
+		let selectedElements = []
+		// Reset the inspector every 5 seconds
+		let interval = null
+		// TODO: support more
+		let colors = ['blue', 'green', 'orange', 'yellow', 'red', 'purple']
+		let moved = false
+		document.addEventListener('mousemove', () => (moved = true))
+		document
+			.getElementById('wrapper')
+			.addEventListener('mouseleave', clearInspector)
+		function reset() {
+			interval = setInterval(() => {
+				if (!moved) {
+					clearInspector()
+				} else {
+					moved = false
+				}
+			}, 3000)
+		}
+		reset()
+
+		// TODO: might not need this if we just refactor the click handler
+		function reinitInspector(target, inspector) {
+			var pos = target.getBoundingClientRect()
+			var scrollTop = window.scrollY || document.documentElement.scrollTop
+			var scrollLeft = window.scrollX || document.documentElement.scrollLeft
+			var width = pos.width + 8
+			var height = pos.height + 8
+			var top = Math.max(-4, pos.top + scrollTop - 4)
+			var left = Math.max(-4, pos.left + scrollLeft - 4)
+
+			inspector.style.top = top + 'px'
+			inspector.style.left = left + 'px'
+			inspector.style.width = width + 'px'
+			inspector.style.height = height + 'px'
+		}
+
+		// Reset state on escape, submit on enter
+		document.addEventListener('keydown', e => {
+			if (e.key === 'Escape') {
+				clearInspector()
+				let p = document.getElementById('prompt')
+				if (p.classList.contains('scale-100')) {
+					p.querySelector('input').value = ''
+					let idx = p.dataset.commentIdx
+					document
+						.querySelectorAll('.selected-' + idx + ', .fix-legend-' + idx)
+						.forEach(selected => {
+							selected.parentNode.removeChild(selected)
+						})
+					p.classList.remove('scale-100')
+					if (inspectorEnabled) {
+						window.theRoom.start()
+					}
+				}
+			} else if (e.key === 'Enter') {
+				let sub = document.getElementById('prompt').querySelector('button')
+				sub.click()
+			}
+		})
+
+		window.addEventListener('resize', () => {
+			document.querySelectorAll('.selected').forEach(selected => {
+				let selIdx = parseInt(selected.dataset.commentIdx)
+				let el = selectedElements[selIdx]
+				reinitInspector(el, selected)
+				let fix = document.querySelector(`.fix-legend-${selIdx + 1}`)
+				fix.style.top = Math.max(3, parseFloat(selected.style.top) - 10) + 'px'
+				fix.style.left = parseFloat(selected.style.left) + 5 + 'px'
+			})
+		})
+
+		window.theRoom.on('mouseover', function () {
+			const inspector = document.querySelector('.inspector-element')
+			if (inspector) {
+				inspector.style.border = ''
+				inspector.style.boxShadow = ''
+			}
+		})
+		window.theRoom.on('click', function (element, event) {
+			event.preventDefault()
+			event.stopPropagation()
+			clearInterval(interval)
+			// TODO: reinit inspector here if it's gone
+			let inspector = document.querySelector('.inspector-element')
+			if (inspector.style.border === 'none') {
+				reinitInspector(element, inspector)
+			}
+			let selected = inspector.cloneNode()
+			let color = colors[commentIdx]
+			selected.classList.add('selected')
+			selected.classList.add('no-select')
+			selected.classList.add('selected-' + commentIdx)
+			selected.classList.remove('inspector-element')
+			selected.dataset.commentIdx = commentIdx
+			selected.style.borderColor = color
+			if (element.parentNode.id === 'wrapper') {
+				// TODO: think about this one more
+				selected.style.zIndex = -1
+			}
+			let prompt = document.getElementById('prompt')
+			prompt.dataset.commentIdx = commentIdx
+			prompt.classList.add('scale-100')
+			prompt.style.top = event.clientY + 'px'
+			prompt.style.left = '50%' // event.clientX + 'px'
+			prompt.style.marginLeft = `-200px`
+			let input = prompt.querySelector('input')
+			input.focus()
+			prompt.querySelector('button').addEventListener('click', () => {
+				addComment(input.value)
+				input.value = ''
+				prompt.classList.remove('scale-100')
+			})
+			// TODO: make it clear "esc" cancels
+			document.body.append(selected)
+			let fix = document.createElement('div')
+			fix.innerText = element.tagName
+			fix.addEventListener('mouseenter', () => {
+				const cmt = document.createElement('div')
+				cmt.innerText = text
+				cmt.className =
+					'p-2 rounded bg-white text-purple-500 italic absolute opacity-95 fix-comment'
+				cmt.style.top = Math.max(3, parseFloat(selected.style.top)) + 'px'
+				cmt.style.left = parseFloat(selected.style.left) + 'px'
+				cmt.style.zIndex = 50
+				document.body.append(cmt)
+			})
+			fix.addEventListener('mouseleave', () => {
+				const cmt = document.querySelector('.fix-comment')
+				if (cmt) {
+					cmt.parentNode.removeChild(cmt)
+				}
+			})
+			fix.className = `no-select fix fix-legend-${commentIdx} italic text-white text-center font-mono text-[8px] px-2 pt-0 z-50`
+			fix.classList.add('bg-' + color + '-600/[0.7]')
+			// TODO: use tailwind
+			fix.style.border = '1px dashed ' + color
+			fix.style.position = 'absolute'
+			fix.style.height = '12px'
+			fix.style.top = Math.max(3, parseFloat(selected.style.top) - 10) + 'px'
+			fix.style.left = parseFloat(selected.style.left) + 5 + 'px'
+			document.body.append(fix)
+			window.theRoom.stop()
+			function addComment(text) {
+				//let text = prompt('What would you like to fix about this?')
+				if (text) {
+					commentIdx += 1
+					let c = document.createComment('FIX (' + commentIdx + '): ' + text)
+					element.parentNode.insertBefore(c, element)
+					window.parent.parent.postMessage(
+						{
+							comment: text,
+							idx: commentIdx,
+							html: document.getElementById('wrapper').innerHTML
+						},
+						'*'
+					)
+				} else {
+					return
+				}
+				selectedElements.push(element)
+				clearInspector()
+				setTimeout(() => {
+					if (inspectorEnabled) {
+						window.theRoom.start()
+					}
+					reset()
+				}, 500)
+			}
+		})
+
+		window.addEventListener('load', () => {
+			window.parent.parent.postMessage({ action: 'ready' }, '*')
+		})
+
+		window._go = function (cb) {
+			if (document.readyState === 'complete') {
+				cb()
+			} else {
+				document.addEventListener('DOMContentLoaded', cb)
+			}
+		}
+
+		// handle events from parent
+		window.addEventListener(
+			'message',
+			function (event) {
+				if (event.data.action === 'take-screenshot') {
+					console.log('Got take screenshot event')
+					html2canvas(document.body, {
+						useCors: true,
+						foreignObjectRendering: true,
+						allowTaint: true,
+						windowWidth: 1524,
+						windowHeight: 768
+					}).then(function (canvas) {
+						const data = canvas.toDataURL('image/png')
+						window.parent.parent.postMessage(
+							{ screenshot: data, action: 'screenshot' },
+							'*'
+						)
+					})
+				} else if (event.data.action === 'hydrate') {
+					let wrapper = document.getElementById('wrapper')
+					wrapper.innerHTML = event.data.html
+					wrapper.querySelectorAll('img').forEach(img => {
+						img.crossOrigin = 'anonymous'
+					})
+
+					if (event.data.darkMode) {
+						document.documentElement.classList.add('darkMode')
+					}
+					document.querySelectorAll('.user-script').forEach(scr => {
+						scr.parentNode.removeChild(scr)
+					})
+					event.data.js.forEach(js => {
+						const script = document.createElement('script')
+						script.classList.add('user-script')
+						script.type = js.type
+						if (js.src) script.setAttribute('src', js.src)
+						// Close our JS to avoid conflicts
+						script.text = `(()=>{${js.text}})()`
+						document.body.append(script)
+					})
+					// Remove our selected elements
+					selectedElements = []
+					commentIdx = 0
+					var elements = document.querySelectorAll('.selected, .fix')
+					elements.forEach(function (element) {
+						element.parentNode.removeChild(element)
+					})
+					// TODO: maybe delay this a bit
+					window.parent.parent.postMessage(
+						{
+							preview: wrapper.hasChildNodes(),
+							height: document.body.scrollHeight,
+							action: 'loaded'
+						},
+						'*'
+					)
+					// state = event.data.state
+				} else if (event.data.action === 'toggle-dark-mode') {
+					if (document.documentElement.classList.contains('darkMode')) {
+						document.documentElement.classList.remove('darkMode')
+					} else {
+						document.documentElement.classList.add('darkMode')
+					}
+				} else if (event.data.action === 'toggle-inspector') {
+					if (inspectorEnabled) {
+						window.theRoom.stop()
+					} else {
+						window.theRoom.start()
+					}
+					inspectorEnabled = !inspectorEnabled
+				}
+			},
+			false
+		)
+	</script>
+</html>

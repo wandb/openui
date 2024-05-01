@@ -1,0 +1,18 @@
+# flyctl launch added from .gitignore
+**/.venv
+**/__pycache__
+**/wandb
+**/*.py[cod]
+**/*$py.class
+**/venv
+**/.eggs
+**/.pytest_cache
+**/*.egg-info
+**/.DS_Store
+**/build
+
+# flyctl launch added from openui/eval/.gitignore
+openui/eval/**/wandb
+openui/eval/**/datasets
+openui/eval/**/components
+fly.toml

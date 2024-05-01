@@ -1,0 +1,21 @@
+import requests
+
+# Set your API key
+api_key = 'cat ~/.ollama/id_ed25519.pub'
+
+# API endpoint
+url = 'https://api.ollama.ai/v1/example'
+
+headers = {
+    'Authorization': f'Bearer {api_key}',
+    'Content-Type': 'application/json'
+}
+
+try:
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()  # Raise an exception for non-2xx status codes
+
+    data = response.json()
+    print(data)
+except Exception as e:
+    print(f"Error: {e}")

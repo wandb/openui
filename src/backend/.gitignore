@@ -1,0 +1,14 @@
+.venv
+__pycache__/
+wandb/
+*.py[cod]
+*$py.class
+venv
+.eggs
+.pytest_cache
+*.egg-info
+.DS_Store
+build
+eval/components
+eval/datasets
+!eval/datasets/eval.csv

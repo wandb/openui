@@ -1,0 +1,2 @@
+litellm_settings:
+#  callbacks: callbacks.weave_handler

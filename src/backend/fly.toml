@@ -1,0 +1,31 @@
+# fly.toml app configuration file generated for openui on 2024-03-15T15:53:15-07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'openui'
+primary_region = 'sjc'
+
+[http_service]
+internal_port = 7878
+force_https = true
+auto_stop_machines = true
+auto_start_machines = true
+min_machines_running = 0
+processes = ['app']
+
+[mounts]
+source = "openui_data"
+destination = "/root/.openui"
+
+[env]
+OPENUI_ENVIRONMENT = "production"
+OPENUI_HOST = "https://openui.fly.dev"
+GITHUB_CLIENT_ID = "3af8fbeb90d06484dff0"
+WANDB_ENTITY = "wandb"
+WANDB_PROJECT = "openui-hosted"
+
+[[vm]]
+memory = '1gb'
+cpu_kind = 'shared'
+cpus = 1
