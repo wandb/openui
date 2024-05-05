@@ -48,7 +48,7 @@ export default function LayoutWithSidebar() {
 
 	return (
 		<div className='mobile-safe-container flex overflow-hidden bg-secondary'>
-			<Head title={curItem.name ?? 'Create a new Elemint'} />
+			<Head title={curItem.name ?? 'Create a new Element'} />
 			<Register />
 			<div
 				className={cn(
