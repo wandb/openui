@@ -81,3 +81,7 @@ The codespace installs ollama automaticaly and downloads the `llava` model.  You
 ### Resources
 
 See the readmes in the [frontend](./frontend/README.md) and [backend](./backend/README.md) directories.
+
+## One-Click Deployment
+
+[![Deploy to RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploylobe.svg)](https://repocloud.io/details/?app_id=272)
