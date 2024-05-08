@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { getModels } from 'api/ollama'
+import { getGroqModels } from 'api/groq'
+import type { ModelList, Model } from 'groq-sdk/resources'
 import { Button } from 'components/ui/button'
 import {
 	Dialog,
@@ -32,15 +34,25 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 		queryKey: ['ollama-models'],
 		queryFn: getModels
 	})
+	const { isPending: isPendingGroq, isError: isErrorGroq, error: errorGroq, data: dataGroq } = useQuery<ModelList>({
+		queryKey: ['groq-models'],
+		queryFn: getGroqModels
+	})
 	const [model, setModel] = useAtom(modelAtom)
 	const [systemPrompt, setSystemPrompt] = useAtom(systemPromptAtom)
 	const [temperature, setTemperature] = useAtom(temperatureAtom)
 
 	useEffect(() => {
 		if (error) {
-			console.error('Error fetching ollama models', error)
+			console.error('Error fetching ollama models', error as unknown)
 		}
 	}, [error])
+
+	useEffect(() => {
+		if (errorGroq) {
+			console.error('Error fetching Groq models', errorGroq as unknown)
+		}
+	}, [errorGroq])
 
 	return (
 		<Dialog>
@@ -95,6 +107,26 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 											</SelectItem>
 										))}
 								</SelectGroup>
+								<SelectGroup>
+									{!!isPendingGroq || ((dataGroq?.data ?? []).length > 0) && (
+										<SelectLabel>Groq</SelectLabel>
+									)}
+									{!!isPendingGroq && (
+										<SelectItem disabled value='loading'>
+											Loading...
+										</SelectItem>
+									)}
+									{!!isErrorGroq && (
+										<SelectItem disabled value='error'>
+											Unable to load Groq models, see console
+										</SelectItem>
+									)}
+									{(dataGroq?.data ?? []).filter((m: Model) => !!m.active).map((m: Model) => (
+										<SelectItem key={m.id} value={`groq/${m.id}`}>
+										        {m.id}
+										</SelectItem>
+										))}
+									</SelectGroup>
 							</SelectContent>
 						</Select>
 					</div>

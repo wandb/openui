@@ -23,6 +23,10 @@ cd openui/backend
 pip install .
 # This must be set to use OpenAI models, find your api key here: https://platform.openai.com/api-keys
 export OPENAI_API_KEY=xxx
+# You may change the base url to use an OpenAI-compatible api by setting the OPENAI_BASE_URL environment variable
+# export OPENAI_BASE_URL=your-api-url
+# To use Groq models, set GROQ_API_KEY to your Groq api key which you can find here: https://console.groq.com/keys
+# export GROQ_API_KEY=xxx
 python -m openui
 ```
 

@@ -65,7 +65,17 @@ app = FastAPI(
     description="API for proxying LLM requests to different services",
 )
 
-openai = AsyncOpenAI() # AsyncOpenAI(base_url="http://127.0.0.1:11434/v1")
+openai = AsyncOpenAI(
+    base_url=config.OPENAI_BASE_URL,
+    api_key=config.OPENAI_API_KEY)
+
+if config.GROQ_API_KEY is not None:
+    groq = AsyncOpenAI(
+        base_url=config.GROQ_BASE_URL,
+        api_key=config.GROQ_API_KEY)
+else:
+    groq = None
+
 ollama = AsyncClient()  
 router = APIRouter()
 session_store = DBSessionStore()
@@ -106,11 +116,19 @@ async def chat_completions(
         input_tokens = count_tokens(data["messages"])
         # TODO: we always assume 4096 max tokens (random fudge factor here)
         data["max_tokens"] = 4096 - input_tokens - 20
-        if data.get("model").startswith("gpt"):
+        model = data.get("model", "")
+
+        if any(model.startswith(prefix) for prefix in ("gpt", "groq/")):
+            if model.startswith('groq/'):
+                data["model"] = data["model"].replace("groq/", "")
+                client = groq
+            else:
+                client = openai
+
             if data["model"] == "gpt-4" or data["model"] == "gpt-4-32k":
                 raise HTTPException(status=400, data="Model not supported")
             response: AsyncStream[ChatCompletionChunk] = (
-                await openai.chat.completions.create(
+                await client.chat.completions.create(
                     **data,
                 )
             )
@@ -214,6 +232,15 @@ async def http_exception_hander(request: Request, exc: HTTPException):
             {"error": {"code": "api_error", "message": exc.detail}}
         ),
     )
+
+@router.get("/v1/models", tags=["openui/models"])
+async def groq_models(request: Request, api: str):
+    if str(api).strip().lower() == 'groq':
+        models = await groq.models.list()
+    else:
+        models = await openai.models.list()
+
+    return JSONResponse(status_code=200, content=jsonable_encoder(models))
 
 
 """ TODO: maybe bring back when TUI is more useful

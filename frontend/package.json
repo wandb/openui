@@ -44,6 +44,7 @@
 		"@uiw/react-codemirror": "^4.21.25",
 		"class-variance-authority": "^0.7.0",
 		"clsx": "^2.1.0",
+		"groq-sdk": "^0.3.3",
 		"jotai": "^2.7.2",
 		"js-cookie": "^3.0.5",
 		"litellm": "^0.12.0",
