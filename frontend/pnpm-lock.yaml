@@ -8038,7 +8038,7 @@ snapshots:
 
   '@surma/rollup-plugin-off-main-thread@2.2.3':
     dependencies:
-      ejs: 3.1.9
+      ejs: 3.1.10
       json5: 2.2.3
       magic-string: 0.25.9
       string.prototype.matchall: 4.0.11
@@ -9261,7 +9261,14 @@ snapshots:
       jsbn: 0.1.1
       safer-buffer: 2.1.2
 
+<<<<<<< HEAD
   ejs@3.1.9:
+=======
+  /ejs@3.1.10:
+    resolution: {integrity: sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==}
+    engines: {node: '>=0.10.0'}
+    hasBin: true
+>>>>>>> 14d74f0e470154b8c627a3626e3b7802e3f7bf89
     dependencies:
       jake: 10.8.7
 
