@@ -2,22 +2,23 @@ version: '3.8'
 
 services:
   ollama:
+    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}_OPENI_OLLAMA
     image: ollama/ollama:latest
     ports:
-      - "11434:11434"
+      - ${OLLAMA_OPENUI_PORT}:11434
     volumes:
       - ${OLLAMA_VOLUME_PATH:-ollama}:/root/.ollama
 
   backend:
+    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}_OPENUI_BACKEND
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "7878:7878"
+      - ${BACKEND_OPENUI_PORT}:7878
     environment:
-      - OLLAMA_HOST=http://ollama:11434
-      # Just remove `=xxx` to have the env variable passed forward
-      - OPENAI_API_KEY=xxx
+      - OLLAMA_HOST=ollama
+      - OPENAI_API_KEY=${OPENAPI_KEY}
     depends_on:
       - ollama
 volumes:
