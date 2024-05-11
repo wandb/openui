@@ -121,6 +121,9 @@ async def chat_completions(
         if any(model.startswith(prefix) for prefix in ("gpt", "groq/")):
             if model.startswith('groq/'):
                 data["model"] = data["model"].replace("groq/", "")
+                if groq is None:
+                    raise HTTPException(status=500, detail="Groq API key is not set.")
+
                 client = groq
             else:
                 client = openai
@@ -236,6 +239,9 @@ async def http_exception_hander(request: Request, exc: HTTPException):
 @router.get("/v1/models", tags=["openui/models"])
 async def groq_models(request: Request, api: str):
     if str(api).strip().lower() == 'groq':
+        if groq is None:
+            raise HTTPException(status_code=500, detail="Groq API key is not set.")
+
         models = await groq.models.list()
     else:
         models = await openai.models.list()
