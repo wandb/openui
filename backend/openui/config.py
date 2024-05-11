@@ -38,7 +38,7 @@ if SESSION_KEY is None:
     else:
         SESSION_KEY = secrets.token_hex(32)
         with env_path.open("w") as f:
-            f.write("OPENUI_SESSION_KEY={SESSION_KEY}")
+            f.write(f"OPENUI_SESSION_KEY={SESSION_KEY}")
 # GPT 3.5 is 0.0005 per 1k tokens input and 0.0015 output
 # 700k puts us at a max of $1.00 spent per user over a 48 hour period
 MAX_TOKENS = int(os.getenv("OPENUI_MAX_TOKENS", "700000"))
