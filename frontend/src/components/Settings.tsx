@@ -45,7 +45,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 	return (
 		<Dialog>
 			<DialogTrigger asChild>{trigger}</DialogTrigger>
-			<DialogContent className='max-w-xl'>
+			<DialogContent className='max-w-3xl'>
 				<DialogHeader>
 					<DialogTitle>Settings</DialogTitle>
 					<DialogDescription>
