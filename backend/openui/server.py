@@ -25,7 +25,6 @@ import getpass
 from peewee import IntegrityError
 
 import weave
-import wandb
 from starlette.middleware.sessions import SessionMiddleware
 from .session import DBSessionStore, SessionData
 from .logs import logger
@@ -66,7 +65,8 @@ app = FastAPI(
 )
 
 openai = AsyncOpenAI() # AsyncOpenAI(base_url="http://127.0.0.1:11434/v1")
-ollama = AsyncClient()  
+ollama = AsyncClient()
+ollama_openai = AsyncOpenAI(base_url=os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434") + "/v1")
 router = APIRouter()
 session_store = DBSessionStore()
 github_sso = GithubSSO(
@@ -122,15 +122,26 @@ async def chat_completions(
             )
         elif data.get("model").startswith("ollama/"):
             data["model"] = data["model"].replace("ollama/", "")
-            data["options"] = {
-                "temperature": data.pop("temperature", 0.7),
-            }
             data.pop("max_tokens")
             data["messages"] = openai_to_ollama(data)
-            response = await ollama.chat(
-                **data,
-            )
-            gen = await ollama_stream_generator(response, data)
+            if data["model"] == "llava:latest":
+                # TODO: image stuff wasn't working right in the Ollama OpenAPI compat
+                # layer before so we use our ollama native stuff here for now, try again
+                data["options"] = {
+                    "temperature": data.pop("temperature", 0.7),
+                }
+                response = await ollama.chat(
+                    **data,
+                )
+                gen = await ollama_stream_generator(response, data)
+            else:
+                response: AsyncStream[ChatCompletionChunk] = (
+                    await ollama_openai.chat.completions.create(
+                        **data,
+                    )
+                )
+                def gen():
+                    return openai_stream_generator(response, input_tokens, user_id, 0)
             return StreamingResponse(gen(), media_type="text/event-stream")
         raise HTTPException(status=404, detail="Invalid model")
     except (ResponseError, APIStatusError) as e:
