@@ -101,6 +101,7 @@
 			.getElementById('wrapper')
 			.addEventListener('mouseleave', clearInspector)
 		function reset() {
+			clearInterval(interval)
 			interval = setInterval(() => {
 				if (!moved) {
 					clearInspector()
