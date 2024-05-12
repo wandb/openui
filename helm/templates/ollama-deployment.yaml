@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.ollama.name }}
+  namespace: {{ .Values.global.namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.ollama.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.ollama.name }}
+    spec:
+      volumes:
+        - name: ollama-storage
+          persistentVolumeClaim:
+            claimName: {{ .Values.ollama.name }}-pvc
+      containers:
+        - name: ollama
+          image: "{{ .Values.ollama.image }}:{{ .Values.ollama.tag }}"
+          ports:
+            - containerPort: {{ .Values.ollama.port }}
+          volumeMounts:
+            - name: ollama-storage
+              mountPath: /root/.ollama

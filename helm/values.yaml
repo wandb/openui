@@ -1,0 +1,20 @@
+global:
+  namespace: openui
+
+ollama:
+  name: ollama
+  image: ollama/ollama
+  tag: latest
+  port: 11434
+  volumePath: /mnt/data/ollama
+  volumeSize: 2Gi
+
+backend:
+  name: backend
+  image: openui-backend  # Adjust this with your actual image path
+  tag: latest
+  port: 7878
+  ollamaHost: "http://ollama:11434"
+
+# Common settings or configurations that apply to both components
+replicaCount: 1

@@ -1,0 +1,12 @@
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  selector:
+    app: backend
+  ports:
+    - protocol: TCP
+      port: 7878
+      targetPort: 7878
