@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi.responses import (
     StreamingResponse,
@@ -64,7 +65,17 @@ app = FastAPI(
     description="API for proxying LLM requests to different services",
 )
 
-openai = AsyncOpenAI() # AsyncOpenAI(base_url="http://127.0.0.1:11434/v1")
+openai = AsyncOpenAI(
+    base_url=config.OPENAI_BASE_URL,
+    api_key=config.OPENAI_API_KEY)
+
+if config.GROQ_API_KEY is not None:
+    groq = AsyncOpenAI(
+        base_url=config.GROQ_BASE_URL,
+        api_key=config.GROQ_API_KEY)
+else:
+    groq = None
+
 ollama = AsyncClient()
 ollama_openai = AsyncOpenAI(base_url=os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434") + "/v1")
 router = APIRouter()
@@ -106,6 +117,8 @@ async def chat_completions(
         input_tokens = count_tokens(data["messages"])
         # TODO: we always assume 4096 max tokens (random fudge factor here)
         data["max_tokens"] = 4096 - input_tokens - 20
+        # TODO: refactor all these blocks into one once Ollama supports vision
+        # OpenAI Models
         if data.get("model").startswith("gpt"):
             if data["model"] == "gpt-4" or data["model"] == "gpt-4-32k":
                 raise HTTPException(status=400, data="Model not supported")
@@ -120,6 +133,21 @@ async def chat_completions(
                 openai_stream_generator(response, input_tokens, user_id, multiplier),
                 media_type="text/event-stream",
             )
+        # Groq Models
+        elif data.get("model").startswith("groq/"):
+            data["model"] = data["model"].replace("groq/", "")
+            if groq is None:
+                raise HTTPException(status=500, detail="Groq API key is not set.")
+            response: AsyncStream[ChatCompletionChunk] = (
+                await groq.chat.completions.create(
+                    **data,
+                )
+            )
+            return StreamingResponse(
+                openai_stream_generator(response, input_tokens, user_id, 1),
+                media_type="text/event-stream",
+            )
+        # Ollama Time
         elif data.get("model").startswith("ollama/"):
             data["model"] = data["model"].replace("ollama/", "")
             data.pop("max_tokens")
@@ -310,10 +338,43 @@ async def create_share(id: str, payload: ShareRequest):
 async def get_share(id: str):
     return Response(storage.download(f"{id}.json"), media_type="application/json")
 
+async def get_openai_models():
+    try:
+        await openai.models.list()
+        # We only support 3.5 and 4 for now
+        return ["gpt-3.5-turbo", "gpt-4-turbo"]
+    except Exception:
+        return []
 
-@router.get("/v1/ollama/tags", tags="openui/ollama/tags")
-async def ollama_models():
-    return await ollama.list()
+async def get_ollama_models():
+    try:
+        return (await ollama.list())["models"]
+    except Exception as e:
+        logger.exception("Ollama Error: %s", e)
+        return []
+
+async def get_groq_models():
+    try:
+        return (await groq.models.list()).data
+    except Exception as e:
+        logger.exception("Groq Error: %s", e)
+        return []
+
+@router.get("/v1/models", tags="openui/models")
+async def models():
+    tasks = [
+        get_openai_models(),
+        get_groq_models(),
+        get_ollama_models(),
+    ]
+    openai_models, groq_models, ollama_models = await asyncio.gather(*tasks)
+    return {
+        "models": {
+            "openai": openai_models,
+            "groq": groq_models,
+            "ollama": ollama_models,
+        }
+    }
 
 
 @router.get(

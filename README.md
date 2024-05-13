@@ -23,7 +23,19 @@ cd openui/backend
 pip install .
 # This must be set to use OpenAI models, find your api key here: https://platform.openai.com/api-keys
 export OPENAI_API_KEY=xxx
+# You may change the base url to use an OpenAI-compatible api by setting the OPENAI_BASE_URL environment variable
+# export OPENAI_BASE_URL=https://api.myopenai.com/v1
 python -m openui
+```
+
+## Groq
+
+To use the super fast [Groq](https://groq.com) models, set `GROQ_API_KEY` to your Groq api key which you can [find here](https://console.groq.com/keys).
+
+You can also change the default base url used for Groq (if necessary), i.e.
+
+```bash
+export GROQ_BASE_URL=https://api.groq.com/openai/v1
 ```
 
 ### Docker Compose
@@ -47,7 +59,7 @@ You can build and run the docker file manually from the `/backend` directory:
 
 ```bash
 docker build . -t wandb/openui --load
-docker run -p 7878:7878 -e OPENAI_API_KEY wandb/openui
+docker run -p 7878:7878 -e OPENAI_API_KEY -e GROQ_API_KEY wandb/openui
 ```
 
 Now you can goto [http://localhost:7878](http://localhost:7878)
