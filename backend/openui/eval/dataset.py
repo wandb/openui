@@ -50,7 +50,7 @@ async def flowbite():
 
 
 async def publish(model):
-    weave.init("openui-test-20")
+    weave.init("openui-dev")
 
     ds_dir = Path(__file__).parent / "datasets"
 
@@ -64,9 +64,9 @@ async def publish(model):
             for row in reader:
                 ds.append(row)
 
-    dataset = weaveflow.Dataset(ds)
+    dataset = Dataset(name=model or 'eval', rows=ds)
     print("Created dataset of ", len(ds))
-    dataset_ref = weave.publish(dataset, model.replace(":", "-") if model else "eval")
+    dataset_ref = weave.publish(dataset)
     print("Published dataset:", dataset_ref)
 
 
