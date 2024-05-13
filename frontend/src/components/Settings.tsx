@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getModels } from 'api/ollama'
+import { getModels } from 'api/models'
 import { Button } from 'components/ui/button'
 import {
 	Dialog,
@@ -29,7 +29,7 @@ import { Textarea } from './ui/textarea'
 
 export default function Settings({ trigger }: { trigger: JSX.Element }) {
 	const { isPending, isError, error, data } = useQuery({
-		queryKey: ['ollama-models'],
+		queryKey: ['models'],
 		queryFn: getModels
 	})
 	const [model, setModel] = useAtom(modelAtom)
@@ -38,9 +38,15 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 
 	useEffect(() => {
 		if (error) {
-			console.error('Error fetching ollama models', error)
+			console.error('Error fetching models', error)
 		}
 	}, [error])
+
+	useEffect(() => {
+		if(data && data.groq.length > 0) {
+				setModel(`groq/${  data.groq[2].id}`)
+			}
+	}, [data])
 
 	return (
 		<Dialog>
@@ -66,36 +72,35 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							<SelectTrigger className='min-w-[200px]'>
 								<SelectValue placeholder='Switch models' />
 							</SelectTrigger>
-							<SelectContent>
-								<SelectGroup>
-									<SelectLabel>OpenAI</SelectLabel>
-									<SelectItem value='gpt-3.5-turbo'>GPT-3.5 Turbo</SelectItem>
-									<SelectItem value='gpt-4-turbo-2024-04-09'>
-										GPT-4 Turbo
-									</SelectItem>
-								</SelectGroup>
-								<SelectGroup>
-									{isPending || (data && data.length > 0) ? (
-										<SelectLabel>Ollama</SelectLabel>
-									) : undefined}
-									{!!isPending && (
-										<SelectItem disabled value='loading'>
-											Loading...
+							{isPending ? <SelectContent>Loading...</SelectContent> : null}
+							{isError ? <SelectContent>Error, see console...</SelectContent> : null}
+							{data ? <SelectContent>
+									{data.openai.length > 0 && <SelectGroup>
+										<SelectLabel>OpenAI</SelectLabel>
+										<SelectItem value='gpt-3.5-turbo'>GPT-3.5 Turbo</SelectItem>
+										<SelectItem value='gpt-4-turbo'>
+											GPT-4 Turbo
 										</SelectItem>
-									)}
-									{!!isError && (
-										<SelectItem disabled value='error'>
-											Unable to load Ollama models, see console
-										</SelectItem>
-									)}
-									{!!data &&
-										data.map(m => (
-											<SelectItem key={m.digest} value={`ollama/${m.name}`}>
-												{m.name}
+									</SelectGroup>}
+									{data.groq.length > 0 && <SelectGroup>
+										<SelectLabel>Groq</SelectLabel>
+										{data.groq.map(m => (
+											<SelectItem key={m.id} value={`groq/${m.id}`}>
+												{m.id}
 											</SelectItem>
 										))}
-								</SelectGroup>
-							</SelectContent>
+									</SelectGroup>}
+									{data.ollama.length > 0 && (
+										<SelectGroup>
+											<SelectLabel>Ollama</SelectLabel>
+											{data.ollama.map(m => (
+												<SelectItem key={m.digest} value={`ollama/${m.name}`}>
+													{m.name}
+												</SelectItem>
+											))}
+										</SelectGroup>
+									)}
+								</SelectContent> : null}
 						</Select>
 					</div>
 					<div className='grid grid-cols-4 items-center gap-4'>
