@@ -31,6 +31,12 @@ from .logs import logger
 from .models import count_tokens, ShareRequest
 from .ollama import ollama_stream_generator, openai_to_ollama
 from .openai import openai_stream_generator
+from .blackbox import (
+    blackbox_to_openai,
+    openai_to_blackbox,
+    blackbox_stream_generator,
+    create_blackbox_completion,
+)
 from .db.models import User, Usage
 from .util import storage
 from . import config
@@ -64,9 +70,12 @@ app = FastAPI(
     description="API for proxying LLM requests to different services",
 )
 
-openai = AsyncOpenAI() # AsyncOpenAI(base_url="http://127.0.0.1:11434/v1")
+openai = AsyncOpenAI()  # AsyncOpenAI(base_url="http://127.0.0.1:11434/v1")
 ollama = AsyncClient()
-ollama_openai = AsyncOpenAI(base_url=os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434") + "/v1")
+ollama_openai = AsyncOpenAI(
+    base_url=os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434") + "/v1"
+)
+blackbox = AsyncClient()
 router = APIRouter()
 session_store = DBSessionStore()
 github_sso = GithubSSO(
@@ -106,13 +115,14 @@ async def chat_completions(
         input_tokens = count_tokens(data["messages"])
         # TODO: we always assume 4096 max tokens (random fudge factor here)
         data["max_tokens"] = 4096 - input_tokens - 20
+        
         if data.get("model").startswith("gpt"):
             if data["model"] == "gpt-4" or data["model"] == "gpt-4-32k":
                 raise HTTPException(status=400, data="Model not supported")
-            response: AsyncStream[ChatCompletionChunk] = (
-                await openai.chat.completions.create(
-                    **data,
-                )
+            response: AsyncStream[
+                ChatCompletionChunk
+            ] = await openai.chat.completions.create(
+                **data,
             )
             # gpt-4 tokens are 20x more expensive
             multiplier = 20 if "gpt-4" in data["model"] else 1
@@ -135,14 +145,20 @@ async def chat_completions(
                 )
                 gen = await ollama_stream_generator(response, data)
             else:
-                response: AsyncStream[ChatCompletionChunk] = (
-                    await ollama_openai.chat.completions.create(
-                        **data,
-                    )
+                response: AsyncStream[
+                    ChatCompletionChunk
+                ] = await ollama_openai.chat.completions.create(
+                    **data,
                 )
+
                 def gen():
                     return openai_stream_generator(response, input_tokens, user_id, 0)
+
             return StreamingResponse(gen(), media_type="text/event-stream")
+        elif data.get("model").startswith("blackbox"):
+            response = await create_blackbox_completion(openai_to_blackbox(data))
+
+            return StreamingResponse(response, media_type="text/event-stream")
         raise HTTPException(status=404, detail="Invalid model")
     except (ResponseError, APIStatusError) as e:
         traceback.print_exc()
@@ -374,6 +390,7 @@ async def delete_session(
         content={},
         status_code=200,
     )
+
 
 # Render a funky mp3 if we render one :)
 @router.get("/openui/{name}.mp3", tags=["openui/audio"])

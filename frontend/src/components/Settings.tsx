@@ -67,6 +67,10 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 								<SelectValue placeholder='Switch models' />
 							</SelectTrigger>
 							<SelectContent>
+							<SelectGroup>
+									<SelectLabel>Blackbox</SelectLabel>
+									<SelectItem value='blackbox'>Blackbox AI</SelectItem>
+								</SelectGroup>
 								<SelectGroup>
 									<SelectLabel>OpenAI</SelectLabel>
 									<SelectItem value='gpt-3.5-turbo'>GPT-3.5 Turbo</SelectItem>

@@ -1,10 +1,11 @@
 import {
-	DoubleArrowDownIcon,
-	DoubleArrowUpIcon,
 	ArrowRightIcon,
-	CheckIcon
+	CheckIcon,
+	DoubleArrowDownIcon,
+	DoubleArrowUpIcon
 } from '@radix-ui/react-icons'
-import { Action, convert, createOrRefine } from 'api/openai'
+import type { Action } from 'api/openai'
+import { convert, createOrRefine } from 'api/openai'
 import { getShare } from 'api/openui'
 import CodeViewer from 'components/CodeViewer'
 import Examples from 'components/Examples'
@@ -39,9 +40,12 @@ function fixHTML(html: string) {
 	fixed = fixed.replaceAll('via.placeholder.com', 'placehold.co')
 	fixed = fixed.replaceAll('placehold.it', 'placehold.co')
 	// point to our own backend for mp3's / wav files
-	fixed = fixed.replaceAll(/"[^"]*\.(mp3|wav)"|'[^']*\.(mp3|wav)'/g, "\""+document.location.origin + "/openui/funky.mp3" + "\"")
+	fixed = fixed.replaceAll(
+		/"[^"]*\.(mp3|wav)"|'[^']*\.(mp3|wav)'/g,
+		`"${document.location.origin}/openui/funky.mp3` + `"`
+	)
 	// remove any comments in the HTML
-	fixed = fixed.replaceAll(/<!--[\s\S]*?-->/g, '')
+	fixed = fixed.replaceAll(/<!--[\S\s]*?-->/g, '')
 	return fixed
 }
 
@@ -104,7 +108,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 	const [rendering, setRendering] = useState<boolean>(false)
 	const [llmHidden, setLLMHidden] = useState<boolean>(markdown !== '')
 	// Create for new, refine for existed
-	const action: Action = editing ? 'refine' : 'create';
+	const action: Action = editing ? 'refine' : 'create'
 
 	// TODO: likely replace with item.components
 	// const [jsx, setJSX] = useState<string>('')
@@ -123,7 +127,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 	// Load shared item
 	useEffect(() => {
 		if (shared) {
-			; (async () => {
+			;(async () => {
 				const sharedItem = await getShare(id)
 				setItem(sharedItem)
 				setPureHTML(sharedItem.html ?? '')
@@ -173,7 +177,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 			// The empty markdown check is rather important, without it we get into an
 			// infinite re-render
 			if (final.trim() !== '') {
-				console.log('Saving:', final)
+				console.debug('Saving:\n', final)
 				setItem(it => ({
 					...it,
 					markdown: (it.markdown ?? '') + final
@@ -185,7 +189,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 	)
 
 	const streamResponse = useCallback(
-		(query: string, html?: string, clearSession = false) => {
+		(query: string, html?: string, clearSession = false, history?: any) => {
 			setRendering(true)
 			setMarkdown('')
 			setAnnotatedHTML('')
@@ -198,14 +202,15 @@ export default function Builder({ shared }: { shared?: boolean }) {
 					systemPrompt,
 					html: clearSession ? undefined : html,
 					image: clearSession ? undefined : screenshot,
-					temperature
+					temperature,
+					history: history || undefined
 				},
 				md => {
 					setMarkdown(prevMD => (prevMD || '') + md)
 				}
 			)
 				.then(final => {
-					setScreenshot('');
+					setScreenshot('')
 					setRendering(false)
 					saveMarkdown(final)
 					if (queryRef.current) {
@@ -245,7 +250,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 				preventScrollReset: true,
 				replace: true
 			})
-			streamResponse(item.prompt, undefined, clear)
+			streamResponse(item.prompt, undefined, clear, item.history)
 		}
 	}, [item, rendering, setSearchParams, searchParams, streamResponse])
 
@@ -263,7 +268,14 @@ export default function Builder({ shared }: { shared?: boolean }) {
 			})
 			if (result.html) {
 				// TODO: this is getting called three times on render, refactor
-				setItem(it => ({ ...it, ...result }))
+				setItem(it => ({
+					...it,
+					...result,
+					history: [
+						{ role: 'user', content: item.prompt },
+						{ role: 'assistant', content: item.markdown }
+					]
+				}))
 				setPureHTML(fixHTML(result.html))
 			} else if (!rendering) {
 				setRenderError(
@@ -303,7 +315,11 @@ export default function Builder({ shared }: { shared?: boolean }) {
 			// New state management
 			const newId = nanoid()
 			setMarkdown('')
-			historyAtomFamily({ id: newId, prompt, createdAt: new Date() })
+			historyAtomFamily({
+				id: newId,
+				prompt,
+				createdAt: new Date()
+			})
 			setHistoryIds(prev => [newId, ...prev])
 			navigation(`/ai/${newId}?gen=1&clear=${clear}`)
 		},
@@ -313,24 +329,29 @@ export default function Builder({ shared }: { shared?: boolean }) {
 	const onSubmit = async (e: React.FormEvent | React.KeyboardEvent) => {
 		e.preventDefault()
 
-		let query = queryRef.current?.value.trim() ?? '';
+		const query = queryRef.current?.value.trim() ?? ''
 		if (screenshot === '' && query === '') {
-			return;
+			return
 		}
 
 		if (action === 'create') {
 			// Keep the screenshot
-			newComponent(query, screenshot === '');
-			return;
+			newComponent(query, screenshot === '')
+			return
 		}
 		setMarkdown('')
 		console.log('Submit', item.name)
 		setItem(it => ({
 			...it,
 			markdown: it.markdown + newChapter(query),
-			prompts: [...(it.prompts ?? [it.prompt]), query]
+			prompts: [...(it.prompts ?? [it.prompt]), query],
+			history: [
+				...(it.history ?? []),
+				{ role: 'user', content: query },
+				{ role: 'assistant', content: it.markdown + newChapter(query) }
+			]
 		}))
-		streamResponse(query, pureHTML)
+		streamResponse(query, pureHTML, false, item.history)
 	}
 
 	function parseJs(dom: Document): Script[] {
@@ -478,14 +499,15 @@ export default function Builder({ shared }: { shared?: boolean }) {
 					className='hidden'
 					accept='image/*'
 					onChange={e => {
-						const file = e.target.files?.[0] ?? null;
+						const file = e.target.files?.[0] ?? null
 						if (file === null) {
-							return;
+							return
 						}
-						const reader = new FileReader();
-						reader.onload = () =>
-							setScreenshot(reader.result as string);
-						reader.readAsDataURL(file);
+						const reader = new FileReader()
+						reader.addEventListener('load', () =>
+							setScreenshot(reader.result as string)
+						)
+						reader.readAsDataURL(file)
 					}}
 				/>
 				<div
@@ -507,13 +529,15 @@ export default function Builder({ shared }: { shared?: boolean }) {
 						placeholder={
 							editing
 								? 'Ask for changes to the current UI'
-								: screenshot ? 'Describe the screenshot you uploaded (Optional)' : 'Describe a UI you desire'
+								: screenshot
+									? 'Describe the screenshot you uploaded (Optional)'
+									: 'Describe a UI you desire'
 						}
 						ref={queryRef}
 						// eslint-disable-next-line react/jsx-handler-names
 						onKeyDown={async (e: React.KeyboardEvent) => {
 							if (e.key === 'Enter') {
-								await onSubmit(e);
+								await onSubmit(e)
 							}
 						}}
 					/>

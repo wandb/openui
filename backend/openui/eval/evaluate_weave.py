@@ -83,6 +83,8 @@ class OpenUIModel(Model):
                 api_key=os.getenv("FIREWORKS_API_KEY"),
                 base_url="https://api.fireworks.ai/inference/v1",
             )
+        if self.model_name.startswith("blackbox"):
+            return AsyncOpenAI(base_url="https://www.blackbox.ai/api/chat")
         else:
             return AsyncOpenAI()
 

@@ -119,6 +119,8 @@ if __name__ == "__main__":
     if model.startswith("ollama/"):
         model = model.replace("ollama/", "")
         openai = AsyncOpenAI(base_url="http://localhost:11434/v1")
+    elif model.startswith("blackbox"):
+        openai = AsyncOpenAI(base_url="https://www.blackbox.ai/api/chat")
     else:
         openai = AsyncOpenAI()
 

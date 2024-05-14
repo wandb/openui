@@ -1,4 +1,8 @@
-import { DownloadIcon, PlusCircledIcon } from '@radix-ui/react-icons'
+import {
+	DownloadIcon,
+	EnterFullScreenIcon,
+	PlusCircledIcon
+} from '@radix-ui/react-icons'
 import copyTextToClipboard from '@uiw/copy-to-clipboard'
 import ShareDialog from 'components/ShareDialog'
 import {
@@ -13,13 +17,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from 'components/ui/tooltip'
 import { useAtom, useAtomValue } from 'jotai'
 import { Suspense, lazy, useEffect, useState } from 'react'
 import {
+	FRAMEWORKS,
 	convertFrameworkAtom,
 	historyAtomFamily,
 	selectedFrameworkAtom,
-	FRAMEWORKS,
 	type Framework
 } from 'state'
 import { downloadStringAsFile } from '../lib/utils'
+import CodeViewerFull from './CodeViewerFull'
 import Scaffold from './Scaffold'
 
 const CodeEditor = lazy(async () => import('components/CodeEditor'))
@@ -162,7 +167,8 @@ export default function CodeViewer({ id, code, shared }: ViewerProps) {
 						</li>
 					</ul>
 					<div className='flex justify-end'>
-						{/* TODO: disabling for now 
+						{/* 
+						TODO: disabling for now 
 						<button
 							type='button'
 							disabled={framework !== 'html'}
@@ -174,7 +180,8 @@ export default function CodeViewer({ id, code, shared }: ViewerProps) {
 							className='flex items-center border-l px-3 text-sm text-secondary-foreground hover:bg-background'
 						>
 							Save
-						</button> */}
+						</button> 
+						*/}
 						{id !== 'new' && !shared && <ShareDialog />}
 						<button
 							type='button'
@@ -210,9 +217,24 @@ export default function CodeViewer({ id, code, shared }: ViewerProps) {
 							</svg>{' '}
 							<span className='copy-text'>Copy</span>
 						</button>
+						{code ? (
+							<CodeViewerFull
+								trigger={
+									<button
+										type='button'
+										aria-label='Fullscreen'
+										className='flex items-center border-l px-3 text-sm text-secondary-foreground hover:bg-background'
+									>
+										<EnterFullScreenIcon />
+									</button>
+								}
+								framework={framework}
+								currentCode={currentCode}
+							/>
+						) : undefined}
 					</div>
 				</div>
-				<div className='relative bg-zinc-50 dark:bg-zinc-900'>
+				<div className='relative dark:bg-zinc-900'>
 					<div
 						className='max-h-[24vh] overflow-scroll pb-8 text-sm'
 						tabIndex={-1}
