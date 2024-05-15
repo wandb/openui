@@ -5,16 +5,16 @@ export default function FileUpload({
 	onDropFile,
 	onClick
 }: {
-	onDropFile: (file?: File) => void,
-	onClick: () => void;
+	onDropFile: (file?: File) => void
+	onClick: () => void
 }) {
 	const [dragging, setDragging] = useState(false)
 
 	return (
 		<div
 			className='flex h-full items-center bg-background'
-			onKeyUp={(e) => {
-				if (e.key === 'Enter') { 
+			onKeyUp={e => {
+				if (e.key === 'Enter') {
 					onClick()
 				}
 			}}
@@ -55,10 +55,18 @@ export default function FileUpload({
 				e.preventDefault()
 			}}
 		>
+			{/* eslint jsx-a11y/label-has-associated-control: ["error", { assert: "either" } ] */}
 			<label
+				htmlFor='file-input'
 				className='relative mx-auto h-64 w-64 cursor-pointer rounded-lg bg-white p-4 text-center text-zinc-600 shadow-lg dark:bg-zinc-800'
 			>
-				<div className='mb-5 text-6xl'>📸</div>
+				<div className='center mb-5'>
+					<img
+						src='/android-chrome-192x192.png'
+						className='inline-block w-24'
+						alt='OpenUI'
+					/>
+				</div>
 				<span className='text-lg'>
 					Drag a screenshot of UI or click me to upload one.
 				</span>

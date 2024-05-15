@@ -73,7 +73,7 @@ interface HTMLAnnotatorProps {
 	html: string
 	error?: string
 	js?: Script[]
-	rendering?: boolean
+	isRendering?: boolean
 	imageUploadRef?: React.RefObject<HTMLInputElement>
 }
 
@@ -118,11 +118,13 @@ export default function HTMLAnnotator({
 	error,
 	js,
 	id,
-	rendering,
+	isRendering,
 	imageUploadRef
 }: HTMLAnnotatorProps) {
 	// only point to our local annotator in development / running locally otherwise use github pages
-	const iframeSrc = document.location.hostname.includes("127.0.0.1") ? 'http://127.0.0.1:7878' : 'https://wandb.github.io'
+	const iframeSrc = document.location.hostname.includes('127.0.0.1')
+		? 'http://127.0.0.1:7878'
+		: 'https://wandb.github.io'
 	const iframeRef = useRef<HTMLIFrameElement | null>(null)
 	const item = useAtomValue(historyAtomFamily({ id }))
 
@@ -159,14 +161,14 @@ export default function HTMLAnnotator({
 			iframeRef.current.contentWindow?.postMessage(
 				{
 					html: bufferedHTML,
-					js: rendering ? [] : js,
+					js: isRendering ? [] : js,
 					darkMode,
 					action: 'hydrate'
 				},
 				'*'
 			)
 		}
-	}, [bufferedHTML, darkMode, js, rendering, iframeRef])
+	}, [bufferedHTML, darkMode, js, isRendering, iframeRef])
 
 	useEffect(() => {
 		if (iframeRef.current) {
@@ -182,11 +184,11 @@ export default function HTMLAnnotator({
 				lines.pop()
 			}
 			// TODO: we could play around with this more
-			if (lines.length > minBuffer || !rendering) {
+			if (lines.length > minBuffer || !isRendering) {
 				setBufferedHTML(lines.join('\n'))
 			}
 		}
-	}, [html, rendering])
+	}, [html, isRendering])
 
 	// iframe listeners and dark mode
 	useEffect(() => {
@@ -368,8 +370,9 @@ export default function HTMLAnnotator({
 								>
 									<svg
 										data-toggle-icon='moon'
-										className={`${!darkMode && 'hidden'
-											} inline-block h-3.5 w-3.5`}
+										className={`${
+											!darkMode && 'hidden'
+										} inline-block h-3.5 w-3.5`}
 										aria-hidden='true'
 										xmlns='http://www.w3.org/2000/svg'
 										fill='currentColor'
@@ -379,8 +382,9 @@ export default function HTMLAnnotator({
 									</svg>
 									<svg
 										data-toggle-icon='sun'
-										className={`${darkMode && 'hidden'
-											} inline-block h-3.5 w-3.5`}
+										className={`${
+											darkMode && 'hidden'
+										} inline-block h-3.5 w-3.5`}
 										aria-hidden='true'
 										xmlns='http://www.w3.org/2000/svg'
 										fill='currentColor'
@@ -409,7 +413,7 @@ export default function HTMLAnnotator({
 								<SheetHeader>
 									<SheetTitle>Chat history</SheetTitle>
 									<SheetDescription asChild>
-										<Suspense fallback={<Scaffold loading />}>
+										<Suspense fallback={<Scaffold isLoading />}>
 											<Markdown
 												className='prose prose-sm prose-zinc max-w-full dark:prose-invert'
 												components={{
@@ -456,29 +460,30 @@ export default function HTMLAnnotator({
 							title='HTML preview'
 							sandbox='allow-same-origin allow-scripts allow-forms allow-popups allow-modals'
 							ref={iframeRef}
-							className={`iframe-code mx-auto max-h-[60vh] w-full bg-background ${media === 'tablet' && 'max-w-lg'
-								} ${media === 'mobile' && 'max-w-sm'}`}
+							className={`iframe-code mx-auto max-h-[60vh] w-full bg-background ${
+								media === 'tablet' && 'max-w-lg'
+							} ${media === 'mobile' && 'max-w-sm'}`}
 							style={{ height: preview && !error ? '100%' : 0 }}
 							src={`${iframeSrc}/openui/index.html?buster=113`}
 						/>
 						{!preview &&
 							// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-							(rendering || error ? (
-								<Scaffold loading error={error} />
+							(isRendering || error ? (
+								<Scaffold isLoading error={error} />
+							) : // eslint-disable-next-line unicorn/no-nested-ternary
+							screenshot ? (
+								<Screenshot />
 							) : (
-
-								screenshot ?
-									<Screenshot />
-									:
-									<FileUpload
-										onClick={() => imageUploadRef?.current?.click()}
-										onDropFile={(file) => {
-											const reader = new FileReader();
-											reader.onload = () =>
-												setScreenshot(reader.result as string);
-											reader.readAsDataURL(file as File);
-										}}
-									/>
+								<FileUpload
+									onClick={() => imageUploadRef?.current?.click()}
+									onDropFile={file => {
+										const reader = new FileReader()
+										reader.addEventListener('load', () =>
+											setScreenshot(reader.result as string)
+										)
+										reader.readAsDataURL(file as File)
+									}}
+								/>
 							))}
 					</div>
 				</div>
@@ -490,6 +495,6 @@ export default function HTMLAnnotator({
 HTMLAnnotator.defaultProps = {
 	error: undefined,
 	imageUploadRef: undefined,
-	js: [],
-	rendering: false
+	isRendering: false,
+	js: []
 }

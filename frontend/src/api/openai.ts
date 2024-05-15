@@ -100,7 +100,7 @@ emoji: 🎉
 	} else {
 		// Annotation comments should like <!--FIX (1): make the image larger-->
 		const hasAnnotationComments = /<!--FIX (\(\d+\)): (.+)-->/g.test(html as string);
-		let userPrompt = hasAnnotationComments ? 'Address the FIX comments.': query
+		const userPrompt = hasAnnotationComments ? 'Address the FIX comments.': query
 		
 		const instructions = `Given the following HTML:\n\n${html}\n\n${userPrompt}`
 		console.log('Providing instructions:\n', instructions)

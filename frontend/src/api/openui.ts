@@ -64,7 +64,7 @@ export async function getSession(): Promise<SessionData | undefined> {
 	if (r.status === 404) {
 		return
 	}
-	// eslint-disable-next-line consistent-return
+	// eslint-disable-next-line @typescript-eslint/consistent-return, consistent-return
 	return (await r.json()) as SessionData
 }
 

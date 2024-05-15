@@ -43,10 +43,10 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 	}, [error])
 
 	useEffect(() => {
-		if(data && data.groq.length > 0) {
-				setModel(`groq/${  data.groq[2].id}`)
-			}
-	}, [data])
+		if (data && data.groq.length > 0) {
+			setModel(`groq/${data.groq[2].id}`)
+		}
+	}, [data, setModel])
 
 	return (
 		<Dialog>
@@ -72,24 +72,34 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							<SelectTrigger className='min-w-[200px]'>
 								<SelectValue placeholder='Switch models' />
 							</SelectTrigger>
-							{isPending ? <SelectContent>Loading...</SelectContent> : null}
-							{isError ? <SelectContent>Error, see console...</SelectContent> : null}
-							{data ? <SelectContent>
-									{data.openai.length > 0 && <SelectGroup>
-										<SelectLabel>OpenAI</SelectLabel>
-										<SelectItem value='gpt-3.5-turbo'>GPT-3.5 Turbo</SelectItem>
-										<SelectItem value='gpt-4-turbo'>
-											GPT-4 Turbo
-										</SelectItem>
-									</SelectGroup>}
-									{data.groq.length > 0 && <SelectGroup>
-										<SelectLabel>Groq</SelectLabel>
-										{data.groq.map(m => (
-											<SelectItem key={m.id} value={`groq/${m.id}`}>
-												{m.id}
+							{isPending ? (
+								<SelectContent>Loading...</SelectContent>
+							) : undefined}
+							{isError ? (
+								<SelectContent>Error, see console...</SelectContent>
+							) : undefined}
+							{data ? (
+								<SelectContent>
+									{data.openai.length > 0 && (
+										<SelectGroup>
+											<SelectLabel>OpenAI</SelectLabel>
+											<SelectItem value='gpt-3.5-turbo'>
+												GPT-3.5 Turbo
 											</SelectItem>
-										))}
-									</SelectGroup>}
+											<SelectItem value='gpt-4o'>GPT-4o</SelectItem>
+											<SelectItem value='gpt-4-turbo'>GPT-4 Turbo</SelectItem>
+										</SelectGroup>
+									)}
+									{data.groq.length > 0 && (
+										<SelectGroup>
+											<SelectLabel>Groq</SelectLabel>
+											{data.groq.map(m => (
+												<SelectItem key={m.id} value={`groq/${m.id}`}>
+													{m.id}
+												</SelectItem>
+											))}
+										</SelectGroup>
+									)}
 									{data.ollama.length > 0 && (
 										<SelectGroup>
 											<SelectLabel>Ollama</SelectLabel>
@@ -100,7 +110,8 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 											))}
 										</SelectGroup>
 									)}
-								</SelectContent> : null}
+								</SelectContent>
+							) : undefined}
 						</Select>
 					</div>
 					<div className='grid grid-cols-4 items-center gap-4'>
@@ -137,7 +148,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 								onClick={() => {
 									fetch('/v1/session', { method: 'DELETE' })
 										.then(() => document.location.reload())
-										.catch(error_ => console.error(error_))
+										.catch((error_: unknown) => console.error(error_))
 								}}
 							>
 								Logout

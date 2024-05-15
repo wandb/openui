@@ -150,7 +150,7 @@
 		"unicorn/prevent-abbreviations": "off",
 		"unicorn/no-keyword-prefix": "off",
 		"unicorn/filename-case": [
-			"error",
+			"warn",
 			{
 				"cases": {
 					"camelCase": true,

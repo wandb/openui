@@ -31,7 +31,7 @@ export default function Register() {
 			setError(errorMessage)
 			Cookies.remove('error')
 		}
-		restoreSession().catch(error_ => console.error(error_))
+		restoreSession().catch((error_: unknown) => console.error(error_))
 	}, [])
 
 	const title = 'Login'
