@@ -30,9 +30,9 @@ export default function ShareDialog() {
 						document.location.href.replace('/ai', '/ai/shared')
 					)
 				})
-				.catch((error_: Error) => {
+				.catch((error_: unknown) => {
 					console.error('Share error', error_)
-					setError(error_.toString())
+					setError((error_ as Error).toString())
 				})
 		}
 	}, [id, item, open])

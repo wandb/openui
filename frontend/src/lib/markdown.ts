@@ -11,28 +11,27 @@ interface ParsedMarkdown {
 // eslint-disable-next-line import/prefer-default-export
 export function parseMarkdown(
 	markdown: string,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	existing: ParsedMarkdown = {}
 ): ParsedMarkdown {
 	// TODO: this already a little tricky, refactor me
 	const result: ParsedMarkdown = {}
-	const header = markdown.substring(0, 100)
+	const header = markdown.slice(0, 100)
 	const name = header.split('\n').find(l => l.trim().startsWith('name: '))
 	const emoji = header.split('\n').find(l => l.trim().startsWith('emoji: '))
+	// mixtral sometimes started itself with ```yaml
+	let cleanMarkdown = markdown.replace('```yaml\n', '')
 	if (name) {
 		result.name = name.replace(/\s*name: /, '')
 	}
 	if (emoji) {
 		result.emoji = emoji.replace(/\s*emoji: /, '')
-		const split = markdown.indexOf("---", 10)
-		if(split > 0) {
-			markdown = markdown.substring(split+3)
+		const split = markdown.indexOf('---', 10)
+		if (split > 0) {
+			cleanMarkdown = markdown.slice(Math.max(0, split + 3))
 		}
 	}
-	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-	const parsed = unified()
-		.use(remarkParse)
-		// mixtral sometimes started itself with ```yaml
-		.parse(markdown.replace('```yaml\n', ''))
+	const parsed = unified().use(remarkParse).parse(cleanMarkdown)
 
 	const htmlBlocks = parsed.children.filter(
 		c => c.type === 'code' || c.type === 'html'

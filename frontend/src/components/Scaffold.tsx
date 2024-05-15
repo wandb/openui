@@ -1,15 +1,15 @@
 interface ScaffoldProps {
 	mode?: 'code' | 'html'
 	error?: string
-	loading: boolean
+	isLoading: boolean
 }
 
 export default function Scaffold({
 	mode = 'html',
 	error,
-	loading = false
+	isLoading = false
 }: ScaffoldProps) {
-	const animate = loading ? 'animate-pulse' : ''
+	const animate = isLoading ? 'animate-pulse' : ''
 	if (error) {
 		return (
 			<div className='mx-auto mt-10 max-w-[80%]'>

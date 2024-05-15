@@ -13,10 +13,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from 'components/ui/tooltip'
 import { useAtom, useAtomValue } from 'jotai'
 import { Suspense, lazy, useEffect, useState } from 'react'
 import {
+	FRAMEWORKS,
 	convertFrameworkAtom,
 	historyAtomFamily,
 	selectedFrameworkAtom,
-	FRAMEWORKS,
 	type Framework
 } from 'state'
 import { downloadStringAsFile } from '../lib/utils'
@@ -64,10 +64,10 @@ ${render
 interface ViewerProps {
 	id: string
 	code: string
-	shared: boolean
+	isShared: boolean
 }
 
-export default function CodeViewer({ id, code, shared }: ViewerProps) {
+export default function CodeViewer({ id, code, isShared }: ViewerProps) {
 	const item = useAtomValue(historyAtomFamily({ id }))
 	const [framework, setFramework] = useAtom(selectedFrameworkAtom)
 	const [convertFramework, setConvertFramework] = useAtom(convertFrameworkAtom)
@@ -175,7 +175,7 @@ export default function CodeViewer({ id, code, shared }: ViewerProps) {
 						>
 							Save
 						</button> */}
-						{id !== 'new' && !shared && <ShareDialog />}
+						{id !== 'new' && !isShared && <ShareDialog />}
 						<button
 							type='button'
 							aria-label='Download'
@@ -217,7 +217,7 @@ export default function CodeViewer({ id, code, shared }: ViewerProps) {
 						className='max-h-[24vh] overflow-scroll pb-8 text-sm'
 						tabIndex={-1}
 					>
-						<Suspense fallback={<Scaffold loading />}>
+						<Suspense fallback={<Scaffold isLoading />}>
 							{/* TODO: jsx editing */}
 							{code ? (
 								<CodeEditor

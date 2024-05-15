@@ -24,7 +24,7 @@ const router = createBrowserRouter(
 			<Route path='/ai' element={<AI />}>
 				<Route path=':id' element={<Builder />} />
 			</Route>
-			<Route path='/ai/shared/:id' element={<Builder shared />} />
+			<Route path='/ai/shared/:id' element={<Builder isShared />} />
 		</>
 	)
 )

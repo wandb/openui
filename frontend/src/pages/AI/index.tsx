@@ -146,12 +146,29 @@ export default function LayoutWithSidebar() {
 								key={id}
 								id={id}
 								label={label}
-								active={params.id === id}
-								collapsed={isCollapsed}
+								isActive={params.id === id}
+								isCollapsed={isCollapsed}
 							/>
 						)
 					})}
 				</div>
+				<span className='absolute bottom-0 p-2 pl-4 text-xs italic text-zinc-700 dark:text-zinc-300'>
+					Built with{' '}
+					<img
+						aria-hidden
+						src='https://wandb.github.io/weave/img/logo.svg'
+						className='inline-block w-4'
+						alt='Weave'
+					/>{' '}
+					<a
+						href='https://wandb.me/weave?ref=openui'
+						target='_blank'
+						rel='noreferrer'
+						className='underline'
+					>
+						Weave
+					</a>
+				</span>
 				<Button
 					// eslint-disable-next-line react/jsx-handler-names
 					onClick={() => {

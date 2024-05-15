@@ -5,7 +5,6 @@ export function useThrottle(value: unknown, interval = defaultInterval) {
 	const [throttledValue, setThrottledValue] = React.useState(value)
 	const lastUpdated = React.useRef<number | null>(null)
 
-	// eslint-disable-next-line consistent-return
 	React.useEffect(() => {
 		const now = Date.now()
 
@@ -20,6 +19,7 @@ export function useThrottle(value: unknown, interval = defaultInterval) {
 
 			return () => window.clearTimeout(id)
 		}
+		return () => {}
 	}, [value, interval])
 
 	return throttledValue

@@ -1,10 +1,11 @@
 import {
-	DoubleArrowDownIcon,
-	DoubleArrowUpIcon,
 	ArrowRightIcon,
-	CheckIcon
+	CheckIcon,
+	DoubleArrowDownIcon,
+	DoubleArrowUpIcon
 } from '@radix-ui/react-icons'
-import { Action, convert, createOrRefine } from 'api/openai'
+import type { Action } from 'api/openai'
+import { convert, createOrRefine } from 'api/openai'
 import { getShare } from 'api/openui'
 import CodeViewer from 'components/CodeViewer'
 import Examples from 'components/Examples'
@@ -39,9 +40,12 @@ function fixHTML(html: string) {
 	fixed = fixed.replaceAll('via.placeholder.com', 'placehold.co')
 	fixed = fixed.replaceAll('placehold.it', 'placehold.co')
 	// point to our own backend for mp3's / wav files
-	fixed = fixed.replaceAll(/"[^"]*\.(mp3|wav)"|'[^']*\.(mp3|wav)'/g, "\""+document.location.origin + "/openui/funky.mp3" + "\"")
+	fixed = fixed.replaceAll(
+		/"[^"]*\.(mp3|wav)"|'[^']*\.(mp3|wav)'/g,
+		`"${document.location.origin}/openui/funky.mp3"`
+	)
 	// remove any comments in the HTML
-	fixed = fixed.replaceAll(/<!--[\s\S]*?-->/g, '')
+	fixed = fixed.replaceAll(/<!--[\S\s]*?-->/g, '')
 	return fixed
 }
 
@@ -72,7 +76,7 @@ function newChapter(prompt: string) {
 	return `\n\n---\nprompt: ${prompt}\n---\n\n`
 }
 
-export default function Builder({ shared }: { shared?: boolean }) {
+export default function Builder({ isShared }: { isShared?: boolean }) {
 	// Global state
 	const params = useParams()
 	const [searchParams, setSearchParams] = useSearchParams()
@@ -104,7 +108,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 	const [rendering, setRendering] = useState<boolean>(false)
 	const [llmHidden, setLLMHidden] = useState<boolean>(markdown !== '')
 	// Create for new, refine for existed
-	const action: Action = editing ? 'refine' : 'create';
+	const action: Action = editing ? 'refine' : 'create'
 
 	// TODO: likely replace with item.components
 	// const [jsx, setJSX] = useState<string>('')
@@ -122,17 +126,17 @@ export default function Builder({ shared }: { shared?: boolean }) {
 
 	// Load shared item
 	useEffect(() => {
-		if (shared) {
-			; (async () => {
+		if (isShared) {
+			;(async () => {
 				const sharedItem = await getShare(id)
 				setItem(sharedItem)
 				setPureHTML(sharedItem.html ?? '')
-			})().catch((error: Error) => {
+			})().catch((error: unknown) => {
 				console.error(error)
-				setTimeout(() => setRenderError(error.toString()), 1000)
+				setTimeout(() => setRenderError((error as Error).toString()), 1000)
 			})
 		}
-	}, [shared, id, setItem])
+	}, [isShared, id, setItem])
 
 	// persist deleted history TODO: move me somewhere better
 	useEffect(() => {
@@ -205,7 +209,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 				}
 			)
 				.then(final => {
-					setScreenshot('');
+					setScreenshot('')
 					setRendering(false)
 					saveMarkdown(final)
 					if (queryRef.current) {
@@ -213,12 +217,12 @@ export default function Builder({ shared }: { shared?: boolean }) {
 					}
 					// setLLMHidden(true)
 				})
-				.catch((error: Error) => {
+				.catch((error: unknown) => {
 					setRendering(false)
 					setScreenshot('')
 					saveMarkdown('')
 					console.error(error)
-					setRenderError(error.message)
+					setRenderError((error as Error).message)
 				})
 		},
 		[
@@ -229,6 +233,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 			setMarkdown,
 			setRendering,
 			setRenderError,
+			setScreenshot,
 			setAnnotatedHTML,
 			saveMarkdown,
 			temperature
@@ -313,15 +318,15 @@ export default function Builder({ shared }: { shared?: boolean }) {
 	const onSubmit = async (e: React.FormEvent | React.KeyboardEvent) => {
 		e.preventDefault()
 
-		let query = queryRef.current?.value.trim() ?? '';
+		const query = queryRef.current?.value.trim() ?? ''
 		if (screenshot === '' && query === '') {
-			return;
+			return
 		}
 
 		if (action === 'create') {
 			// Keep the screenshot
-			newComponent(query, screenshot === '');
-			return;
+			newComponent(query, screenshot === '')
+			return
 		}
 		setMarkdown('')
 		console.log('Submit', item.name)
@@ -389,7 +394,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 				saveHistory()
 				setRendering(false)
 			})
-			.catch(error => {
+			.catch((error: unknown) => {
 				setRendering(false)
 				console.error(error)
 			})
@@ -413,7 +418,7 @@ export default function Builder({ shared }: { shared?: boolean }) {
 			setComments([])
 			streamResponse('', annotatedHTML)
 		}
-	}, [annotatedHTML, comments])
+	}, [annotatedHTML, comments, setComments, setItem, streamResponse])
 
 	return (
 		<div className='flex-col bg-secondary'>
@@ -424,9 +429,9 @@ export default function Builder({ shared }: { shared?: boolean }) {
 					js={js}
 					error={renderError}
 					imageUploadRef={imageUploadRef}
-					rendering={rendering}
+					isRendering={rendering}
 				/>
-				<CodeViewer id={id} code={pureHTML} shared={shared ?? false} />
+				<CodeViewer id={id} code={pureHTML} isShared={isShared ?? false} />
 				{
 					// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 					historyIds.length <= 2 && (
@@ -478,14 +483,15 @@ export default function Builder({ shared }: { shared?: boolean }) {
 					className='hidden'
 					accept='image/*'
 					onChange={e => {
-						const file = e.target.files?.[0] ?? null;
-						if (file === null) {
-							return;
+						const file = e.target.files?.[0] ?? undefined
+						if (file === undefined) {
+							return
 						}
-						const reader = new FileReader();
-						reader.onload = () =>
-							setScreenshot(reader.result as string);
-						reader.readAsDataURL(file);
+						const reader = new FileReader()
+						reader.addEventListener('load', () =>
+							setScreenshot(reader.result as string)
+						)
+						reader.readAsDataURL(file)
 					}}
 				/>
 				<div
@@ -507,13 +513,16 @@ export default function Builder({ shared }: { shared?: boolean }) {
 						placeholder={
 							editing
 								? 'Ask for changes to the current UI'
-								: screenshot ? 'Describe the screenshot you uploaded (Optional)' : 'Describe a UI you desire'
+								: // eslint-disable-next-line unicorn/no-nested-ternary
+									screenshot
+									? 'Describe the screenshot you uploaded (Optional)'
+									: 'Describe a UI you desire'
 						}
 						ref={queryRef}
 						// eslint-disable-next-line react/jsx-handler-names
-						onKeyDown={async (e: React.KeyboardEvent) => {
+						onKeyDown={(e: React.KeyboardEvent) => {
 							if (e.key === 'Enter') {
-								await onSubmit(e);
+								onSubmit(e).catch((error: unknown) => console.error(error))
 							}
 						}}
 					/>
@@ -542,5 +551,5 @@ export default function Builder({ shared }: { shared?: boolean }) {
 }
 
 Builder.defaultProps = {
-	shared: false
+	isShared: false
 }

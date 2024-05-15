@@ -14,13 +14,13 @@ import { historyAtomFamily, historyIdsAtom } from 'state'
 export default function HistoryItem({
 	id,
 	label,
-	active = false,
-	collapsed = false
+	isActive = false,
+	isCollapsed = false
 }: {
 	id: string
 	label?: string
-	active: boolean
-	collapsed: boolean
+	isActive: boolean
+	isCollapsed: boolean
 }) {
 	const item = useAtomValue(historyAtomFamily({ id }))
 	const navigate = useNavigate()
@@ -35,7 +35,7 @@ export default function HistoryItem({
 			)}
 			<div
 				className={`${
-					active && 'bg-secondary'
+					isActive && 'bg-secondary'
 				} group relative mb-2 w-full rounded-md p-2 text-sm hover:bg-secondary`}
 			>
 				<Link to={`/ai/${id}`} className='flex items-center active:text-black'>
@@ -47,8 +47,8 @@ export default function HistoryItem({
 							className={cn(
 								'absolute bottom-0 right-0 top-0 w-8 bg-gradient-to-l from-zinc-300 from-0% to-transparent group-hover:right-5 group-hover:from-secondary dark:from-zinc-900',
 								{
-									'from-secondary': active,
-									'dark:from-secondary': active
+									'from-secondary': isActive,
+									'dark:from-secondary': isActive
 								}
 							)}
 						/>
@@ -85,8 +85,8 @@ export default function HistoryItem({
 					onClick={() => navigate(`/ai/${id}`)}
 					className={cn(
 						'absolute -right-[58px] top-0 z-50 ml-auto inline-flex h-8 w-8 p-2 hover:scale-110 hover:bg-inherit',
-						collapsed && 'ml-10',
-						active && 'bg-zinc-900'
+						isCollapsed && 'ml-10',
+						isActive && 'bg-zinc-900'
 					)}
 					variant='ghost'
 					size='icon'
