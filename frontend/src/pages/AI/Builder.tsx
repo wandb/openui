@@ -438,7 +438,7 @@ export default function Builder({ isShared }: { isShared?: boolean }) {
 						<Examples
 							className={cn(
 								'absolute left-[calc(50%)] w-11/12 -translate-x-1/2',
-								llmHidden && '-bottom-10 opacity-0'
+								llmHidden && '-bottom-10 opacity-0 pointer-events-none'
 							)}
 							style={{
 								bottom: bigEnough ? '130px' : '230px'
