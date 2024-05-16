@@ -1,5 +1,5 @@
 import { cn } from 'lib/utils'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function FileUpload({
 	onDropFile,
@@ -9,6 +9,32 @@ export default function FileUpload({
 	onClick: () => void
 }) {
 	const [dragging, setDragging] = useState(false)
+
+	useEffect(() => {
+		const handlePaste = (e: ClipboardEvent) => {
+			const items = e.clipboardData?.items;
+			let file: File | null | undefined;
+			if (items) {
+				for (const item of items) {
+					if (item.type.startsWith('image/')) {
+						file = item.getAsFile();
+						break;
+					}
+				}
+				if (file) {
+					console.log('Pasted file type', file.type);
+					onDropFile(file);
+				} else {
+					alert('Only images can be pasted');
+				}
+			}
+		};
+
+		window.addEventListener('paste', handlePaste);
+		return () => {
+			window.removeEventListener('paste', handlePaste);
+		};
+	}, [onDropFile]);
 
 	return (
 		<div
@@ -68,7 +94,7 @@ export default function FileUpload({
 					/>
 				</div>
 				<span className='text-lg'>
-					Drag a screenshot of UI or click me to upload one.
+					Drag a screenshot of UI, paste it, or click me to upload one.
 				</span>
 				<div className='mt-2 text-sm'>
 					You can also just explain what you want in the text box below.
