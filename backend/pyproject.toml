@@ -8,7 +8,8 @@ dependencies = [
     "fastapi>=0.108.0",
     "uvicorn>=0.25.0",
     "fastapi-sso>=0.13.0",
-    "boto3>=1.34.67",
+    "boto3>=1.34.67",        
+    "botocore>=1.29.32"
 ]
 name = "openui"
 version = "0.3.1"
