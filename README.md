@@ -93,3 +93,5 @@ The codespace installs ollama automaticaly and downloads the `llava` model.  You
 ### Resources
 
 See the readmes in the [frontend](./frontend/README.md) and [backend](./backend/README.md) directories.
+
+### TODO: Translate OPENUI to Portugues
