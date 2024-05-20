@@ -1,5 +1,9 @@
 # OpenUI
 
+<p align="center">
+  <img src="./assets/openui.png" width="150" alt="OpenUI" />
+</p>
+
 Building UI components can be a slog.  OpenUI aims to make the process fun, fast, and flexible.  It's also a tool we're using at [W&B](https://wandb.com) to test and prototype our next generation tooling for building powerful applications on top of LLM's.
 
 ## Overview

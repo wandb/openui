@@ -43,7 +43,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 	}, [error])
 
 	useEffect(() => {
-		if (data && data.groq.length > 0) {
+		if (data && data.groq.length > 0 && data.openai.length === 0) {
 			setModel(`groq/${data.groq[2].id}`)
 		}
 	}, [data, setModel])
@@ -87,7 +87,9 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 												GPT-3.5 Turbo
 											</SelectItem>
 											<SelectItem value='gpt-4o'>GPT-4o</SelectItem>
-											<SelectItem value='gpt-4-turbo'>GPT-4 Turbo</SelectItem>
+											{import.meta.env.MODE !== 'hosted' && (
+												<SelectItem value='gpt-4-turbo'>GPT-4 Turbo</SelectItem>
+											)}
 										</SelectGroup>
 									)}
 									{data.groq.length > 0 && (

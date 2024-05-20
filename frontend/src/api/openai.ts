@@ -12,7 +12,7 @@ const openai = new OpenAI({
 	dangerouslyAllowBrowser: true
 })
 
-export type Action = 'create' | 'refine';
+export type Action = 'create' | 'refine'
 interface CreateOptions {
 	model: string
 	systemPrompt: string
@@ -65,7 +65,7 @@ emoji: 🎉
 		if (image) {
 			// TODO: configurable
 			if (model.startsWith('gpt')) {
-				model = 'gpt-4-turbo-2024-04-09'
+				model = 'gpt-4o'
 			}
 			let imageUrl = image
 			// OpenAI wants a data url, ollama just wants base64 bytes
@@ -73,9 +73,9 @@ emoji: 🎉
 				const parts = image.toString().split(',')
 				imageUrl = parts.pop() ?? ''
 			}
-			const textImageRequirements = query ?
-				`The following are some special requirements: \n ${query}`
-				: '';
+			const textImageRequirements = query
+				? `The following are some special requirements: \n ${query}`
+				: ''
 			messages.push({
 				role: 'user',
 				content: [
@@ -91,7 +91,7 @@ emoji: 🎉
 					}
 				]
 			})
-		} else { 
+		} else {
 			messages.push({
 				role: 'user',
 				content: query
@@ -99,9 +99,13 @@ emoji: 🎉
 		}
 	} else {
 		// Annotation comments should like <!--FIX (1): make the image larger-->
-		const hasAnnotationComments = /<!--FIX (\(\d+\)): (.+)-->/g.test(html as string);
-		const userPrompt = hasAnnotationComments ? 'Address the FIX comments.': query
-		
+		const hasAnnotationComments = /<!--FIX (\(\d+\)): (.+)-->/g.test(
+			html as string
+		)
+		const userPrompt = hasAnnotationComments
+			? 'Address the FIX comments.'
+			: query
+
 		const instructions = `Given the following HTML:\n\n${html}\n\n${userPrompt}`
 		console.log('Providing instructions:\n', instructions)
 		messages.push({
