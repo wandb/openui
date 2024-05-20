@@ -89,6 +89,20 @@ The codespace installs ollama automaticaly and downloads the `llava` model.  You
 
 <img src="./assets/ollama.png" width="500" alt="Select Ollama models" />
 
+### Gitpod
+
+You can easily use Open UI via Gitpod, preconfigured with Open AI.
+
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/wandb/openui)
+
+On launch Open UI is automatically installed and launched.
+
+Before you can use Gitpod:
+
+* Make sure you have a Gitpod account.
+* To use Open AI models set up the `OPENAI_API_KEY` environment variable in your Gitpod [User Account](https://gitpod.io/user/variables). Set the scope to `wandb/openui` (or your repo if you forked it).
+
+> NOTE: Other (local) models might also be used with a bigger Gitpod instance type. Required models are not preconfigured in Gitpod but can easily be added as documented above.
 
 ### Resources
 
