@@ -36,9 +36,9 @@ CI = "https://github.com/wandb/openui/actions"
 [project.optional-dependencies]
 test = ["pytest", "pre-commit"]
 eval = [
-    "Pillow>=8.3.1",
-    "playwright>=1.41.0",
     "beautifulsoup4>=4.0.0",
     "mistletoe>=1.0.0",
+    "Pillow>=8.3.1",
+    "playwright>=1.41.0",
 ]
 tui = ["textual[syntax]>=0.49.0", "pyperclip>=1.8.2"]
