@@ -53,8 +53,17 @@
 					type="text"
 					class="mt-2 w-[300px] rounded-md border border-zinc-200 px-4 py-2 text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-300"
 				/>
-				<button class="ml-2 mt-4 rounded-md bg-blue-500 p-2 text-white">
+				<button
+					class="ml-2 mt-4 rounded-md bg-blue-500 p-2 text-white"
+					id="submit"
+				>
 					Submit
+				</button>
+				<button
+					class="border-black-500 ml-2 mt-4 rounded-md border-2 border-solid p-2"
+					id="cancel"
+				>
+					Cancel
 				</button>
 			</div>
 		</div>
@@ -92,6 +101,7 @@
 			.getElementById('wrapper')
 			.addEventListener('mouseleave', clearInspector)
 		function reset() {
+			clearInterval(interval)
 			interval = setInterval(() => {
 				if (!moved) {
 					clearInspector()
@@ -137,7 +147,7 @@
 					}
 				}
 			} else if (e.key === 'Enter') {
-				let sub = document.getElementById('prompt').querySelector('button')
+				let sub = document.getElementById('prompt').querySelector('#submit')
 				sub.click()
 			}
 		})
@@ -189,10 +199,32 @@
 			prompt.style.marginLeft = `-200px`
 			let input = prompt.querySelector('input')
 			input.focus()
-			prompt.querySelector('button').addEventListener('click', () => {
+			prompt.querySelector('#submit').addEventListener('click', () => {
+				if (!input.value) {
+					input.focus()
+					return
+				}
 				addComment(input.value)
 				input.value = ''
 				prompt.classList.remove('scale-100')
+			})
+			prompt.querySelector('#cancel').addEventListener('click', () => {
+				input.value = ''
+				prompt.classList.remove('scale-100')
+				clearInspector()
+				setTimeout(() => {
+					if (inspectorEnabled) {
+						window.theRoom.start()
+					}
+					reset()
+				}, 500)
+				document
+					.querySelectorAll(
+						'.selected-' + commentIdx + ', .fix-legend-' + commentIdx
+					)
+					.forEach(selected => {
+						selected.parentNode.removeChild(selected)
+					})
 			})
 			// TODO: make it clear "esc" cancels
 			document.body.append(selected)
@@ -244,11 +276,9 @@
 				selectedElements.push(element)
 				clearInspector()
 				setTimeout(() => {
-					if (inspectorEnabled) {
-						window.theRoom.start()
-					}
 					reset()
 				}, 500)
+				inspectorEnabled = false
 			}
 		})
 
