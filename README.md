@@ -20,6 +20,12 @@ OpenUI let's you describe UI using your imagination, then see it rendered live. 
 
 You can also run OpenUI locally and use models available to [Ollama](https://ollama.com).  [Install Ollama](https://ollama.com/download) and pull a model like [CodeLlama](https://ollama.com/library/codellama), then assuming you have git and python installed:
 
+> **Note:** There's a .python-version file that specifies **openui** as the virtual env name.  Assuming you have pyenv and pyenv-virtualenv you can run the following from the root of the repository or just run `pyenv local 3.X` where X is the version of python you have installed.
+> ```bash
+> pyenv virtualenv 3.12.2 openui
+> pyenv local openui
+> ```
+
 ```bash
 git clone https://github.com/wandb/openui
 cd openui/backend
@@ -44,7 +50,7 @@ export GROQ_BASE_URL=https://api.groq.com/openai/v1
 
 ### Docker Compose
 
-> DISCLAIMER: This is likely going to be very slow.  If you have a GPU you may need to change the tag of the `ollama` container to one that supports it.  If you're running on a Mac, follow the instructions above and run Ollama natively to take advantage of the M1/M2.
+> **DISCLAIMER:** This is likely going to be very slow.  If you have a GPU you may need to change the tag of the `ollama` container to one that supports it.  If you're running on a Mac, follow the instructions above and run Ollama natively to take advantage of the M1/M2.
 
 From the root directory you can run:
 
