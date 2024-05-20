@@ -67,6 +67,26 @@ interface ViewerProps {
 	isShared: boolean
 }
 
+function wrappedCode(code: string, framework: Framework) {
+	if (framework === 'html') {
+		return `<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body>
+    ${code}
+  </body>
+</html>`
+	}
+	return code
+}
+
+function stripCodeblocks(code: string) {
+	return code.replaceAll(/```(.*)\n?/g, '')
+}
+
 export default function CodeViewer({ id, code, isShared }: ViewerProps) {
 	const item = useAtomValue(historyAtomFamily({ id }))
 	const [framework, setFramework] = useAtom(selectedFrameworkAtom)
@@ -86,7 +106,9 @@ export default function CodeViewer({ id, code, isShared }: ViewerProps) {
 		} else if (framework === 'html') {
 			setCurrentCode(code)
 		} else {
-			setCurrentCode(item.components?.[framework] ?? 'Loading...')
+			setCurrentCode(
+				stripCodeblocks(item.components?.[framework] ?? 'Loading...')
+			)
 		}
 	}, [framework, code, item.components])
 
@@ -181,10 +203,16 @@ export default function CodeViewer({ id, code, isShared }: ViewerProps) {
 							aria-label='Download'
 							// eslint-disable-next-line react/jsx-handler-names
 							onClick={() => {
-								const ext = framework === 'html' ? '.html' : '.js'
+								let ext = framework === 'html' ? '.html' : '.js'
+								let mime =
+									framework === 'html' ? 'text/html' : 'application/javascript'
+								if (framework === 'streamlit') {
+									ext = '.py'
+									mime = 'text/python'
+								}
 								downloadStringAsFile(
-									code,
-									framework === 'html' ? 'text/html' : 'application/javascript',
+									wrappedCode(currentCode, framework),
+									mime,
 									`${item.name}${ext}`
 								)
 							}}
@@ -195,7 +223,9 @@ export default function CodeViewer({ id, code, isShared }: ViewerProps) {
 						<button
 							type='button'
 							// eslint-disable-next-line react/jsx-handler-names
-							onClick={() => copyTextToClipboard(currentCode)}
+							onClick={() =>
+								copyTextToClipboard(wrappedCode(currentCode, framework))
+							}
 							className='flex items-center border-l px-3 text-sm text-secondary-foreground hover:bg-background'
 						>
 							<svg

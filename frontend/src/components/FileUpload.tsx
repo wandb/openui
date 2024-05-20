@@ -1,5 +1,5 @@
 import { cn } from 'lib/utils'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function FileUpload({
 	onDropFile,
@@ -12,29 +12,29 @@ export default function FileUpload({
 
 	useEffect(() => {
 		const handlePaste = (e: ClipboardEvent) => {
-			const items = e.clipboardData?.items;
-			let file: File | null | undefined;
+			const items = e.clipboardData?.items
+			let file: File | null | undefined
 			if (items) {
 				for (const item of items) {
 					if (item.type.startsWith('image/')) {
-						file = item.getAsFile();
-						break;
+						file = item.getAsFile()
+						break
 					}
 				}
 				if (file) {
-					console.log('Pasted file type', file.type);
-					onDropFile(file);
+					console.log('Pasted file type', file.type)
+					onDropFile(file)
 				} else {
-					alert('Only images can be pasted');
+					alert('Only images can be pasted')
 				}
 			}
-		};
+		}
 
-		window.addEventListener('paste', handlePaste);
+		window.addEventListener('paste', handlePaste)
 		return () => {
-			window.removeEventListener('paste', handlePaste);
-		};
-	}, [onDropFile]);
+			window.removeEventListener('paste', handlePaste)
+		}
+	}, [onDropFile])
 
 	return (
 		<div
@@ -86,7 +86,7 @@ export default function FileUpload({
 				htmlFor='file-input'
 				className='relative mx-auto h-64 w-64 cursor-pointer rounded-lg bg-white p-4 text-center text-zinc-600 shadow-lg dark:bg-zinc-800'
 			>
-				<div className='center mb-5'>
+				<div className='center'>
 					<img
 						src='/android-chrome-192x192.png'
 						className='inline-block w-24'
