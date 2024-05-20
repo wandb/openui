@@ -1,0 +1,27 @@
+# Image of workspace. Learn more: https://www.gitpod.io/docs/configure/workspaces/workspace-image
+image: gitpod/workspace-full:latest
+
+# List the start up tasks. Learn more: https://www.gitpod.io/docs/configure/workspaces/tasks
+tasks:
+  - name: Run Open UI
+    init: |
+      mkdir $GITPOD_REPO_ROOT/../venv
+      cd $GITPOD_REPO_ROOT/../venv
+      python -m venv openui
+      source openui/bin/activate
+      cd $GITPOD_REPO_ROOT/backend
+      pip install .
+      gp sync-done init-done
+    command: |
+      source $GITPOD_REPO_ROOT/../venv/openui/bin/activate
+      cd $GITPOD_REPO_ROOT/backend
+      python -m openui
+
+# List the ports to expose. Learn more: https://www.gitpod.io/docs/configure/workspaces/ports
+ports:
+  - name: Open UI
+    description: Port 7878 for Open UI
+    port: 7878
+    onOpen: notify
+
+# Learn more from ready-to-use templates: https://www.gitpod.io/docs/introduction/getting-started/quickstart
