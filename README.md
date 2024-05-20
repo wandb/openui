@@ -40,7 +40,9 @@ python -m openui
 
 ## Groq
 
-To use the super fast [Groq](https://groq.com) models, set `GROQ_API_KEY` to your Groq api key which you can [find here](https://console.groq.com/keys).
+To use the super fast [Groq](https://groq.com) models, set `GROQ_API_KEY` to your Groq api key which you can [find here](https://console.groq.com/keys).  To use one of the Groq models, click the settings icon in the sidebar and choose from the list:
+
+<img src="./assets/settings.jpeg" width="500" alt="Select Groq models" />
 
 You can also change the default base url used for Groq (if necessary), i.e.
 
