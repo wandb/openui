@@ -8,6 +8,7 @@ export const editedHTMLAtom = atom('')
 export const screenshotAtom = atom('')
 export const commentsAtom = atom<string[]>([])
 export const darkModeAtom = atom(false)
+export const beastModeAtom = atom(false)
 const framework = undefined
 export const convertFrameworkAtom = atom<Framework | undefined>(framework)
 export const selectedFrameworkAtom = atom<Framework>('html')
