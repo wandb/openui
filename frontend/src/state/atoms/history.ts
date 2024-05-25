@@ -2,6 +2,7 @@ import { atom, useAtom } from 'jotai'
 import { atomFamily } from 'jotai/utils'
 
 export type Framework =
+	| 'angular'
 	| 'html'
 	| 'jsx'
 	| 'preact'
@@ -17,6 +18,7 @@ export const FRAMEWORKS: Framework[] = [
 	'svelte',
 	'vue',
 	'web component',
+	'angular',
 	'streamlit'
 ]
 
