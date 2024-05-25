@@ -21,10 +21,16 @@ import {
 	SelectValue
 } from 'components/ui/select'
 import { Slider } from 'components/ui/slider'
+import { Switch } from 'components/ui/switch'
 import { useAtom } from 'jotai'
 import type { ChangeEvent } from 'react'
 import { useEffect } from 'react'
-import { modelAtom, systemPromptAtom, temperatureAtom } from 'state'
+import {
+	beastModeAtom,
+	modelAtom,
+	systemPromptAtom,
+	temperatureAtom
+} from 'state'
 import { Textarea } from './ui/textarea'
 
 export default function Settings({ trigger }: { trigger: JSX.Element }) {
@@ -32,6 +38,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 		queryKey: ['models'],
 		queryFn: getModels
 	})
+	const [beastMode, setBeastMode] = useAtom(beastModeAtom)
 	const [model, setModel] = useAtom(modelAtom)
 	const [systemPrompt, setSystemPrompt] = useAtom(systemPromptAtom)
 	const [temperature, setTemperature] = useAtom(temperatureAtom)
@@ -55,12 +62,12 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 				<DialogHeader>
 					<DialogTitle>Settings</DialogTitle>
 					<DialogDescription>
-						Make changes to your settings or logout
+						Choose a different model, adjust settings, or logout
 					</DialogDescription>
 				</DialogHeader>
 				<div className='grid gap-4 py-4'>
-					<div className='grid grid-cols-4 items-center gap-4'>
-						<Label className='text-right' htmlFor='model'>
+					<div className='grid grid-cols-8 items-center gap-4'>
+						<Label className='col-span-2 text-right' htmlFor='model'>
 							Model
 						</Label>
 						<Select
@@ -116,12 +123,12 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							) : undefined}
 						</Select>
 					</div>
-					<div className='grid grid-cols-4 items-center gap-4'>
-						<Label className='text-right' htmlFor='prompt'>
+					<div className='grid grid-cols-8 items-center gap-4'>
+						<Label className='col-span-2 text-right' htmlFor='prompt'>
 							System Prompt
 						</Label>
 						<Textarea
-							className='col-span-3'
+							className='col-span-6 whitespace-nowrap'
 							id='prompt'
 							onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
 								setSystemPrompt(event.target.value)
@@ -129,8 +136,8 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							value={systemPrompt}
 						/>
 					</div>
-					<div className='grid grid-cols-4 items-center gap-4'>
-						<Label className='text-right' htmlFor='temperature'>
+					<div className='grid grid-cols-8 items-center gap-4'>
+						<Label className='col-span-2 text-right' htmlFor='temperature'>
 							Temperature
 						</Label>
 						<Slider
@@ -139,9 +146,26 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							step={0.05}
 							onValueChange={val => setTemperature(val[0])}
 							value={[temperature]}
-							className='col-span-3'
+							className='col-span-2'
 							id='temperature'
 						/>
+						<div className='col-span-1'>{temperature.toFixed(2)}</div>
+					</div>
+					<div className='grid grid-cols-8 items-center gap-4'>
+						<Label className='col-span-2 text-right' htmlFor='beast'>
+							Agent Mode
+						</Label>
+						<Switch
+							className='-zoom-1 col-span-1'
+							name='beast'
+							disabled
+							checked={beastMode}
+							onCheckedChange={checked => setBeastMode(checked)}
+						/>
+						<div className='-ml-15 col-span-5 text-xs italic'>
+							Coming soon! Agent mode will make multiple calls to an LLM with
+							vision capabilities to iterate on a design.
+						</div>
 					</div>
 					<div className='mt-3 grid grid-cols-4 items-center gap-4'>
 						<div className='col-start-4 flex justify-end'>

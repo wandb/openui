@@ -5,8 +5,14 @@ function host() {
 	const port = window.location.port ? `:${window.location.port}` : ''
 	return `${protocol}//${hostname}${port}`
 }
-
-const openai = new OpenAI({
+/* I patched OpenAI here so that users can use basic auth behind a proxy if they want */
+class MyOpenAI extends OpenAI {
+	// eslint-disable-next-line class-methods-use-this, @typescript-eslint/class-methods-use-this, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+	protected override authHeaders(_opts: any) {
+		return {}
+	}
+}
+const openai = new MyOpenAI({
 	apiKey: 'sk-fake',
 	baseURL: `${host()}/v1`,
 	dangerouslyAllowBrowser: true

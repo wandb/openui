@@ -48,7 +48,11 @@ export default function LayoutWithSidebar() {
 
 	return (
 		<div className='mobile-safe-container flex overflow-hidden bg-secondary'>
-			<Head title={curItem.name ?? 'Create a new Element'} />
+			<Head
+				title={
+					curItem.name ? `${curItem.emoji} ${curItem.name}` : 'Create a new UI'
+				}
+			/>
 			<Register />
 			<div
 				className={cn(

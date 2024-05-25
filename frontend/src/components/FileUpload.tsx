@@ -86,7 +86,7 @@ export default function FileUpload({
 				htmlFor='file-input'
 				className='relative mx-auto h-64 w-64 cursor-pointer rounded-lg bg-white p-4 text-center text-zinc-600 shadow-lg dark:bg-zinc-800'
 			>
-				<div className='center'>
+				<div className='center -mt-3'>
 					<img
 						src='/android-chrome-192x192.png'
 						className='inline-block w-24'
