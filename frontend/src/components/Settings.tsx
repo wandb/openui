@@ -158,12 +158,13 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 						<Switch
 							className='-zoom-1 col-span-1'
 							name='beast'
+							disabled
 							checked={beastMode}
 							onCheckedChange={checked => setBeastMode(checked)}
 						/>
 						<div className='-ml-15 col-span-5 text-xs italic'>
-							Agent mode makes multiple calls to an LLM with vision
-							capabilities. This will incur more usage / cost.
+							Coming soon! Agent mode will make multiple calls to an LLM with
+							vision capabilities to iterate on a design.
 						</div>
 					</div>
 					<div className='mt-3 grid grid-cols-4 items-center gap-4'>
