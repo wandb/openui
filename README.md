@@ -31,7 +31,7 @@ You can also use models available to [Ollama](https://ollama.com).  [Install Oll
 
 ### Docker (preferred)
 
-The following command would forward the API keys from the specified shell environment and tell Docker to use the Ollama instance running on your machine.
+The following command would forward the specified API keys from the shell environment and tell Docker to use the Ollama instance running on your machine.
 
 ```bash
 export ANTHROPIC_API_KEY=xxx
