@@ -123,10 +123,24 @@ jobs:
     needs: build-and-push-image
     timeout-minutes: 10
     runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged --shm-size=2g
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock:ro
     container:
       image: mcr.microsoft.com/playwright:v1.44.1-jammy
     steps:
       - uses: actions/checkout@v4
+      - name: Install Docker
+        run: |
+          apt-get update
+          apt-get install -y docker.io
+      - name: Test Docker
+        run: |
+          docker version
+          docker info
       - uses: pnpm/action-setup@v4
         name: Install pnpm
         with:
