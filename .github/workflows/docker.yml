@@ -29,6 +29,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
+          cache-dependency-path: frontend/pnpm-lock.yaml
           node-version: 20
           cache: "pnpm"
       - name: Get pnpm store directory
