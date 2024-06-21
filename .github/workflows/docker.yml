@@ -1,4 +1,4 @@
-name: Create and publish a Docker image
+name: Build, test and release OpenUI
 
 on:
   push:
@@ -120,11 +120,6 @@ jobs:
           push-to-registry: true
 
   test:
-    permissions:
-      contents: read
-      packages: write
-      attestations: write
-      id-token: write
     needs: build-and-push-image
     timeout-minutes: 10
     runs-on: ubuntu-latest
@@ -172,12 +167,25 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    steps:
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get short SHA
+        id: get_short_sha
+        run: echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
       - name: Tag latest image
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/openui-v2'
         env:
