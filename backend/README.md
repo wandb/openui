@@ -57,3 +57,10 @@ pytest
 ## Evaluation
 
 The [eval](./openui/eval) folder contains scripts for evaluating the performance of a model.  It automates generating UI, taking screenshots of the UI, then asking `gpt-4-vision-preview` to rate the elements.  More details about the eval pipeline coming soon...
+
+
+## Google Gemeni
+
+```
+gcloud auth application-default login --impersonate-service-account openui-vertex-api@playground-111.iam.gserviceaccount.com
+```

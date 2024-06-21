@@ -1,9 +1,37 @@
 <!doctype html>
-<html
-	lang="en"
-	class="text-zinc-900 antialiased dark:bg-zinc-800 dark:text-white"
->
+<html lang="en" class="antialiased">
 	<head>
+		<script>self["MonacoEnvironment"] = (function (paths) {
+          return {
+            globalAPI: false,
+            getWorkerUrl : function (moduleId, label) {
+              var result =  paths[label];
+              if (/^((http:)|(https:)|(file:)|(\/\/))/.test(result)) {
+                var currentUrl = String(window.location);
+                var currentOrigin = currentUrl.substr(0, currentUrl.length - window.location.hash.length - window.location.search.length - window.location.pathname.length);
+                if (result.substring(0, currentOrigin.length) !== currentOrigin) {
+                  var js = '/*' + label + '*/importScripts("' + result + '");';
+                  var blob = new Blob([js], { type: 'application/javascript' });
+                  return URL.createObjectURL(blob);
+                }
+              }
+              return result;
+            }
+          };
+        })({
+  "editorWorkerService": "/monacoeditorwork/editor.worker.bundle.js",
+  "css": "/monacoeditorwork/css.worker.bundle.js",
+  "html": "/monacoeditorwork/html.worker.bundle.js",
+  "json": "/monacoeditorwork/json.worker.bundle.js",
+  "typescript": "/monacoeditorwork/ts.worker.bundle.js",
+  "tailwindcss": "/monacoeditorwork/tailwindcss.worker.bundle.js",
+  "javascript": "/monacoeditorwork/ts.worker.bundle.js",
+  "less": "/monacoeditorwork/css.worker.bundle.js",
+  "scss": "/monacoeditorwork/css.worker.bundle.js",
+  "handlebars": "/monacoeditorwork/html.worker.bundle.js",
+  "razor": "/monacoeditorwork/html.worker.bundle.js"
+});</script>
+
 		<script>
 			// Only add google analytics when built for hosting
 			if ('production' === 'hosted') {
@@ -29,12 +57,11 @@
 			name="apple-mobile-web-app-status-bar-style"
 			content="black-translucent"
 		/>
-		<meta name="theme-color" content="rgb(217,87,155)" />
+		<meta name="theme-color" content="#15abbc" />
 		<title>OpenUI by W&B</title>
-		<script type="module" crossorigin src="/assets/index-CWDYXTcF.js"></script>
-		<link rel="modulepreload" crossorigin href="/assets/vendor-QOAI5TVB.js">
-		<link rel="stylesheet" crossorigin href="/assets/index-CzKV2B2n.css">
-	</head>
+		<script type="module" crossorigin src="/assets/index-DEaLw_e6.js"></script>
+		<link rel="stylesheet" crossorigin href="/assets/index-AyJwV1cd.css">
+	<link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
 	<body>
 		<noscript>You need to enable JavaScript to run this app.</noscript>
 		<div id="root"></div>

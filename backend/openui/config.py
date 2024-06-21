@@ -49,7 +49,17 @@ AWS_ENDPOINT_URL_S3 = os.getenv("AWS_ENDPOINT_URL_S3")
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 BUCKET_NAME = os.getenv("BUCKET_NAME", "openui")
+
+# Cors, if you're hosting the annotator iframe elsewhere, add it here
+CORS_ORIGINS = os.getenv(
+    "OPENUI_CORS_ORIGINS", "https://wandb.github.io,https://localhost:5173"
+).split(",")
+
+# Model providers
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "xxx")
 GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+LITELLM_API_KEY = os.getenv("LITELLM_API_KEY", "xxx")
+LITELLM_BASE_URL = os.getenv("LITELLM_BASE_URL", "http://0.0.0.0:4000")

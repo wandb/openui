@@ -16,6 +16,8 @@ import json
 from datetime import datetime
 from openui.util import gen_screenshots
 
+from promptsearch import PromptSearch, PromptModel
+
 
 last: datetime | None = None
 
@@ -57,8 +59,8 @@ emoji: 🎉
 """
 
 
-class OpenUIModel(Model):
-    system_prompt: str
+class OpenUIModel(PromptModel):
+    prompt_template: str
     model_name: Optional[str] = "gpt-3.5-turbo"
     take_screenshot: Optional[bool] = True
     temp: Optional[float] = 0.3
@@ -107,7 +109,7 @@ class OpenUIModel(Model):
             messages=[
                 {
                     "role": "system",
-                    "content": self.system_prompt,
+                    "content": self.prompt_template,
                 },
                 {
                     "role": "user",
@@ -321,7 +323,7 @@ async def run(row=0, bad=False):
 async def eval(mod="gpt-3.5-turbo"):
     pt("Initializing weave")
     weave.init("openui-dev")
-    model = OpenUIModel(system_prompt=SYSTEM_PROMPT, model_name=mod)
+    model = OpenUIModel(prompt_template=SYSTEM_PROMPT, model_name=mod)
     pt("Loading dataset")
     dataset = weave.ref("eval").get()
     evaluation = Evaluation(
@@ -331,10 +333,30 @@ async def eval(mod="gpt-3.5-turbo"):
     pt("Running evaluation")
     await evaluation.evaluate(model)
 
+def run_prompt_search(mod: str):
+    weave.init("openui-dev")
+    model = OpenUIModel(prompt_template=SYSTEM_PROMPT, model_name=mod)
+    pt("Loading dataset")
+    dataset = weave.ref("eval").get()
+    evaluation = Evaluation(
+        dataset=dataset,
+        scorers=[scores],
+    )
+    pt("Run prompt search")
+    ps = PromptSearch(
+        model=model,
+        dataset=dataset,
+        evaluation=evaluation,
+        eval_result_to_score=lambda evals: evals["scores"]["polish"]["mean"] + evals["scores"]["relevance"]["mean"])
+    ps.steps(10)
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         mod = sys.argv[1]
     else:
         mod = "gpt-3.5-turbo"
-    asyncio.run(eval(mod))
+    if os.getenv("HOGWILD"):
+        run_prompt_search(mod)
+    else:
+        asyncio.run(eval(mod))

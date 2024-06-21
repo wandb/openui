@@ -68,6 +68,14 @@ class Component(BaseModel):
     data = JSONField()
 
 
+class Vote(BaseModel):
+    id = BinaryUUIDField(primary_key=True)
+    user = ForeignKeyField(User, backref="votes")
+    component = ForeignKeyField(Component, backref="votes")
+    vote = BooleanField()
+    created_at = DateTimeField()
+
+
 class Usage(BaseModel):
     input_tokens = IntegerField()
     output_tokens = IntegerField()
@@ -105,7 +113,7 @@ class Usage(BaseModel):
         )
 
 
-CURRENT_VERSION = "2024-03-12"
+CURRENT_VERSION = "2024-05-14"
 
 
 def alter(schema: SchemaMigration, ops: list[list], version: str) -> bool:
@@ -135,12 +143,19 @@ def perform_migration(schema: SchemaMigration) -> bool:
         )
         if altered:
             perform_migration(schema)
+    if schema.version == "2024-03-12":
+        version = "2024-05-14"
+        database.create_tables([Vote])
+        schema.version = version
+        schema.save()
+        if version != CURRENT_VERSION:
+            perform_migration(schema)
 
 
 def ensure_migrated():
     if not config.DB.exists():
         database.create_tables(
-            [User, Credential, Session, Component, SchemaMigration, Usage]
+            [User, Credential, Session, Component, SchemaMigration, Usage, Vote]
         )
         SchemaMigration.create(version=CURRENT_VERSION)
     else:

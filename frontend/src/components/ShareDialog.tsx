@@ -1,4 +1,4 @@
-import { Share1Icon } from '@radix-ui/react-icons'
+import { Share2Icon } from '@radix-ui/react-icons'
 import copyTextToClipboard from '@uiw/copy-to-clipboard'
 import {
 	Dialog,
@@ -8,23 +8,32 @@ import {
 	DialogTitle,
 	DialogTrigger
 } from 'components/ui/dialog'
-import { useAtomValue } from 'jotai'
-import { useEffect, useState } from 'react'
+import { Tooltip, TooltipContent, TooltipTrigger } from 'components/ui/tooltip'
+import { useVersion } from 'hooks'
+import { useAtom } from 'jotai'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { historyAtomFamily } from 'state'
+import { ItemWrapper, historyAtomFamily } from 'state'
 import { share } from '../api/openui'
+import { Button } from './ui/button'
 
 // eslint-disable-next-line import/prefer-default-export
 export default function ShareDialog() {
 	const params = useParams()
 	const id = params.id ?? 'new'
-	const item = useAtomValue(historyAtomFamily({ id }))
+	const [rawItem, setRawItem] = useAtom(historyAtomFamily({ id }))
+	const item = useMemo(
+		() => new ItemWrapper(rawItem, setRawItem),
+		[rawItem, setRawItem]
+	)
 	const [open, setOpen] = useState<boolean>(false)
 	const [error, setError] = useState<string | undefined>()
+	const [versionIdx] = useVersion(item)
 
 	useEffect(() => {
 		if (open) {
-			share(id, item)
+			// TODO: support the other frameworks, maybe versions?
+			share(id, item, versionIdx)
 				.then(() => {
 					copyTextToClipboard(
 						document.location.href.replace('/ai', '/ai/shared')
@@ -35,19 +44,21 @@ export default function ShareDialog() {
 					setError((error_ as Error).toString())
 				})
 		}
-	}, [id, item, open])
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [id, open])
 
 	return (
 		<Dialog onOpenChange={open_ => setOpen(open_)}>
-			<DialogTrigger asChild>
-				<button
-					type='button'
-					aria-label='Share'
-					className='flex items-center border-l px-3 text-sm text-secondary-foreground hover:bg-background'
-				>
-					<Share1Icon />
-				</button>
-			</DialogTrigger>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<DialogTrigger asChild>
+						<Button variant='ghost' className='-mr-4 hover:bg-transparent'>
+							<Share2Icon />
+						</Button>
+					</DialogTrigger>
+				</TooltipTrigger>
+				<TooltipContent side='bottom'>Share this version</TooltipContent>
+			</Tooltip>
 			<DialogContent className='sm:max-w-[425px]'>
 				<DialogHeader>
 					<DialogTitle>Share</DialogTitle>

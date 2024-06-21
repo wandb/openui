@@ -10,6 +10,11 @@ import {
 	DialogTitle,
 	DialogTrigger
 } from 'components/ui/dialog'
+import {
+	HoverCard,
+	HoverCardContent,
+	HoverCardTrigger
+} from 'components/ui/hover-card'
 import { Label } from 'components/ui/label'
 import {
 	Select,
@@ -23,25 +28,60 @@ import {
 import { Slider } from 'components/ui/slider'
 import { Switch } from 'components/ui/switch'
 import { useAtom } from 'jotai'
+import { knownImageModels } from 'lib/constants'
+import { cn } from 'lib/utils'
+import { ImageIcon } from 'lucide-react'
 import type { ChangeEvent } from 'react'
 import { useEffect } from 'react'
 import {
-	beastModeAtom,
+	darkModeAtom,
 	modelAtom,
+	modelSupportsImagesAtom,
+	modelSupportsImagesOverridesAtom,
 	systemPromptAtom,
 	temperatureAtom
 } from 'state'
 import { Textarea } from './ui/textarea'
+
+function slugToNiceName(slug?: string, float = true) {
+	if (slug) {
+		let icon: React.ReactNode | undefined
+		if (knownImageModels.some(regex => regex.test(slug))) {
+			icon = (
+				<ImageIcon
+					className={cn('mx-1 mt-1 h-3 w-3', float && 'float-left ml-0')}
+				/>
+			)
+		}
+		return (
+			<>
+				{icon}
+				{slug
+					.replace(':latest', '')
+					.replace('gpt', 'GPT')
+					.replaceAll(/[:-]/g, ' ')
+					.replaceAll(/\b\w/g, char => char.toUpperCase())}
+			</>
+		)
+	}
+	// eslint-disable-next-line unicorn/no-useless-undefined
+	return undefined
+}
 
 export default function Settings({ trigger }: { trigger: JSX.Element }) {
 	const { isPending, isError, error, data } = useQuery({
 		queryKey: ['models'],
 		queryFn: getModels
 	})
-	const [beastMode, setBeastMode] = useAtom(beastModeAtom)
 	const [model, setModel] = useAtom(modelAtom)
 	const [systemPrompt, setSystemPrompt] = useAtom(systemPromptAtom)
 	const [temperature, setTemperature] = useAtom(temperatureAtom)
+	const [darkMode, setDarkMode] = useAtom(darkModeAtom)
+	const [modelSupportsImages, setModelSupportsImages] = useAtom(
+		modelSupportsImagesAtom
+	)
+	const [modelSupportsImagesOverrides, setModelSupportsImagesOverrides] =
+		useAtom(modelSupportsImagesOverridesAtom)
 
 	useEffect(() => {
 		if (error) {
@@ -49,15 +89,58 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 		}
 	}, [error])
 
+	// Default to another model if no OpenAI models are available
 	useEffect(() => {
-		if (data && data.groq.length > 0 && data.openai.length === 0) {
-			setModel(`groq/${data.groq[2].id}`)
+		if (data && data.openai.length === 0 && model.startsWith('gpt')) {
+			if (data.groq.length > 0) {
+				// Defaulting to the 3rd model which is currently llama3-70b
+				setModel(`groq/${data.groq[2].id}`)
+			} else if (data.ollama.length > 0) {
+				setModel(`ollama/${data.ollama[0].name}`)
+			} else if (data.litellm.length > 0) {
+				setModel(`litellm/${data.litellm[0].id}`)
+			}
 		}
-	}, [data, setModel])
+		const override = modelSupportsImagesOverrides[model]
+		if (override === undefined) {
+			setModelSupportsImages(
+				knownImageModels.some(regex => {
+					let cleanName = model
+					if (cleanName.includes('/')) {
+						cleanName = model.split('/').slice(1).join('/')
+					}
+					return regex.test(cleanName)
+				})
+			)
+		} else {
+			setModelSupportsImages(override)
+		}
+	}, [
+		data,
+		setModel,
+		model,
+		setModelSupportsImages,
+		modelSupportsImagesOverrides
+	])
 
 	return (
 		<Dialog>
-			<DialogTrigger asChild>{trigger}</DialogTrigger>
+			<HoverCard>
+				<DialogTrigger asChild>
+					<HoverCardTrigger>{trigger}</HoverCardTrigger>
+				</DialogTrigger>
+
+				<HoverCardContent className='border text-sm'>
+					<h2 className='font-bold'>Settings</h2>
+					<p className='flex'>
+						<span className='font-semibold'>Model:</span>{' '}
+						{slugToNiceName(model, false)}
+					</p>
+					<p>
+						<span className='font-semibold'>Temperature:</span> {temperature}
+					</p>
+				</HoverCardContent>
+			</HoverCard>
 			<DialogContent className='max-w-3xl'>
 				<DialogHeader>
 					<DialogTitle>Settings</DialogTitle>
@@ -72,6 +155,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 						</Label>
 						<Select
 							value={model}
+							name='model'
 							onValueChange={val => {
 								setModel(val)
 							}}
@@ -90,13 +174,17 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 									{data.openai.length > 0 && (
 										<SelectGroup>
 											<SelectLabel>OpenAI</SelectLabel>
-											<SelectItem value='gpt-3.5-turbo'>
-												GPT-3.5 Turbo
-											</SelectItem>
-											<SelectItem value='gpt-4o'>GPT-4o</SelectItem>
-											{import.meta.env.MODE !== 'hosted' && (
-												<SelectItem value='gpt-4-turbo'>GPT-4 Turbo</SelectItem>
-											)}
+											{data.openai
+												.filter(
+													m =>
+														m !== 'gpt-4-turbo' ||
+														import.meta.env.MODE !== 'hosted'
+												)
+												.map(m => (
+													<SelectItem key={m} value={m}>
+														{slugToNiceName(m)}
+													</SelectItem>
+												))}
 										</SelectGroup>
 									)}
 									{data.groq.length > 0 && (
@@ -104,7 +192,17 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 											<SelectLabel>Groq</SelectLabel>
 											{data.groq.map(m => (
 												<SelectItem key={m.id} value={`groq/${m.id}`}>
-													{m.id}
+													{slugToNiceName(m.id)}
+												</SelectItem>
+											))}
+										</SelectGroup>
+									)}
+									{data.litellm.length > 0 && (
+										<SelectGroup>
+											<SelectLabel>LiteLLM</SelectLabel>
+											{data.litellm.map(m => (
+												<SelectItem key={m.id} value={`litellm/${m.id}`}>
+													{slugToNiceName(m.id)}
 												</SelectItem>
 											))}
 										</SelectGroup>
@@ -114,7 +212,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 											<SelectLabel>Ollama</SelectLabel>
 											{data.ollama.map(m => (
 												<SelectItem key={m.digest} value={`ollama/${m.name}`}>
-													{m.name}
+													{slugToNiceName(m.name)}
 												</SelectItem>
 											))}
 										</SelectGroup>
@@ -124,11 +222,40 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 						</Select>
 					</div>
 					<div className='grid grid-cols-8 items-center gap-4'>
+						<Label className='col-span-2 text-right' htmlFor='vision'>
+							Supports Vision
+						</Label>
+						<Switch
+							className='-zoom-1 col-span-1'
+							name='vision'
+							checked={modelSupportsImages}
+							onClick={() => {
+								setModelSupportsImagesOverrides({
+									...modelSupportsImagesOverrides,
+									[model]: !modelSupportsImages
+								})
+							}}
+							onCheckedChange={checked => setModelSupportsImages(checked)}
+						/>
+						<div className='-ml-15 col-span-5 text-xs'>
+							We attempt to detect if the model has vision capabilities. You can
+							override this if you&apos;re sure it does.
+							{model === 'gpt-3.5-turbo' && (
+								<span className='italic'>
+									{' '}
+									We&apos;ll automatically use gpt-4o for any requests with
+									images.
+								</span>
+							)}
+						</div>
+					</div>
+					<div className='grid grid-cols-8 items-center gap-4'>
 						<Label className='col-span-2 text-right' htmlFor='prompt'>
 							System Prompt
 						</Label>
 						<Textarea
 							className='col-span-6 whitespace-nowrap'
+							rows={5}
 							id='prompt'
 							onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
 								setSystemPrompt(event.target.value)
@@ -152,6 +279,27 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 						<div className='col-span-1'>{temperature.toFixed(2)}</div>
 					</div>
 					<div className='grid grid-cols-8 items-center gap-4'>
+						<Label className='col-span-2 text-right' htmlFor='dark-mode'>
+							UI Mode
+						</Label>
+						<Select
+							value={darkMode}
+							name='dark-mode'
+							onValueChange={val => {
+								setDarkMode(val)
+							}}
+						>
+							<SelectTrigger className='min-w-[200px]'>
+								<SelectValue placeholder='Change mode' />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value='system'>System</SelectItem>
+								<SelectItem value='dark'>Dark</SelectItem>
+								<SelectItem value='light'>Light</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+					{/* <div className='grid grid-cols-8 items-center gap-4'>
 						<Label className='col-span-2 text-right' htmlFor='beast'>
 							Agent Mode
 						</Label>
@@ -166,7 +314,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							Coming soon! Agent mode will make multiple calls to an LLM with
 							vision capabilities to iterate on a design.
 						</div>
-					</div>
+						</div> */}
 					<div className='mt-3 grid grid-cols-4 items-center gap-4'>
 						<div className='col-start-4 flex justify-end'>
 							<Button

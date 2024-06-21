@@ -4,6 +4,12 @@ interface ScaffoldProps {
 	isLoading: boolean
 }
 
+function parseError(error: string) {
+	const lines = error.split('\n')
+	const [message, details] = [lines[0], lines.slice(1)]
+	return [message, details.join('\n')]
+}
+
 export default function Scaffold({
 	mode = 'html',
 	error,
@@ -11,35 +17,39 @@ export default function Scaffold({
 }: ScaffoldProps) {
 	const animate = isLoading ? 'animate-pulse' : ''
 	if (error) {
+		const [message, detail] = parseError(error)
 		return (
-			<div className='mx-auto mt-10 max-w-[80%]'>
+			<div className='mx-auto mt-10 w-full max-w-[80%]'>
 				<div className='bg-secondary text-black dark:text-white'>
 					<div
 						role='alert'
 						className='relative mb-2 rounded border-l-4 border-red-500 p-4'
 					>
 						<strong className='font-bold'>Error! </strong>
-						<span className='block sm:inline'>{error}</span>
+						<span className='block sm:inline'>{message}</span>
+						{detail !== '' && (
+							<p className='mt-4 text-sm text-muted-foreground'>{detail}</p>
+						)}
 					</div>
 				</div>
 			</div>
 		)
 	}
 	return (
-		<div className='mx-auto max-w-lg'>
+		<div className='ml-[15%] w-full max-w-[80%]'>
 			{' '}
 			<div role='status' className={`my-7 ${animate}`}>
 				{' '}
-				<div className='mb-4 h-2.5 w-48 rounded-full bg-zinc-300 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[460px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[500px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[450px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[380px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='h-2 max-w-[460px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-4 h-2.5 w-[82%] rounded-full bg-zinc-300 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[75%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[80%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[75%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[70%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='h-2 max-w-[80%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
 				<span className='sr-only'>Loading...</span>{' '}
 			</div>
 			{mode === 'html' && (
-				<div role='status' className={`mb-7 max-w-lg ${animate}`}>
+				<div role='status' className={`mb-7 max-w-[80%] ${animate}`}>
 					{' '}
 					<div className='flex h-48 w-full items-center justify-center rounded bg-zinc-300 dark:bg-zinc-700'>
 						{' '}
@@ -58,48 +68,43 @@ export default function Scaffold({
 			)}
 			<div role='status' className={`my-6 ${animate}`}>
 				{' '}
-				<div className='mb-2.5 h-2 max-w-[460px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[450px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[460px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[500px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[450px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[380px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='h-2 max-w-[460px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[80%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[78%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[80%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[82%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[78%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[75%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='h-2 max-w-[75%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
 				<span className='sr-only'>Loading...</span>{' '}
 			</div>
 			<div role='status' className={`my-6 ${animate}`}>
 				{' '}
-				<div className='mb-2.5 h-2 max-w-[460px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[450px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[460px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[500px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[78%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[78%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[80%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[82%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
 				<span className='sr-only'>Loading...</span>{' '}
 			</div>
 			<div role='status' className={`mb-6 mt-7 ${animate}`}>
 				{' '}
-				<div className='mb-4 h-2.5 w-48 rounded-full bg-zinc-300 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[460px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[450px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[460px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[500px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[450px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[380px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[460px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[500px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='h-2 max-w-[460px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-4 h-2.5 w-[82%] rounded-full bg-zinc-300 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[78%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[75%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[78%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[80%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[75%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[72%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[78%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[80%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='h-2 max-w-[75%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
 				<span className='sr-only'>Loading...</span>{' '}
 			</div>
 			<div role='status' className={`my-6 ${animate}`}>
 				{' '}
-				<div className='mb-2.5 h-2 max-w-[460px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
-				<div className='mb-2.5 h-2 max-w-[450px] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[78%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
+				<div className='mb-2.5 h-2 max-w-[75%] rounded-full bg-zinc-200 dark:bg-zinc-700' />
 				<span className='sr-only'>Loading...</span>{' '}
 			</div>
 		</div>
 	)
-}
-
-Scaffold.defaultProps = {
-	error: undefined,
-	mode: 'html'
 }

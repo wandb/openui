@@ -18,7 +18,32 @@ OpenUI let's you describe UI using your imagination, then see it rendered live. 
 
 ## Running Locally
 
-You can also run OpenUI locally and use models available to [Ollama](https://ollama.com).  [Install Ollama](https://ollama.com/download) and pull a model like [CodeLlama](https://ollama.com/library/codellama), then assuming you have git and python installed:
+OpenUI supports [OpenAI](https://platform.openai.com/api-keys), [Groq](https://console.groq.com/keys), and any model [LiteLLM](https://docs.litellm.ai/docs/) supports such as [Gemini](https://aistudio.google.com/app/apikey) or [Anthropic (Claude)](https://console.anthropic.com/settings/keys).  The following environment variables are optional, but need to be set in your environment for these services to work:
+
+- **OpenAI** `OPENAI_API_KEY`
+- **Groq** `GROQ_API_KEY`
+- **Gemini** `GEMINI_API_KEY`
+- **Anthropic** `ANTHROPIC_API_KEY`
+- **Cohere** `COHERE_API_KEY`
+- **Mistral** `MISTRAL_API_KEY`
+
+You can also use models available to [Ollama](https://ollama.com).  [Install Ollama](https://ollama.com/download) and pull a model like [Llava](https://ollama.com/library/llava).  If Ollama is not running on http://127.0.0.1:11434, you can set the `OLLAMA_HOST` environment variable to the host and port of your Ollama instance.
+
+### Docker (preferred)
+
+The following command would forward the API keys from your current shell environment and tell Docker to use the Ollama instance running on your machine.
+
+```bash
+export ANTHROPIC_API_KEY=xxx
+export OPENAI_API_KEY=xxx
+docker run -n openui -p 7878:7878 -e OPENAI_API_KEY -e ANTHROPIC_API_KEY -e OLLAMA_HOST=http://host.docker.internal:11434 gchr.io/wandb/openui
+```
+
+Now you can goto [http://localhost:7878](http://localhost:7878) and generate new UI's!
+
+### From Source / Python
+
+Assuming you have git and python installed:
 
 > **Note:** There's a .python-version file that specifies **openui** as the virtual env name.  Assuming you have pyenv and pyenv-virtualenv you can run the following from the root of the repository or just run `pyenv local 3.X` where X is the version of python you have installed.
 > ```bash
@@ -38,17 +63,23 @@ export OPENAI_API_KEY=xxx
 python -m openui
 ```
 
-## Groq
+## LiteLLM
 
-To use the super fast [Groq](https://groq.com) models, set `GROQ_API_KEY` to your Groq api key which you can [find here](https://console.groq.com/keys).  To use one of the Groq models, click the settings icon in the sidebar and choose from the list:
+[LiteLLM](https://docs.litellm.ai/docs/) can be used to connect to basically any LLM service available.  We generate a config automatically based on your environment variables.  You can create your own [proxy config](https://litellm.vercel.app/docs/proxy/configs) to override this behavior.  We look for a custom config in the following locations:
 
-<img src="./assets/settings.jpeg" width="500" alt="Select Groq models" />
+1. `litellm-config.yaml` in the current directory
+2. `/app/litellm-config.yaml` when running in a docker container
+3. An arbitrary path specified by the `LITELLM_CONFIG` environment variable
 
-You can also change the default base url used for Groq (if necessary), i.e.
+For example to use a custom config in docker you can run:
 
 ```bash
-export GROQ_BASE_URL=https://api.groq.com/openai/v1
+docker run -n openui -p 7878:7878 -v $(pwd)/litellm-config.yaml:/app/litellm-config.yaml gchr.io/wandb/openui
 ```
+
+## Groq
+
+To use the super fast [Groq](https://groq.com) models, set `GROQ_API_KEY` to your Groq api key which you can [find here](https://console.groq.com/keys).  To use one of the Groq models, click the settings icon in the nav bar.
 
 ### Docker Compose
 
@@ -57,6 +88,7 @@ export GROQ_BASE_URL=https://api.groq.com/openai/v1
 From the root directory you can run:
 
 ```bash
+echo "LITELLM_MASTER_KEY=sk-$(openssl rand -hex 20)" > .env
 docker-compose up -d
 docker exec -it openui-ollama-1 ollama pull llava
 ```
@@ -64,17 +96,6 @@ docker exec -it openui-ollama-1 ollama pull llava
 If you have your OPENAI_API_KEY set in the environment already, just remove `=xxx` from the `OPENAI_API_KEY` line. You can also replace `llava` in the command above with your open source model of choice *([llava](https://ollama.com/library/llava) is one of the only Ollama models that support images currently)*.  You should now be able to access OpenUI at [http://localhost:7878](http://localhost:7878).
 
 *If you make changes to the frontend or backend, you'll need to run `docker-compose build` to have them reflected in the service.*
-
-### Docker
-
-You can build and run the docker file manually from the `/backend` directory:
-
-```bash
-docker build . -t wandb/openui --load
-docker run -p 7878:7878 -e OPENAI_API_KEY -e GROQ_API_KEY wandb/openui
-```
-
-Now you can goto [http://localhost:7878](http://localhost:7878)
 
 ## Development
 

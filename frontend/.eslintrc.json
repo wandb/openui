@@ -109,6 +109,7 @@
 		"react/sort-comp": "off",
 		"react/state-in-constructor": "off",
 		"react/static-property-placement": "off",
+		"react/require-default-props": "off",
 
 		"react/boolean-prop-naming": [
 			"error",

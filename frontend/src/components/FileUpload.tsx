@@ -25,7 +25,7 @@ export default function FileUpload({
 					console.log('Pasted file type', file.type)
 					onDropFile(file)
 				} else {
-					alert('Only images can be pasted')
+					console.error('File type not supported', items[0].type)
 				}
 			}
 		}

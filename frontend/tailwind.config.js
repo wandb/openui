@@ -10,6 +10,9 @@ module.exports = {
 	],
 	prefix: '',
 	theme: {
+		fontFamily: {
+			sans: ['"Source Sans 3"', 'sans-serif']
+		},
 		container: {
 			center: true,
 			padding: '2rem',
@@ -66,11 +69,36 @@ module.exports = {
 				'accordion-up': {
 					from: { height: 'var(--radix-accordion-content-height)' },
 					to: { height: '0' }
+				},
+				'slide-in': {
+					'0%': { transform: 'translateX(-100%)' },
+					'100%': { transform: 'translateX(0)' }
+				},
+				'slide-in-right': {
+					'0%': { transform: 'translateX(100%)' },
+					'100%': { transform: 'translateX(0)' }
+				},
+				'slide-out': {
+					'0%': { transform: 'translateX(0)' },
+					'100%': { transform: 'translateX(-100%)' }
+				},
+				'wiggle-zoom': {
+					'0%, 100%': { transform: 'rotate(-3deg) scale(1)' },
+					'50%': { transform: 'rotate(3deg) scale(1.15)' }
+				},
+				'rotate-180': {
+					'0%': { transform: 'rotate(0deg)' },
+					'100%': { transform: 'rotate(180deg)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'rotate-180': 'rotate-180 1s ease-in-out',
+				'wiggle-zoom': 'wiggle-zoom 0.5s ease-in-out infinite',
+				'slide-in': 'slide-in 0.2s ease-out forwards',
+				'slide-out': 'slide-out 0.2s ease-in forwards',
+				'slide-in-right': 'slide-in-right 0.2s ease-out forwards'
 			}
 		}
 	},
