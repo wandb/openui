@@ -34,6 +34,7 @@ from .logs import logger
 from .models import count_tokens, ShareRequest, VoteRequest
 from .ollama import ollama_stream_generator, openai_to_ollama
 from .openai import openai_stream_generator
+from .dummy import DummyStreamGenerator
 from .db.models import User, Usage, Vote, Component
 from .util import storage
 from .util import get_git_user_email
@@ -200,6 +201,10 @@ async def chat_completions(
                     return openai_stream_generator(response, input_tokens, user_id, 0)
 
             return StreamingResponse(gen(), media_type="text/event-stream")
+        elif data.get("model").startswith("dummy"):
+            return StreamingResponse(
+                DummyStreamGenerator(data), media_type="text/event-stream"
+            )
         raise HTTPException(status=404, detail="Invalid model")
     except (ResponseError, APIStatusError) as e:
         traceback.print_exc()

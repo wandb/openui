@@ -609,7 +609,7 @@ export default function Prompt({
 						</Tooltip>
 					) : undefined}
 					{rendering ? (
-						<div className='h-8 w-8 flex-none animate-spin rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-red-500' />
+						<div className='rendering h-8 w-8 flex-none animate-spin rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-red-500' />
 					) : (
 						<Button
 							className={cn(

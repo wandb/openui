@@ -338,7 +338,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 
 	const themeColor = useMemo(
 		() =>
-			themes.find(theme => theme.name === uiTheme)?.activeColor[
+			(themes.find(theme => theme.name === uiTheme) ?? themes[0]).activeColor[
 				previewDarkMode === 'dark' ? 'dark' : 'light'
 			],
 		[uiTheme, previewDarkMode]
@@ -613,6 +613,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 									>
 										<PaintbrushIcon strokeWidth={1} className='h-4 w-4' />
 									</span>
+									<span className='sr-only'>Change theme</span>
 								</Button>
 							</PopoverTrigger>
 							<PopoverContent side='top' className='w-96'>

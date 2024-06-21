@@ -33,6 +33,7 @@ import { cn } from 'lib/utils'
 import { ImageIcon } from 'lucide-react'
 import type { ChangeEvent } from 'react'
 import { useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
 	darkModeAtom,
 	modelAtom,
@@ -73,6 +74,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 		queryKey: ['models'],
 		queryFn: getModels
 	})
+	const [searchParams] = useSearchParams()
 	const [model, setModel] = useAtom(modelAtom)
 	const [systemPrompt, setSystemPrompt] = useAtom(systemPromptAtom)
 	const [temperature, setTemperature] = useAtom(temperatureAtom)
@@ -91,7 +93,9 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 
 	// Default to another model if no OpenAI models are available
 	useEffect(() => {
-		if (data && data.openai.length === 0 && model.startsWith('gpt')) {
+		if (searchParams.get('dummy')) {
+			setModel('dummy/good')
+		} else if (data && data.openai.length === 0 && model.startsWith('gpt')) {
 			if (data.groq.length > 0) {
 				// Defaulting to the 3rd model which is currently llama3-70b
 				setModel(`groq/${data.groq[2].id}`)
@@ -119,6 +123,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 		data,
 		setModel,
 		model,
+		searchParams,
 		setModelSupportsImages,
 		modelSupportsImagesOverrides
 	])
@@ -171,6 +176,13 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							) : undefined}
 							{data ? (
 								<SelectContent>
+									{searchParams.get('dummy') ? (
+										<SelectGroup>
+											<SelectLabel>Dummy</SelectLabel>
+											<SelectItem value='dummy/good'>Good dummy</SelectItem>
+											<SelectItem value='dummy/bad'>Bad dummy</SelectItem>
+										</SelectGroup>
+									) : undefined}
 									{data.openai.length > 0 && (
 										<SelectGroup>
 											<SelectLabel>OpenAI</SelectLabel>

@@ -519,7 +519,7 @@ export const useSaveHistory = () => {
 						}
 					}
 				}
-				console.log('Saving history', safeValue.length)
+				console.log('Saving history', safeValue)
 				try {
 					localStorage.setItem('serializedHistory', safeValue)
 				} catch (error) {
