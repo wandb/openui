@@ -3,7 +3,8 @@ name: Create and publish a Docker image
 on:
   push:
     branches:
-      - "**"
+      - "feature/*"
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -32,6 +33,7 @@ jobs:
           cache: "pnpm"
       - name: Get pnpm store directory
         shell: bash
+        working-directory: ./frontend
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
       - uses: actions/cache@v4
@@ -42,10 +44,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
       - name: Install dependencies
-        run: pnpm install -C frontend
+        working-directory: ./frontend
+        run: pnpm install
       # We use npm here because pnpm wasn't executing post hooks
       - name: Build frontend
-        run: cd frontend && npm run build
+        working-directory: ./frontend
+        run: npm run build
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
