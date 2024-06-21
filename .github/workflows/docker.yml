@@ -55,7 +55,7 @@ jobs:
           name: frontend-${{ github.sha }}
           path: ./frontend/dist
       - name: Checking in frontend assets
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/openui-v2'
+        if: github.ref == 'refs/heads/main'
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
