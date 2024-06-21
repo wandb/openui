@@ -56,7 +56,7 @@ git clone https://github.com/wandb/openui
 cd openui/backend
 # You probably want to do this from a virtual environment
 pip install .
-# This must be set to use OpenAI models, find your api key here: https://platform.openai.com/api-keys
+# Set API keys for any LLM's you want to use
 export OPENAI_API_KEY=xxx
 # You may change the base url to use an OpenAI-compatible api by setting the OPENAI_BASE_URL environment variable
 # export OPENAI_BASE_URL=https://api.myopenai.com/v1
@@ -75,6 +75,14 @@ For example to use a custom config in docker you can run:
 
 ```bash
 docker run -n openui -p 7878:7878 -v $(pwd)/litellm-config.yaml:/app/litellm-config.yaml gchr.io/wandb/openui
+```
+
+To use litellm from source you can run:
+
+```bash
+pip install .[litellm]
+export ANTHROPIC_API_KEY=xxx
+python -m openui --litellm
 ```
 
 ## Groq
