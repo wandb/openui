@@ -35,7 +35,7 @@ CI = "https://github.com/wandb/openui/actions"
 
 [project.optional-dependencies]
 test = ["pytest", "pre-commit"]
-litellm = ["litellm[proxy]>=1.40.1", "google-generativeai"]
+litellm = ["litellm[proxy]>=1.40.1,<1.40.19", "google-generativeai"]
 eval = [
     "beautifulsoup4>=4.0.0",
     "mistletoe>=1.0.0",
