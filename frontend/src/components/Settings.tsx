@@ -134,7 +134,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 					<h2 className='font-bold'>Settings</h2>
 					<p className='flex'>
 						<span className='font-semibold'>Model:</span>{' '}
-						{slugToNiceName(model, false)}
+						{slugToNiceName(model.split('/').at(-1), false)}
 					</p>
 					<p>
 						<span className='font-semibold'>Temperature:</span> {temperature}

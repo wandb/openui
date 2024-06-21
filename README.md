@@ -36,7 +36,7 @@ The following command would forward the API keys from the specified shell enviro
 ```bash
 export ANTHROPIC_API_KEY=xxx
 export OPENAI_API_KEY=xxx
-docker run --name openui -p 7878:7878 -e OPENAI_API_KEY -e ANTHROPIC_API_KEY -e OLLAMA_HOST=http://host.docker.internal:11434 gchr.io/wandb/openui
+docker run --rm --name openui -p 7878:7878 -e OPENAI_API_KEY -e ANTHROPIC_API_KEY -e OLLAMA_HOST=http://host.docker.internal:11434 gchr.io/wandb/openui
 ```
 
 Now you can goto [http://localhost:7878](http://localhost:7878) and generate new UI's!

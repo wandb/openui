@@ -497,20 +497,34 @@ export const useSaveHistory = () => {
 					}
 					safeValue = JSON.stringify(parsed)
 				}
+				// TODO: move this shit to indexed DB!!!
 				for (const key of Object.keys(parsed.historyMap)) {
 					const item = parsed.historyMap[key] as HistoryItem
 					const html = item.html ?? ''
 					if (html !== '') {
 						delete item.html
-						localStorage.setItem(`${key}.html`, html)
+						try {
+							localStorage.setItem(`${key}.html`, html)
+						} catch (error) {
+							console.error('Error saving HTML', error)
+						}
 					}
 					const markdown = item.markdown ?? ''
 					if (markdown !== '') {
 						delete item.markdown
-						localStorage.setItem(`${key}.md`, markdown)
+						try {
+							localStorage.setItem(`${key}.md`, markdown)
+						} catch (error) {
+							console.error('Error saving markdown', error)
+						}
 					}
 				}
-				localStorage.setItem('serializedHistory', safeValue)
+				console.log('Saving history', safeValue.length)
+				try {
+					localStorage.setItem('serializedHistory', safeValue)
+				} catch (error) {
+					console.error('Error saving history', error)
+				}
 			}
 		})
 	}

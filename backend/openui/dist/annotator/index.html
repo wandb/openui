@@ -621,7 +621,9 @@
 						return
 					}
 					const isDark = document.documentElement.classList.contains('dark')
-					const newModeDark = event.data.mode === 'dark' || !isDark
+					const newModeDark =
+						event.data.mode === 'dark' ||
+						(!isDark && event.data.mode !== 'light')
 					if (newModeDark) {
 						document.documentElement.classList.add('dark')
 					} else {

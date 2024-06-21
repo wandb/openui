@@ -70,7 +70,6 @@ export function parseMarkdown(
 	}
 	/* This is supposed to prevent us from writing frontmatter to the UI 
 		 TODO: this is brittle, and doesn't seem to work consistently :/
-	*/
 	if (rendering && cleanMarkdown.slice(0, 1000).includes('---')) {
 		const offset = cleanMarkdown.split('---').slice(0, -1).join('---').length
 		cleanMarkdown = cleanMarkdown.slice(offset)
@@ -78,6 +77,7 @@ export function parseMarkdown(
 			cleanMarkdown = ''
 		}
 	}
+	*/
 
 	const parsed = unified().use(remarkParse).parse(cleanMarkdown)
 
@@ -103,7 +103,7 @@ export function parseMarkdown(
 		!rendering &&
 		htmlBlocks.filter(h => h.value.trim() !== '').length === 0
 	) {
-		console.warn('No HTML found, parse results:', parsed)
+		console.warn('No HTML found, parse results:', parsed.children)
 		htmlBlocks = [
 			{
 				type: 'code',

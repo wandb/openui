@@ -68,6 +68,7 @@ Prefer using these colors when appropriate, for example:
 \`\`\`
 
 *Implementation Rules:*
+- Only implement elements within the \`<body>\` tag, don't bother with \`<html>\` or \`<head>\` tags.
 - Avoid using SVGs directly. Instead, use the \`<img>\` tag with a descriptive title as the alt attribute and add .svg to the placehold.co url, for example:
 
 \`\`\`html

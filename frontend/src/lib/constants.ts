@@ -1,5 +1,5 @@
 export const EXAMPLES = [
-	// 'Make me a flashy landing page for an AI SaaS startup.  Use some gradients and animations on hover.  Come up with an exciting name and create a navigation bar up top.',
+	'Make me a flashy landing page for an AI SaaS startup. Come up with an exciting name and create a navigation bar up top.',
 	'Create a responsive navigation bar with dropdown menus, using a dark theme.',
 	'I need a user profile card with an avatar, name, and social media links in Tailwind CSS.',
 	'Generate a modal popup for user feedback, including text area and submit button.',

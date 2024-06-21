@@ -1,6 +1,7 @@
 import { TrashIcon } from '@radix-ui/react-icons'
 import { useVersion } from 'hooks'
 import { useAtomValue } from 'jotai'
+import { themes } from 'lib/themes'
 import { cn } from 'lib/utils'
 import { nanoid } from 'nanoid'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -8,6 +9,8 @@ import {
 	darkModeAtom,
 	historySidebarStateAtom,
 	imageDB,
+	uiStateAtom,
+	uiThemeAtom,
 	useSaveHistory,
 	type ItemWrapper
 } from 'state'
@@ -27,6 +30,10 @@ export default function VersionPreview({
 	const iframeRef = useRef<HTMLIFrameElement | null>(null)
 	const [isFrameReady, setIsFrameReady] = useState(false)
 	const isVisible = useAtomValue(historySidebarStateAtom) === 'versions'
+	const uiState = useAtomValue(uiStateAtom)
+	const isRendering = uiState.rendering
+	const uiTheme = useAtomValue(uiThemeAtom)
+	const theme = themes.find(t => t.name === uiTheme) ?? themes[0]
 	const [html, setHtml] = useState<string | undefined>()
 	const id = useMemo(() => nanoid(8), [])
 	const saveHistory = useSaveHistory()
@@ -50,7 +57,11 @@ export default function VersionPreview({
 				'*'
 			)
 		}
-	}, [darkMode, previewDarkMode])
+		iframeRef.current?.contentWindow?.postMessage(
+			{ action: 'theme', theme },
+			'*'
+		)
+	}, [darkMode, previewDarkMode, theme])
 
 	useEffect(() => {
 		item
@@ -80,12 +91,17 @@ export default function VersionPreview({
 					html,
 					js: [],
 					darkMode: previewDarkMode === 'dark',
-					action: 'hydrate'
+					action: 'hydrate',
+					rendering: isRendering
 				},
 				'*'
 			)
+			iframeRef.current?.contentWindow?.postMessage(
+				{ action: 'theme', theme },
+				'*'
+			)
 		}
-	}, [isFrameReady, html, isVisible, previewDarkMode, id])
+	}, [isFrameReady, html, isVisible, previewDarkMode, id, isRendering, theme])
 
 	const W = 1524
 	const H = 960
