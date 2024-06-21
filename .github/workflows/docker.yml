@@ -128,6 +128,8 @@ jobs:
     needs: build-and-push-image
     timeout-minutes: 10
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.44.1-jammy
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -146,16 +148,6 @@ jobs:
         working-directory: ./frontend
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-      - name: Get installed Playwright version
-        id: playwright-version
-        run: echo "PLAYWRIGHT_VERSION=$(node -e "console.log(require('./package-lock.json').dependencies['@playwright/test'].version)")" >> $GITHUB_ENV
-      - name: Cache playwright binaries
-        uses: actions/cache@v4
-        id: playwright-cache
-        with:
-          path: |
-            ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
       - uses: actions/cache@v4
         name: Setup pnpm cache
         with:
@@ -166,10 +158,6 @@ jobs:
       - name: Install dependencies
         working-directory: ./frontend
         run: pnpm install
-      - name: Install Playwright Browsers
-        working-directory: ./frontend
-        run: pnpm exec playwright install --with-deps
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
       - name: Get short SHA
         id: get_short_sha
         run: echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
@@ -191,7 +179,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Tag latest image
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/openui-v2'
         env:
           IMAGE: ghcr.io/${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
