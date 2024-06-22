@@ -128,8 +128,7 @@ jobs:
         image: docker:dind
         options: --privileged --shm-size=2g
         ports:
-          - 7979:7979
-          - 7878:7878
+          - 7979:7878
         volumes:
           - /var/run/docker.sock:/var/run/docker.sock:ro
     container:
