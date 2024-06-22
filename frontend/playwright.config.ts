@@ -79,6 +79,7 @@ export default defineConfig({
 	webServer: {
 		command: `docker run --rm --name openui -p 7979:7878 ghcr.io/wandb/openui:${process.env.DOCKER_TAG ?? 'latest'}`,
 		url: 'http://127.0.0.1:7979',
-		reuseExistingServer: !process.env.CI
+		reuseExistingServer: !process.env.CI,
+  timeout: 90000
 	}
 })
