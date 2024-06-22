@@ -200,6 +200,5 @@ jobs:
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
-          docker manifest inspect "${{ env.IMAGE }}:sha-${{ steps.get_short_sha.outputs.short_sha }}"
-          docker tag "${{ env.IMAGE }}:sha-${{ steps.get_short_sha.outputs.short_sha }}" "${{ env.IMAGE }}:latest"
-          docker push "${{ env.IMAGE }}:latest"
+          docker manifest inspect ${{ env.IMAGE }}:sha-${{ steps.get_short_sha.outputs.short_sha }}
+          docker buildx imagetools create --tag ${{ env.IMAGE }}:latest ${{ env.IMAGE }}:sha-${{ steps.get_short_sha.outputs.short_sha }}
