@@ -163,7 +163,7 @@ jobs:
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: Convert full SHA to short SHA
         id: get_short_sha_cut
-        run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+        run: echo "short_sha_cut=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
       - name: Run Playwright tests
         env:
           DOCKER_TAG: sha-${{ steps.get_short_sha.outputs.short_sha }}
@@ -201,5 +201,5 @@ jobs:
           IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
           docker manifest inspect "${{ env.IMAGE }}:sha-${{ steps.get_short_sha.outputs.short_sha }}"
-          docker tag ${{ env.IMAGE }}:sha-${{ steps.get_short_sha.outputs.short_sha }} ${{ env.IMAGE }}:latest
-          docker push ${{ env.IMAGE }}:latest
+          docker tag "${{ env.IMAGE }}:sha-${{ steps.get_short_sha.outputs.short_sha }}" "${{ env.IMAGE }}:latest"
+          docker push "${{ env.IMAGE }}:latest"
