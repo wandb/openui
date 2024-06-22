@@ -170,7 +170,7 @@ jobs:
         if: always()
         with:
           name: playwright-report
-          path: test-results/
+          path: ./frontend/test-results/
           retention-days: 30
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -181,7 +181,7 @@ jobs:
       - name: Tag latest image
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/openui-v2'
         env:
-          IMAGE: ghcr.io/${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
           docker tag ${{ env.IMAGE }}:sha-${{ steps.get_short_sha.outputs.short_sha }} ${{ env.IMAGE }}:latest
           docker push ${{ env.IMAGE }}:latest
