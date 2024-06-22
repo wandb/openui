@@ -160,7 +160,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium webkit
       - name: Get short SHA
         id: get_short_sha
-        run: echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: Run Playwright tests
         env:
           DOCKER_TAG: sha-${{ steps.get_short_sha.outputs.short_sha }}
@@ -170,21 +170,8 @@ jobs:
         if: always()
         with:
           name: playwright-report
-          path: ./frontend/test-results/
+          path: ./frontend/playwright-report/
           retention-days: 30
-      - name: Log in to the Container registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Tag latest image
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/openui-v2'
-        env:
-          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        run: |
-          docker tag ${{ env.IMAGE }}:sha-${{ steps.get_short_sha.outputs.short_sha }} ${{ env.IMAGE }}:latest
-          docker push ${{ env.IMAGE }}:latest
 
   release:
     needs: test
@@ -201,13 +188,13 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Get short SHA
+      - name: Convert full SHA to short SHA
         id: get_short_sha
-        run: echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
+        run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
       - name: Tag latest image
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/openui-v2'
         env:
-          IMAGE: ghcr.io/${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
           docker tag ${{ env.IMAGE }}:sha-${{ steps.get_short_sha.outputs.short_sha }} ${{ env.IMAGE }}:latest
           docker push ${{ env.IMAGE }}:latest

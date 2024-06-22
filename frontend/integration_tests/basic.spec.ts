@@ -24,5 +24,7 @@ test('test good flow', async ({ page }) => {
 		/.*unsplash\.com.*/
 	)
 	const annotator = await page.$('#version-0')
-	await annotator?.screenshot({ path: 'annotator-screenshot.png' })
+	await annotator?.screenshot({
+		path: 'playwright-report/annotator-screenshot.png'
+	})
 })
