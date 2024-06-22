@@ -767,6 +767,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 									}}
 								>
 									<CodeIcon strokeWidth={4} className='h-5 w-5' />
+									<span className='sr-only'>Edit HTML</span>
 								</Button>
 							</TooltipTrigger>
 							<TooltipContent>Edit HTML</TooltipContent>

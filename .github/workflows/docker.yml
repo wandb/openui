@@ -170,7 +170,9 @@ jobs:
         if: always()
         with:
           name: playwright-report
-          path: ./frontend/playwright-report/
+          path: |
+            ./frontend/playwright-report/
+            ./frontend/screenshots/
           retention-days: 30
 
   release:
