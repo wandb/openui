@@ -31,7 +31,7 @@ You can also use models available to [Ollama](https://ollama.com).  [Install Oll
 
 ### Docker (preferred)
 
-The following command would forward the specified API keys from the shell environment and tell Docker to use the Ollama instance running on your machine.
+The following command would forward the specified API keys from your shell environment and tell Docker to use the Ollama instance running on your machine.
 
 ```bash
 export ANTHROPIC_API_KEY=xxx
@@ -96,7 +96,6 @@ To use the super fast [Groq](https://groq.com) models, set `GROQ_API_KEY` to you
 From the root directory you can run:
 
 ```bash
-echo "LITELLM_MASTER_KEY=sk-$(openssl rand -hex 20)" > .env
 docker-compose up -d
 docker exec -it openui-ollama-1 ollama pull llava
 ```

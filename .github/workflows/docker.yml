@@ -161,15 +161,11 @@ jobs:
       - name: Get short SHA
         id: get_short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-      - name: Convert full SHA to short SHA
-        id: get_short_sha_cut
-        run: echo "short_sha_cut=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
       - name: Run Playwright tests
         env:
           DOCKER_TAG: sha-${{ steps.get_short_sha.outputs.short_sha }}
-          DOCKER_TAG_CUT: sha-${{ steps.get_short_sha_cut.outputs.short_sha_cut }}
         working-directory: ./frontend
-        run: pnpm exec playwright test && echo ${{ env.DOCKER_TAG_CUT }} == ${{ env.DOCKER_TAG }}
+        run: pnpm exec playwright test
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -196,7 +192,7 @@ jobs:
         id: get_short_sha
         run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
       - name: Tag latest image
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/openui-v2'
+        if: github.ref == 'refs/heads/main'
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
