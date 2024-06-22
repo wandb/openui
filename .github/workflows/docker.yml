@@ -169,7 +169,9 @@ jobs:
         run: pnpm install
       - name: Get short SHA
         id: get_short_sha
-        run: echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
+        run: |
+          git config --global --add safe.directory /__w/openui/openui
+          echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
       - name: Run Playwright tests
         env:
           DOCKER_TAG: sha-${{ steps.get_short_sha.outputs.short_sha }}
