@@ -25,6 +25,6 @@ test('test good flow', async ({ page }) => {
 	)
 	const annotator = await page.$('#version-0')
 	await annotator?.screenshot({
-		path: 'playwright-report/annotator-screenshot.png'
+		path: './screenshots/annotator-screenshot.png'
 	})
 })
