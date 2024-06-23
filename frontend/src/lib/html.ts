@@ -155,13 +155,17 @@ async function getRandomPhoto(
 		img = results[Math.floor(seed * results.length)]
 	}
 	if (!img) {
-		console.log(`Searching unsplash for ${image.alt} ${image.src}`)
-		const data = await api.search.getPhotos({ query: image.alt, orientation })
-		// TODO: maybe grab a random image from the results
-		results = data.response?.results ?? []
-		if (results.length > 0) {
-			img = results[Math.floor(seed * results.length)]
-			CACHE.set(image.alt, results)
+		try {
+			console.log(`Searching unsplash for ${image.alt} ${image.src}`)
+			const data = await api.search.getPhotos({ query: image.alt, orientation })
+			// TODO: maybe grab a random image from the results
+			results = data.response?.results ?? []
+			if (results.length > 0) {
+				img = results[Math.floor(seed * results.length)]
+				CACHE.set(image.alt, results)
+			}
+		} catch (error) {
+			console.error(error)
 		}
 	}
 
