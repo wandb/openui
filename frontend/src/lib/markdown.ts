@@ -19,6 +19,7 @@ export function fixHTML(html: string) {
 	let fixed = html.replaceAll('-gray-', '-zinc-')
 	// use placehold.co for images
 	fixed = fixed.replaceAll('via.placeholder.com', 'placehold.co')
+	fixed = fixed.replaceAll('via.placeholder.co', 'placehold.co')
 	fixed = fixed.replaceAll('placehold.it', 'placehold.co')
 	// point to our own backend for mp3's / wav files
 	fixed = fixed.replaceAll(

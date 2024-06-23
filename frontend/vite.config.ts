@@ -62,7 +62,7 @@ export default defineConfig(({ mode }) => ({
 			registerType: 'autoUpdate',
 			workbox: {
 				globIgnores: ['**/annotator/**'],
-				navigateFallbackDenylist: [/\/openui\/.*/]
+				navigateFallbackDenylist: [/\/openui\/.*/, /\/v1\/.*/]
 			},
 			manifest: {
 				name: 'OpenUI by Weights & Biases',
