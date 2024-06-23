@@ -100,8 +100,3 @@ export default function Examples({
 		</div>
 	)
 }
-
-Examples.defaultProps = {
-	className: '',
-	style: {}
-}

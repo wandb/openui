@@ -1,8 +1,13 @@
 try:
-	from .screenshots import gen_screenshots
+    from .screenshots import gen_screenshots
+    from .email import get_git_user_email
 except ImportError:
-	def gen_screenshots(*args, **kwargs):
-		pass
+    # TODO: WTF
+    def get_git_user_email():
+        return None
 
-__all__ = ["gen_screenshots"]
+    def gen_screenshots(*args, **kwargs):
+        pass
 
+
+__all__ = ["gen_screenshots", "get_git_user_email"]

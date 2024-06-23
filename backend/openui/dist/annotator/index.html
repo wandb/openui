@@ -1,22 +1,90 @@
 <html>
 	<head>
-		<script src="/openui/tailwindcss.min.js"></script>
+		<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+		<script src="https://unpkg.com/unlazy@0.11.3/dist/unlazy.with-hashing.iife.js"></script>
+		<link
+			rel="stylesheet"
+			href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/default.min.css"
+		/>
+		<script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+		<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+		<script src="https://unpkg.com/theroomjs@2.1.6/dist/theroom.min.js"></script>
 		<script type="text/javascript">
-			window.tailwind.config.darkMode = ['class', '.darkMode']
+			window.tailwind.config = {
+				darkMode: ['class'],
+				theme: {
+					extend: {
+						colors: {
+							border: 'hsl(var(--border))',
+							input: 'hsl(var(--input))',
+							ring: 'hsl(var(--ring))',
+							background: 'hsl(var(--background))',
+							foreground: 'hsl(var(--foreground))',
+							primary: {
+								DEFAULT: 'hsl(var(--primary))',
+								foreground: 'hsl(var(--primary-foreground))'
+							},
+							secondary: {
+								DEFAULT: 'hsl(var(--secondary))',
+								foreground: 'hsl(var(--secondary-foreground))'
+							},
+							destructive: {
+								DEFAULT: 'hsl(var(--destructive))',
+								foreground: 'hsl(var(--destructive-foreground))'
+							},
+							muted: {
+								DEFAULT: 'hsl(var(--muted))',
+								foreground: 'hsl(var(--muted-foreground))'
+							},
+							accent: {
+								DEFAULT: 'hsl(var(--accent))',
+								foreground: 'hsl(var(--accent-foreground))'
+							},
+							popover: {
+								DEFAULT: 'hsl(var(--popover))',
+								foreground: 'hsl(var(--popover-foreground))'
+							},
+							card: {
+								DEFAULT: 'hsl(var(--card))',
+								foreground: 'hsl(var(--card-foreground))'
+							}
+						},
+						keyframes: {
+							blurOut: {
+								'0%': { filter: 'blur(0px)', opacity: '1' },
+								'100%': { filter: 'blur(10px)', opacity: '0' }
+							},
+							blurIn: {
+								'0%': { filter: 'blur(10px)', opacity: '0' },
+								'100%': { filter: 'blur(0px)', opacity: '1' }
+							}
+						},
+						animation: {
+							blurOut: 'blurOut 0.5s ease-out',
+							blurIn: 'blurIn 0.5s ease-out'
+						}
+					}
+				}
+			}
 		</script>
 		<style type="text/css">
+			#loading-icon {
+				text-align: center;
+				margin: 0 0;
+				width: 100%;
+			}
 			.selected {
 				position: absolute;
 				z-index: 49;
-				border: 2px dashed orange;
+				border: 2px dashed hsl(41 99% 64%);
 				border-radius: 3px;
 			}
 			.inspector-element {
 				position: absolute;
 				z-index: 100;
 				pointer-events: none;
-				border: 1px dashed rgb(139 92 246);
-				box-shadow: 0 0 3px rgb(139 92 246);
+				border: 1px dashed hsl(283 89% 70%);
+				box-shadow: 0 0 3px hsl(283 89% 70%);
 				animation: pulseGlow 1s infinite ease-in-out;
 				border-radius: 2px;
 				transition: all 250ms ease-in-out;
@@ -24,37 +92,172 @@
 			}
 			#wrapper {
 				cursor: pointer;
-				padding-top: 20px;
+			}
+			.loader {
+				width: 200px;
+				margin: auto;
+				display: flex;
+				flex-direction: row;
+			}
+			.shape-contain {
+				width: 50px;
+				margin: 12px;
+			}
+			.shape {
+				width: 50px;
+				height: 50px;
+				background-color: #e4e6eb;
+				border-radius: 2px;
+				margin: 0 auto;
+				position: relative;
+				animation: morph 3s ease-in-out infinite;
+			}
+			.shape_1 {
+				border-radius: 50px;
+				width: 50px;
+			}
+			.shape_2 {
+				border-radius: 2px 2px 50px 50px;
+				width: 50px;
+				animation-delay: -2s;
+			}
+			.shape_3 {
+				border-radius: 2px;
+				width: 25px;
+				animation-delay: -1s;
+			}
+			@keyframes morph {
+				0% {
+					border-radius: 50px;
+					width: 50px;
+				}
+				11.11% {
+				}
+				22.22% {
+					border-radius: 50px;
+					width: 50px;
+				}
+				33.33% {
+					border-radius: 2px 2px 50px 50px;
+					width: 50px;
+				}
+				44.44% {
+				}
+				55.55% {
+					border-radius: 2px 2px 50px 50px;
+					width: 50px;
+				}
+				66.66% {
+					border-radius: 2px;
+					width: 25px;
+				}
+				77.77% {
+				}
+				88.88% {
+					border-radius: 2px;
+					width: 25px;
+				}
+				100% {
+					border-radius: 50px;
+					width: 50px;
+				}
 			}
 			@keyframes pulseGlow {
 				0% {
-					box-shadow: 0 0 3px rgb(139 92 246);
+					box-shadow: 0 0 3px hsl(283 89% 70%);
 				}
 				50% {
-					box-shadow: 0 0 8px rgb(139 92 200);
+					box-shadow: 0 0 8px hsl(283 80% 40%);
 				}
 				100% {
-					box-shadow: 0 0 3px rgb(139 92 246);
+					box-shadow: 0 0 3px hsl(283 89% 70%);
+				}
+			}
+		</style>
+		<style type="text/tailwindcss">
+			@layer base {
+				:root {
+					--background: 0 0% 100%;
+					--foreground: 240 10% 3.9%;
+					--card: 0 0% 100%;
+					--card-foreground: 240 10% 3.9%;
+					--popover: 0 0% 100%;
+					--popover-foreground: 240 10% 3.9%;
+					--primary: 240 5.9% 10%;
+					--primary: 186 80% 41%;
+					--primary-foreground: 0 0% 98%;
+					--secondary: 240 4.8% 95.9%;
+					--secondary-foreground: 240 5.9% 10%;
+					--muted: 240 4.8% 95.9%;
+					--muted-foreground: 240 3.8% 46.1%;
+					--accent: 240 4.8% 95.9%;
+					--accent-foreground: 240 5.9% 10%;
+					--destructive: 0 84.2% 60.2%;
+					--destructive-foreground: 0 0% 98%;
+					--border: 240 5.9% 90%;
+					--input: 240 5.9% 90%;
+					--ring: 240 10% 3.9%;
+					--radius: 0.5rem;
+				}
+
+				.dark {
+					--background: 240 10% 3.9%;
+					--foreground: 0 0% 98%;
+					--card: 240 10% 3.9%;
+					--card-foreground: 0 0% 98%;
+					--popover: 240 10% 3.9%;
+					--popover-foreground: 0 0% 98%;
+					--primary: 0 0% 98%;
+					--primary-foreground: 240 5.9% 10%;
+					--secondary: 240 3.7% 15.9%;
+					--secondary-foreground: 0 0% 98%;
+					--muted: 240 3.7% 15.9%;
+					--muted-foreground: 240 5% 64.9%;
+					--accent: 240 3.7% 15.9%;
+					--accent-foreground: 0 0% 98%;
+					--destructive: 0 62.8% 30.6%;
+					--destructive-foreground: 0 0% 98%;
+					--border: 240 3.7% 15.9%;
+					--input: 240 3.7% 15.9%;
+					--ring: 240 4.9% 83.9%;
 				}
 			}
 		</style>
 	</head>
 	<body
-		class="no-select items-top flex h-full w-full justify-center bg-zinc-300 dark:bg-zinc-900"
+		class="no-select items-top flex h-full w-full justify-center bg-background"
 	>
-		<div class="no-select relative w-[80vw]" id="wrapper">${body}</div>
+		<div
+			id="loading-icon"
+			class="flex h-screen w-screen items-center justify-center"
+		>
+			<div class="loader">
+				<div class="shape-contain">
+					<div class="shape shape_1"></div>
+				</div>
+				<div class="shape-contain">
+					<div class="shape shape_2"></div>
+				</div>
+				<div class="shape-contain">
+					<div class="shape shape_3"></div>
+				</div>
+			</div>
+		</div>
+		<div class="no-select animate-blurIn relative hidden w-full" id="wrapper">
+			${body}
+		</div>
 		<div
 			id="prompt"
-			class="no-select absolute z-50 origin-top scale-0 transform rounded-md border border-zinc-200 bg-zinc-100 text-zinc-700 shadow-lg transition-all duration-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+			class="no-select absolute z-50 origin-top scale-0 transform rounded-md border border-zinc-200 bg-background text-zinc-700 shadow-lg transition-all duration-300 dark:border-zinc-700 dark:text-zinc-300"
 		>
 			<div class="p-4 text-xs">
 				<h3 class="text-base font-semibold">How do you want this to change?</h3>
 				<input
 					type="text"
-					class="mt-2 w-[300px] rounded-md border border-zinc-200 px-4 py-2 text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-300"
+					class="mt-2 w-[300px] rounded-md border border-zinc-200 px-4 py-2 text-zinc-600 focus:outline-none focus:ring-2 focus:ring-primary"
 				/>
 				<button
-					class="ml-2 mt-4 rounded-md bg-blue-500 p-2 text-white"
+					class="ml-2 mt-4 rounded-md bg-primary p-2 text-white"
 					id="submit"
 				>
 					Submit
@@ -68,7 +271,6 @@
 			</div>
 		</div>
 	</body>
-	<script src="/openui/extra.min.js"></script>
 	<script type="text/javascript">
 		// Setup the room
 		window.theRoom.configure({
@@ -94,7 +296,14 @@
 		// Reset the inspector every 5 seconds
 		let interval = null
 		// TODO: support more
-		let colors = ['blue', 'green', 'orange', 'yellow', 'red', 'purple']
+		let colors = [
+			'hsl(186 85% 45%)',
+			'green',
+			'orange',
+			'yellow',
+			'red',
+			'purple'
+		]
 		let moved = false
 		document.addEventListener('mousemove', () => (moved = true))
 		document
@@ -247,7 +456,6 @@
 				}
 			})
 			fix.className = `no-select fix fix-legend-${commentIdx} italic text-white text-center font-mono text-[8px] px-2 pt-0 z-50`
-			fix.classList.add('bg-' + color + '-600/[0.7]')
 			// TODO: use tailwind
 			fix.style.border = '1px dashed ' + color
 			fix.style.position = 'absolute'
@@ -282,8 +490,10 @@
 			}
 		})
 
+		var args = document.location.search.split('=')
+		var id = args[args.length - 1]
 		window.addEventListener('load', () => {
-			window.parent.parent.postMessage({ action: 'ready' }, '*')
+			window.parent.parent.postMessage({ action: 'ready', id }, '*')
 		})
 
 		window._go = function (cb) {
@@ -294,47 +504,100 @@
 			}
 		}
 
+		// Clear our initial blurIn animation
+		setTimeout(() => {
+			document.getElementById('wrapper').classList.add('animate-blurIn')
+		}, 500)
+
 		// handle events from parent
 		window.addEventListener(
 			'message',
 			function (event) {
 				if (event.data.action === 'take-screenshot') {
-					console.log('Got take screenshot event')
+					document.body.style.width = '1024px'
+					document.body.style.height = '768px'
 					html2canvas(document.body, {
 						useCors: true,
 						foreignObjectRendering: true,
 						allowTaint: true,
-						windowWidth: 1524,
+						windowWidth: 1024,
 						windowHeight: 768
 					}).then(function (canvas) {
+						document.body.style.width = ''
+						document.body.style.width = ''
 						const data = canvas.toDataURL('image/png')
 						window.parent.parent.postMessage(
-							{ screenshot: data, action: 'screenshot' },
+							{ screenshot: data, action: 'screenshot', id },
 							'*'
 						)
 					})
+				} else if (event.data.action === 'reset') {
+					if (inspectorEnabled) {
+						window.theRoom.stop()
+					}
+					let wrapper = document.getElementById('wrapper')
+					wrapper.classList.add('animate-blurOut')
+					setTimeout(() => {
+						wrapper.classList.remove('animate-blurOut')
+						wrapper.classList.add('hidden')
+						wrapper.innerHTML = ''
+						document.getElementById('loading-icon').classList.remove('hidden')
+					}, 500)
+				} else if (event.data.action === 'theme') {
+					let vars
+					if (document.documentElement.classList.contains('dark')) {
+						vars = event.data.theme.cssVars.dark
+					} else {
+						vars = event.data.theme.cssVars.light
+					}
+					for (const [k, v] of Object.entries(vars)) {
+						document.documentElement.style.setProperty(`--${k}`, v)
+					}
 				} else if (event.data.action === 'hydrate') {
+					// Always disable the inspector on hydration
+					if (inspectorEnabled) {
+						window.theRoom.stop()
+					}
+					if (event.data.id && event.data.id !== id) {
+						return
+					}
+					document.getElementById('loading-icon').classList.add('hidden')
 					let wrapper = document.getElementById('wrapper')
 					wrapper.innerHTML = event.data.html
-					wrapper.querySelectorAll('img').forEach(img => {
-						img.crossOrigin = 'anonymous'
-					})
-
+					wrapper.classList.remove('hidden')
+					// highlight any codeblocks
+					hljs.highlightAll()
+					if (!event.data.rendering) {
+						wrapper.classList.add('animate-blurIn')
+						setTimeout(() => {
+							wrapper.classList.remove('animate-blurIn')
+						}, 500)
+						wrapper.querySelectorAll('img').forEach(img => {
+							img.crossOrigin = 'anonymous'
+						})
+						// Load our pretty images with the fancy unlazy loader!
+						UnLazy.lazyLoad()
+					}
 					if (event.data.darkMode) {
-						document.documentElement.classList.add('darkMode')
+						document.documentElement.classList.add('dark')
+					} else {
+						document.documentElement.classList.remove('dark')
 					}
 					document.querySelectorAll('.user-script').forEach(scr => {
 						scr.parentNode.removeChild(scr)
 					})
-					event.data.js.forEach(js => {
-						const script = document.createElement('script')
-						script.classList.add('user-script')
-						script.type = js.type
-						if (js.src) script.setAttribute('src', js.src)
-						// Close our JS to avoid conflicts
-						script.text = `(()=>{${js.text}})()`
-						document.body.append(script)
-					})
+					// Only inject scripts if we're not rendering
+					if (!event.data.rendering) {
+						event.data.js.forEach(js => {
+							const script = document.createElement('script')
+							script.classList.add('user-script')
+							script.type = js.type
+							if (js.src) script.setAttribute('src', js.src)
+							// Close our JS to avoid conflicts
+							script.text = `(()=>{${js.text}})()`
+							document.body.append(script)
+						})
+					}
 					// Remove our selected elements
 					selectedElements = []
 					commentIdx = 0
@@ -347,16 +610,24 @@
 						{
 							preview: wrapper.hasChildNodes(),
 							height: document.body.scrollHeight,
-							action: 'loaded'
+							action: 'loaded',
+							id: id
 						},
 						'*'
 					)
 					// state = event.data.state
 				} else if (event.data.action === 'toggle-dark-mode') {
-					if (document.documentElement.classList.contains('darkMode')) {
-						document.documentElement.classList.remove('darkMode')
+					if (event.data.id && event.data.id !== id) {
+						return
+					}
+					const isDark = document.documentElement.classList.contains('dark')
+					const newModeDark =
+						event.data.mode === 'dark' ||
+						(!isDark && event.data.mode !== 'light')
+					if (newModeDark) {
+						document.documentElement.classList.add('dark')
 					} else {
-						document.documentElement.classList.add('darkMode')
+						document.documentElement.classList.remove('dark')
 					}
 				} else if (event.data.action === 'toggle-inspector') {
 					if (inspectorEnabled) {

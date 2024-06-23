@@ -12,36 +12,44 @@ import {
 	Route,
 	RouterProvider
 } from 'react-router-dom'
+import { darkModeAtom } from 'state'
+
+import { useAtomValue } from 'jotai'
+import { DevTools } from 'jotai-devtools'
+import 'jotai-devtools/styles.css'
 
 // const Index = lazy(async () => import('pages/Index'))
 const AI = lazy(async () => import('pages/AI'))
-const Builder = lazy(async () => import('pages/AI/Builder'))
 
 const router = createBrowserRouter(
 	createRoutesFromElements(
 		<>
 			<Route path='/' element={<Navigate replace to='/ai' />} />
 			<Route path='/ai' element={<AI />}>
-				<Route path=':id' element={<Builder />} />
+				<Route path=':id' element={<AI />} />
 			</Route>
-			<Route path='/ai/shared/:id' element={<Builder isShared />} />
+			<Route path='/ai/shared/:id' element={<AI isShared />} />
 		</>
 	)
 )
 
 export default function App(): ReactElement {
-	const darkMode = useMediaQuery('(prefers-color-scheme: dark)')
+	const systemDarkMode = useMediaQuery('(prefers-color-scheme: dark)')
+	const darkMode = useAtomValue(darkModeAtom)
 
 	useEffect(() => {
-		if (darkMode) {
+		if ((darkMode === 'system' && systemDarkMode) || darkMode === 'dark') {
 			document.documentElement.classList.add('dark')
+		} else {
+			document.documentElement.classList.remove('dark')
 		}
-	}, [darkMode])
+	}, [darkMode, systemDarkMode])
 
 	return (
 		<Suspense fallback={<LoadingOrError />}>
 			<ErrorBoundary renderError={error => <LoadingOrError error={error} />}>
 				<TooltipProvider>
+					<DevTools />
 					<RouterProvider router={router} />
 				</TooltipProvider>
 			</ErrorBoundary>

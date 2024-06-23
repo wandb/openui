@@ -15,7 +15,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi_sso.sso.github import GithubSSO
+from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
+import html
 import uuid
 import uvicorn
 import contextlib
@@ -29,11 +31,13 @@ import weave
 from starlette.middleware.sessions import SessionMiddleware
 from .session import DBSessionStore, SessionData
 from .logs import logger
-from .models import count_tokens, ShareRequest
+from .models import count_tokens, ShareRequest, VoteRequest
 from .ollama import ollama_stream_generator, openai_to_ollama
 from .openai import openai_stream_generator
-from .db.models import User, Usage
+from .dummy import DummyStreamGenerator
+from .db.models import User, Usage, Vote, Component
 from .util import storage
+from .util import get_git_user_email
 from . import config
 from pydantic import ValidationError
 from multiprocessing import Queue
@@ -65,19 +69,20 @@ app = FastAPI(
     description="API for proxying LLM requests to different services",
 )
 
-openai = AsyncOpenAI(
-    base_url=config.OPENAI_BASE_URL,
-    api_key=config.OPENAI_API_KEY)
+openai = AsyncOpenAI(base_url=config.OPENAI_BASE_URL, api_key=config.OPENAI_API_KEY)
+
+litellm = AsyncOpenAI(
+    api_key=config.LITELLM_API_KEY,
+    base_url=config.LITELLM_BASE_URL,
+)
 
 if config.GROQ_API_KEY is not None:
-    groq = AsyncOpenAI(
-        base_url=config.GROQ_BASE_URL,
-        api_key=config.GROQ_API_KEY)
+    groq = AsyncOpenAI(base_url=config.GROQ_BASE_URL, api_key=config.GROQ_API_KEY)
 else:
     groq = None
 
 ollama = AsyncClient()
-ollama_openai = AsyncOpenAI(base_url=os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434") + "/v1")
+ollama_openai = AsyncOpenAI(base_url=config.OLLAMA_HOST + "/v1", api_key="xxx")
 router = APIRouter()
 session_store = DBSessionStore()
 github_sso = GithubSSO(
@@ -89,6 +94,13 @@ app.add_middleware(
     # TODO: replace with something random
     secret_key=config.SESSION_KEY,
     https_only=config.ENV == config.Env.PROD,
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[config.CORS_ORIGINS],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -122,10 +134,10 @@ async def chat_completions(
         if data.get("model").startswith("gpt"):
             if data["model"] == "gpt-4" or data["model"] == "gpt-4-32k":
                 raise HTTPException(status=400, data="Model not supported")
-            response: AsyncStream[ChatCompletionChunk] = (
-                await openai.chat.completions.create(
-                    **data,
-                )
+            response: AsyncStream[
+                ChatCompletionChunk
+            ] = await openai.chat.completions.create(
+                **data,
             )
             # gpt-4 tokens are 20x more expensive
             multiplier = 20 if "gpt-4" in data["model"] else 1
@@ -138,10 +150,24 @@ async def chat_completions(
             data["model"] = data["model"].replace("groq/", "")
             if groq is None:
                 raise HTTPException(status=500, detail="Groq API key is not set.")
-            response: AsyncStream[ChatCompletionChunk] = (
-                await groq.chat.completions.create(
-                    **data,
-                )
+            response: AsyncStream[
+                ChatCompletionChunk
+            ] = await groq.chat.completions.create(
+                **data,
+            )
+            return StreamingResponse(
+                openai_stream_generator(response, input_tokens, user_id, 1),
+                media_type="text/event-stream",
+            )
+        # Litellm Models
+        elif data.get("model").startswith("litellm/"):
+            data["model"] = data["model"].replace("litellm/", "")
+            if litellm is None:
+                raise HTTPException(status=500, detail="LiteLLM API key is not set.")
+            response: AsyncStream[
+                ChatCompletionChunk
+            ] = await litellm.chat.completions.create(
+                **data,
             )
             return StreamingResponse(
                 openai_stream_generator(response, input_tokens, user_id, 1),
@@ -152,9 +178,11 @@ async def chat_completions(
             data["model"] = data["model"].replace("ollama/", "")
             data.pop("max_tokens")
             data["messages"] = openai_to_ollama(data)
-            if data["model"] == "llava:latest":
-                # TODO: image stuff wasn't working right in the Ollama OpenAPI compat
-                # layer before so we use our ollama native stuff here for now, try again
+            ollama_vision_models = ["llava", "moondream"]
+            if any([data["model"].startswith(m) for m in ollama_vision_models]):
+                # The Ollama OpenAPI compatibility layer doesn't support images
+                # see: https://github.com/ollama/ollama/issues/3690
+                # TODO: remove this when it does or make it configurable
                 data["options"] = {
                     "temperature": data.pop("temperature", 0.7),
                 }
@@ -163,14 +191,20 @@ async def chat_completions(
                 )
                 gen = await ollama_stream_generator(response, data)
             else:
-                response: AsyncStream[ChatCompletionChunk] = (
-                    await ollama_openai.chat.completions.create(
-                        **data,
-                    )
+                response: AsyncStream[
+                    ChatCompletionChunk
+                ] = await ollama_openai.chat.completions.create(
+                    **data,
                 )
+
                 def gen():
                     return openai_stream_generator(response, input_tokens, user_id, 0)
+
             return StreamingResponse(gen(), media_type="text/event-stream")
+        elif data.get("model").startswith("dummy"):
+            return StreamingResponse(
+                DummyStreamGenerator(data), media_type="text/event-stream"
+            )
         raise HTTPException(status=404, detail="Invalid model")
     except (ResponseError, APIStatusError) as e:
         traceback.print_exc()
@@ -338,27 +372,60 @@ async def create_share(id: str, payload: ShareRequest):
 async def get_share(id: str):
     return Response(storage.download(f"{id}.json"), media_type="application/json")
 
+
+@router.post("/v1/vote", status_code=status.HTTP_201_CREATED, tags="openui/vote")
+async def vote(request: Request, payload: VoteRequest):
+    component = Component.create(
+        id=uuid.uuid4().bytes,
+        user_id=uuid.UUID(request.session["user_id"]).bytes,
+        name=payload.name,
+        data=payload.model_dump(),
+    )
+    Vote.create(
+        id=uuid.uuid4().bytes,
+        user_id=uuid.UUID(request.session["user_id"]).bytes,
+        component_id=component.id,
+        vote=payload.vote,
+        created_at=datetime.now(),
+    )
+    return payload
+
+
 async def get_openai_models():
     try:
         await openai.models.list()
         # We only support 3.5 and 4 for now
         return ["gpt-3.5-turbo", "gpt-4o", "gpt-4-turbo"]
     except Exception:
+        logger.warning("Couldn't connect to OpenAI at %s", config.OPENAI_BASE_URL)
         return []
+
 
 async def get_ollama_models():
     try:
         return (await ollama.list())["models"]
-    except Exception as e:
-        logger.exception("Ollama Error: %s", e)
+    except Exception:
+        logger.warning("Couldn't connect to Ollama at %s", config.OLLAMA_HOST)
         return []
+
 
 async def get_groq_models():
     try:
-        return (await groq.models.list()).data
-    except Exception as e:
-        logger.exception("Groq Error: %s", e)
+        return [
+            d for d in (await groq.models.list()).data if not d.id.startswith("whisper")
+        ]
+    except Exception:
+        logger.warning("Couldn't connect to Ollama at %s", config.GROQ_BASE_URL)
         return []
+
+
+async def get_litellm_models():
+    try:
+        return (await litellm.models.list()).data
+    except Exception:
+        logger.warning("Couldn't connect to LiteLLM at %s", config.LITELLM_BASE_URL)
+        return []
+
 
 @router.get("/v1/models", tags="openui/models")
 async def models():
@@ -366,13 +433,17 @@ async def models():
         get_openai_models(),
         get_groq_models(),
         get_ollama_models(),
+        get_litellm_models(),
     ]
-    openai_models, groq_models, ollama_models = await asyncio.gather(*tasks)
+    openai_models, groq_models, ollama_models, litellm_models = await asyncio.gather(
+        *tasks
+    )
     return {
         "models": {
             "openai": openai_models,
             "groq": groq_models,
             "ollama": ollama_models,
+            "litellm": litellm_models,
         }
     }
 
@@ -404,11 +475,19 @@ async def get_session(
             except IntegrityError:
                 user = User.get(User.username == getpass.getuser())
                 user_id = user.id
+            if user.email is None:
+                user.email = get_git_user_email()
+                user.save()
             request.session["user_id"] = str(user_id)
             session_store.write(
                 request.session["session_id"],
                 str(user_id),
-                SessionData(username=user.username, token_count=0),
+                SessionData(
+                    username=user.username,
+                    token_count=0,
+                    max_tokens=config.MAX_TOKENS,
+                    email=user.email,
+                ),
             )
         else:
             raise HTTPException(status_code=404, detail="No session found")
@@ -436,6 +515,30 @@ async def delete_session(
         status_code=200,
     )
 
+
+@router.get("/openui/{name}.svg", tags=["openui/svg"])
+async def render_svg(name, text: Optional[str] = None):
+    dims = name.split("x")
+    if len(dims) == 2:
+        width, height = [int(d) for d in dims]
+    elif name.isdigit():
+        width, height = int(name), int(name)
+    else:
+        width, height = 24, 24
+    if text:
+        escaped_emoji = html.escape("ℹ️")
+        if len(text) <= 2:
+            escaped_emoji = html.escape(text)
+        svg_content = f"""<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
+            <text x="50%" y="50%" font-size="{int(width * 0.9)}" text-anchor="middle" alignment-baseline="central">{escaped_emoji}</text>
+        </svg>
+        """
+        return Response(content=svg_content, media_type="image/svg+xml")
+    return FileResponse(
+        Path(__file__).parent / "assets" / "question.svg", media_type="image/svg+xml"
+    )
+
+
 # Render a funky mp3 if we render one :)
 @router.get("/openui/{name}.mp3", tags=["openui/audio"])
 async def render_audio(name):
@@ -448,6 +551,13 @@ app.include_router(router)
 app.mount(
     "/assets",
     StaticFiles(directory=Path(__file__).parent / "dist" / "assets", html=True),
+    name="spa",
+)
+app.mount(
+    "/monacoeditorwork",
+    StaticFiles(
+        directory=Path(__file__).parent / "dist" / "monacoeditorwork", html=False
+    ),
     name="spa",
 )
 
@@ -468,7 +578,7 @@ def spa(full_path: str):
     if full_path in files:
         return FileResponse(dist_dir / full_path)
     if "." in full_path:
-        raise HTTPException(status_code=404, detail="Asset not found")
+        raise HTTPException(status_code=404, detail=f"Asset not found: {full_path}")
     return HTMLResponse((dist_dir / "index.html").read_bytes())
 
 

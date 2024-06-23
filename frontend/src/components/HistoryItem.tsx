@@ -9,7 +9,11 @@ import {
 import { useAtomValue, useSetAtom } from 'jotai'
 import { cn } from 'lib/utils'
 import { Link, useNavigate } from 'react-router-dom'
-import { historyAtomFamily, historyIdsAtom } from 'state'
+import {
+	historyAtomFamily,
+	historyIdsAtom,
+	historySidebarStateAtom
+} from 'state'
 
 export default function HistoryItem({
 	id,
@@ -25,6 +29,7 @@ export default function HistoryItem({
 	const item = useAtomValue(historyAtomFamily({ id }))
 	const navigate = useNavigate()
 	const setHistoryIds = useSetAtom(historyIdsAtom)
+	const setSidebarState = useSetAtom(historySidebarStateAtom)
 	// border-[1px] border-b-zinc-500
 	return (
 		<>
@@ -38,14 +43,18 @@ export default function HistoryItem({
 					isActive && 'bg-secondary'
 				} group relative mb-2 w-full rounded-md p-2 text-sm hover:bg-secondary`}
 			>
-				<Link to={`/ai/${id}`} className='flex items-center active:text-black'>
+				<Link
+					to={`/ai/${id}`}
+					onClick={() => setSidebarState('closed')}
+					className='flex items-center active:text-black'
+				>
 					<div className='relative grow overflow-hidden whitespace-nowrap'>
 						{`${item.emoji ?? '🤔'} `}
-						{item.name ?? item.prompt}
+						<span>&nbsp;&nbsp;{item.name ?? item.prompt}</span>
 						{/* TODO: the right group-hover translation is finicky */}
 						<div
 							className={cn(
-								'absolute bottom-0 right-0 top-0 w-8 bg-gradient-to-l from-zinc-300 from-0% to-transparent group-hover:right-5 group-hover:from-secondary dark:from-zinc-900',
+								'absolute bottom-0 right-0 top-0 w-8 bg-gradient-to-l from-background from-0% to-transparent group-hover:right-5 group-hover:from-secondary dark:from-zinc-900',
 								{
 									'from-secondary': isActive,
 									'dark:from-secondary': isActive
@@ -82,9 +91,12 @@ export default function HistoryItem({
 					</DropdownMenu>
 				</div>
 				<Button
-					onClick={() => navigate(`/ai/${id}`)}
+					onClick={() => {
+						setSidebarState('closed')
+						navigate(`/ai/${id}`)
+					}}
 					className={cn(
-						'absolute -right-[58px] top-0 z-50 ml-auto inline-flex h-8 w-8 p-2 hover:scale-110 hover:bg-inherit',
+						'absolute -right-[65px] top-0 z-50 ml-auto inline-flex h-8 w-8 p-2 hover:scale-110 hover:bg-inherit',
 						isCollapsed && 'ml-10',
 						isActive && 'bg-zinc-900'
 					)}
@@ -96,8 +108,4 @@ export default function HistoryItem({
 			</div>
 		</>
 	)
-}
-
-HistoryItem.defaultProps = {
-	label: undefined
 }

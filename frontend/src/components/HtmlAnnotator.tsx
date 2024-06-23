@@ -1,39 +1,59 @@
 import { Button } from 'components/ui/button'
-import {
-	Sheet,
-	SheetContent,
-	SheetDescription,
-	SheetHeader,
-	SheetTitle,
-	SheetTrigger
-} from 'components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from 'components/ui/tooltip'
+import { useVersion } from 'hooks'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import type React from 'react'
 import {
-	Suspense,
-	lazy,
+	useCallback,
+	useContext,
 	useEffect,
 	useLayoutEffect,
+	useMemo,
 	useRef,
 	useState
 } from 'react'
 import {
-	annotatedHTMLAtom,
+	ItemWrapper,
 	commentsAtom,
 	darkModeAtom,
+	facetsAtom,
 	historyAtomFamily,
-	screenshotAtom,
-	type HistoryItem
+	historySidebarStateAtom,
+	imageDB,
+	inspectorEnabledAtom,
+	modelSupportsImagesAtom,
+	uiStateAtom,
+	uiThemeAtom,
+	useSaveHistory
 } from 'state'
 import Scaffold from './Scaffold'
 
-import { MessageCircleMore } from 'lucide-react'
-import FileUpload from './FileUpload'
-import Screenshot from './Screenshot'
-
-const SyntaxHighlighter = lazy(async () => import('./SyntaxHighlighter'))
-const Markdown = lazy(async () => import('react-markdown'))
+import { CodeIcon, QuestionMarkCircledIcon } from '@radix-ui/react-icons'
+import { voteRequest } from 'api/openui'
+import {
+	HoverCard,
+	HoverCardArrow,
+	HoverCardContent,
+	HoverCardTrigger
+} from 'components/ui/hover-card'
+import { adjectives } from 'lib/constants'
+import type { Script } from 'lib/html'
+import { themes } from 'lib/themes'
+import { cn, resizeImage } from 'lib/utils'
+import {
+	CheckIcon,
+	PaintbrushIcon,
+	ThumbsDownIcon,
+	ThumbsUpIcon,
+	WandSparklesIcon
+} from 'lucide-react'
+import { nanoid } from 'nanoid'
+import { useNavigate } from 'react-router-dom'
+import CodeViewer from './CodeViewer'
+import CurrentUIContext from './CurrentUiContext'
+import { Checkbox } from './ui/checkbox'
+import { Label } from './ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 
 function formatHTML(html: string) {
 	const tab = '    '
@@ -54,57 +74,14 @@ function formatHTML(html: string) {
 	return result.slice(1, -2)
 }
 
-function breakString(str: string, N: number) {
-	const result = []
-	for (let i = 0; i < str.length; i += N) {
-		result.push(str.slice(i, i + N))
-	}
-	return result
-}
-
-export interface Script {
-	src: string
-	text: string
-	type?: string
-}
-
 interface HTMLAnnotatorProps {
 	id: string
-	html: string
 	error?: string
-	js?: Script[]
-	isRendering?: boolean
-	imageUploadRef?: React.RefObject<HTMLInputElement>
 }
 
-function formatMarkdown(item: HistoryItem) {
-	const md = item.markdown ?? ''
-	const parts = md.split('---\n\n')
-	if (parts[0].includes('name: ')) {
-		parts.shift()
-	}
-	let { prompt } = item
-	return parts
-		.map(p => {
-			const body = p.replace(/---\nprompt:.+\n/m, '')
-			const prefix = `### ${prompt}\n\n`
-
-			const subParts = p.split('---\n')
-			// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-			if ((subParts[1] || '').startsWith('prompt:')) {
-				// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-				prompt = subParts[1].replace('prompt:', '').trim()
-			}
-			if (p.startsWith('<')) {
-				return `${prefix}\`\`\`html\n${body}\n\`\`\``
-			}
-			return prefix + body
-		})
-		.join('\n')
-}
-
-interface IFrameEvent {
+export interface IFrameEvent {
 	action: string
+	id?: string
 	html: string
 	js: Script[]
 	screenshot: string
@@ -113,164 +90,423 @@ interface IFrameEvent {
 	preview: boolean
 }
 
-export default function HTMLAnnotator({
-	html,
-	error,
-	js,
-	id,
-	isRendering,
-	imageUploadRef
-}: HTMLAnnotatorProps) {
+export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
+	const currentUI = useContext(CurrentUIContext)
+
 	// only point to our local annotator in development / running locally otherwise use github pages
-	const iframeSrc = document.location.hostname.includes('127.0.0.1')
-		? 'http://127.0.0.1:7878'
+	const iframeSrc = /127\.0\.0\.1|localhost/.test(document.location.hostname)
+		? `http://${document.location.hostname}:${document.location.port === '5173' ? '7878' : document.location.port}`
 		: 'https://wandb.github.io'
 	const iframeRef = useRef<HTMLIFrameElement | null>(null)
-	const item = useAtomValue(historyAtomFamily({ id }))
+	const annotatorRef = useRef<HTMLDivElement | null>(null)
+	const iframeId = useMemo(() => nanoid(8), [])
+	const saveHistory = useSaveHistory()
+	const [rawItem, setRawItem] = useAtom(historyAtomFamily({ id }))
+	const item = useMemo(
+		() => new ItemWrapper(rawItem, setRawItem, saveHistory),
+		[rawItem, setRawItem, saveHistory]
+	)
+	const [versionIdx] = useVersion(item)
+	const navigation = useNavigate()
 
 	// global state
-	const setAnnotatedHTML = useSetAtom(annotatedHTMLAtom)
-	const [screenshot, setScreenshot] = useAtom(screenshotAtom)
 	const [comments, setComments] = useAtom(commentsAtom)
-	const [darkMode, setDarkMode] = useAtom(darkModeAtom)
+	const [facets, setFacets] = useAtom(facetsAtom)
+	const darkMode = useAtomValue(darkModeAtom)
+	const [inspectorEnabled, setInspectorEnabled] = useAtom(inspectorEnabledAtom)
+	const setSidebarState = useSetAtom(historySidebarStateAtom)
+	const uiState = useAtomValue(uiStateAtom)
+	const [uiTheme, setUiTheme] = useAtom(uiThemeAtom)
+	const modelSupportsImages = useAtomValue(modelSupportsImagesAtom)
+	const [image, setImage] = useAtom(
+		imageDB.item(`screenshot-${id}-${versionIdx}`)
+	)
+	const isRendering = uiState.rendering // && `${html}`.length < 10
 
 	// local state
-	const [preview, setPreview] = useState<boolean>(false)
-	const [inspectorEnabled, setInspectorEnabled] = useState<boolean>(false)
-	const [bufferedHTML, setBufferedHTML] = useState<string | undefined>()
-	const [media, setMedia] = useState<'desktop' | 'mobile' | 'tablet'>('desktop')
+	const [isReady, setIsReady] = useState<boolean>(false)
+	const [popoverOpen, setPopoverOpen] = useState<boolean>(false)
+	const [themePopoverOpen, setThemePopoverOpen] = useState<boolean>(false)
+	const [previewDarkMode, setPreviewDarkMode] = useState<string>(darkMode)
+	const [voted, setVoted] = useState<string>('')
+	// TODO: wire this up to jotai and make the versions pane absolute
+	const [isCodeVisible, setIsCodeVisible] = useState<boolean>(false)
+	const [userMedia, setUserMedia] = useState<
+		'desktop' | 'mobile' | 'tablet' | undefined
+	>()
+	const [autoMedia, setAutoMedia] = useState<'mobile' | 'tablet' | undefined>()
+	const media = userMedia ?? autoMedia ?? 'desktop'
+	const [inspectorToggled, setInspectorToggled] = useState<boolean>(false)
+	const [scale, setScale] = useState<number>(1)
 
 	useLayoutEffect(() => {
-		setDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches)
-	}, [setDarkMode])
-
-	useEffect(() => {
-		if (darkMode) {
-			document.documentElement.classList.add('dark')
-		} else {
-			document.documentElement.classList.remove('dark')
+		if (darkMode === 'system') {
+			if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+				setPreviewDarkMode('dark')
+			} else {
+				setPreviewDarkMode('light')
+			}
 		}
 	}, [darkMode])
 
-	// iframe content
 	useEffect(() => {
-		if (!bufferedHTML) {
-			setPreview(false)
-		}
-		if (iframeRef.current) {
-			iframeRef.current.contentWindow?.postMessage(
-				{
-					html: bufferedHTML,
-					js: isRendering ? [] : js,
-					darkMode,
-					action: 'hydrate'
-				},
+		if (isReady) {
+			const theme = themes.find(t => t.name === uiTheme) ?? themes[0]
+			iframeRef.current?.contentWindow?.postMessage(
+				{ action: 'theme', theme },
 				'*'
 			)
 		}
-	}, [bufferedHTML, darkMode, js, isRendering, iframeRef])
+	}, [uiTheme, isReady, previewDarkMode])
+
+	const toggleFacet = useCallback(
+		(name: string) => {
+			setFacets(prevFacets => {
+				// Clear all non-official facets
+				const cleanFacets = prevFacets.filter(facet =>
+					adjectives.includes(facet)
+				)
+				if (cleanFacets.includes(name)) {
+					return cleanFacets.filter(facet => facet !== name)
+				}
+				return [...cleanFacets, name]
+			})
+		},
+		[setFacets]
+	)
+
+	useEffect(() => {
+		function reset() {
+			iframeRef.current?.contentWindow?.postMessage({ action: 'reset' }, '*')
+		}
+		currentUI.on('iframe-reset', reset)
+		return () => {
+			currentUI.off('iframe-reset', reset)
+		}
+	}, [currentUI])
+
+	// Reset iframe on UI change
+	useEffect(() => {
+		iframeRef.current?.contentWindow?.postMessage({ action: 'reset' }, '*')
+	}, [id])
 
 	useEffect(() => {
 		if (iframeRef.current) {
-			let lines = html.split('\n')
-			const lineBreak = 80
-			const minBuffer = 3
-			const lastLine = -1
-			// Let comments flow through, breaking at 80 chars
-			if (lines.at(lastLine)?.startsWith('<!--')) {
-				const comment = lines.pop()
-				lines = [...lines, ...breakString(comment ?? '', lineBreak)]
-			} else if (!lines.at(lastLine)?.endsWith('>')) {
-				lines.pop()
+			const resizeObserver = new ResizeObserver(entries => {
+				const width = annotatorRef.current?.clientWidth ?? 768
+				switch (media) {
+					case 'desktop': {
+						if (width > 768) {
+							setScale(1)
+						} else {
+							setScale(width / 768)
+						}
+
+						break
+					}
+					case 'tablet': {
+						setScale(1)
+
+						break
+					}
+					case 'mobile': {
+						setScale(1)
+
+						break
+					}
+					default: {
+						setScale(1)
+					}
+				}
+				for (const entry of entries) {
+					if (entry.contentRect.width <= 480) {
+						// 384 is the actual breakpoint (640 in tailwind docs?)
+						setAutoMedia('mobile')
+					} else if (entry.contentRect.width <= 768) {
+						setAutoMedia('tablet')
+					} else {
+						setAutoMedia(undefined)
+					}
+				}
+			})
+			const annotator = annotatorRef.current
+			if (annotator) {
+				resizeObserver.observe(annotator)
+				return () => resizeObserver.unobserve(annotator)
 			}
-			// TODO: we could play around with this more
-			if (lines.length > minBuffer || !isRendering) {
-				setBufferedHTML(lines.join('\n'))
-			}
+			return () => {}
 		}
-	}, [html, isRendering])
+		return () => {}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [autoMedia, media])
+
+	useEffect(() => {
+		if (inspectorEnabled && !inspectorToggled) {
+			setInspectorToggled(inspectorEnabled)
+		}
+		if (inspectorToggled) {
+			iframeRef.current?.contentWindow?.postMessage(
+				{ action: 'toggle-inspector' },
+				'*'
+			)
+		}
+	}, [inspectorEnabled, inspectorToggled])
+
+	// iframe content
+	useEffect(() => {
+		if (!uiState.renderedHTML) {
+			return
+		}
+		if (iframeRef.current && isReady) {
+			// This is further insurance to prevent markdown
+			// TODO: is 30 right?
+			if (uiState.renderedHTML.html.length > 30) {
+				iframeRef.current.contentWindow?.postMessage(
+					{
+						html: uiState.renderedHTML.html,
+						js: uiState.renderedHTML.js,
+						darkMode: previewDarkMode === 'dark',
+						action: 'hydrate',
+						rendering: isRendering
+					},
+					'*'
+				)
+			}
+		} else if (!isReady) {
+			console.warn('Iframe not ready, not hydrating')
+		}
+	}, [uiState.renderedHTML, previewDarkMode, isReady, isRendering])
 
 	// iframe listeners and dark mode
 	useEffect(() => {
 		const listener = (event: MessageEvent<IFrameEvent>) => {
 			// Only listen to events from our iframe
 			if (event.origin !== iframeSrc) return
+			// TODO: allowing null ids for now
+			if (event.data.id && event.data.id !== iframeId) {
+				return
+			}
 			if (event.data.action === 'ready') {
-				if (bufferedHTML) {
-					iframeRef.current?.contentWindow?.postMessage(
-						{ html: bufferedHTML, js, darkMode, action: 'hydrate' },
-						'*'
-					)
-				}
+				setIsReady(true)
 			} else if (event.data.screenshot) {
-				console.log('Got screenshot event, ignoring for now', event)
-				// setImage(event.data.screenshot)
+				console.log('Saving screenshot')
+				resizeImage(event.data.screenshot, 1024)
+					.then(setImage)
+					.catch((error_: unknown) =>
+						console.error('Screenshot failure', error_)
+					)
 			} else if (event.data.comment) {
 				setComments([...comments, event.data.comment])
-				setAnnotatedHTML(formatHTML(event.data.html.trim()))
+				currentUI.emit('ui-state', {
+					annotatedHTML: formatHTML(event.data.html.trim())
+				})
 				setInspectorEnabled(false)
-			} else if (event.data.action === 'loaded') {
-				setPreview(event.data.preview)
 			}
+			/* Got rid of this in favor of using the iframe for state display 
+				else if (event.data.action === 'loaded' && uiState.renderedHTML) {
+				setPreview(event.data.preview)
+			} */
 		}
 		window.addEventListener('message', listener)
 		return () => window.removeEventListener('message', listener)
 	}, [
-		bufferedHTML,
+		uiState.renderedHTML,
 		comments,
-		js,
+		isRendering,
 		darkMode,
-		setAnnotatedHTML,
 		setComments,
-		iframeSrc
+		iframeSrc,
+		iframeId,
+		setInspectorEnabled,
+		currentUI,
+		setImage,
+		image
 	])
 
+	const createVote = useCallback(
+		(vote: boolean) => {
+			voteRequest(vote, item, versionIdx).then(
+				() => setVoted(vote ? 'yep' : 'nope'),
+				(error_: unknown) => {
+					console.error('Error creating vote', error_)
+				}
+			)
+		},
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[id, versionIdx]
+	)
+
+	const themeColor = useMemo(
+		() =>
+			(themes.find(theme => theme.name === uiTheme) ?? themes[0]).activeColor[
+				previewDarkMode === 'dark' ? 'dark' : 'light'
+			],
+		[uiTheme, previewDarkMode]
+	)
+
 	return (
-		<>
-			<div className='w-full rounded-t-xl border bg-background p-4'>
+		<div className='flex flex-col'>
+			<div className='relative flex w-full flex-row'>
+				<div
+					ref={annotatorRef}
+					className={cn(
+						'code-preview-wrapper flex-grow',
+						isCodeVisible && 'hidden w-1/2 lg:block'
+					)}
+				>
+					<div className='code-responsive-wrapper relative h-[calc(100vh-315px)] w-full flex-none overflow-auto rounded-lg bg-background'>
+						{/* we allow-same-origin so the iframe can keep state */}
+						{/* eslint-disable-next-line react/iframe-missing-sandbox */}
+						<iframe
+							title='HTML preview'
+							id={`version-${versionIdx}`}
+							sandbox='allow-same-origin allow-scripts allow-forms allow-popups allow-modals'
+							ref={iframeRef}
+							style={{
+								transform: `scale(${scale.toFixed(2)})`,
+								width: scale < 1 ? '768px' : undefined
+							}}
+							className={cn(
+								'iframe-code left-0 top-0 mx-auto h-full w-full origin-top-left',
+								media === 'tablet' && 'max-w-3xl',
+								media === 'mobile' && 'max-w-sm',
+								media === 'desktop' && 'absolute',
+								error && 'hidden'
+							)}
+							src={`${iframeSrc}/openui/index.html?id=${iframeId}`}
+						/>
+						{/* TODO: redo the scaffold */}
+						{error ? <Scaffold isLoading error={error} /> : undefined}
+					</div>
+				</div>
+				<div
+					className={`flex-shrink-0 py-0 pl-4 transition-all duration-500 ease-in-out ${
+						isCodeVisible ? 'sm:w-full md:w-full lg:w-1/2' : 'hidden w-0'
+					}`}
+				>
+					<CodeViewer id={id} code={uiState.editedHTML || uiState.pureHTML} />
+				</div>
+			</div>
+			<div className='w-full p-1'>
 				<div className='grid grid-cols-3'>
-					<div className='col-span-2 items-center justify-center space-x-2 sm:col-span-1'>
+					<div className='col-span-1 items-center justify-center'>
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button
 									onClick={() => {
-										// TODO: likely sync the state
-										setInspectorEnabled(!inspectorEnabled)
-										iframeRef.current?.contentWindow?.postMessage(
-											{ html: bufferedHTML, action: 'toggle-inspector' },
-											'*'
-										)
+										createVote(true)
 									}}
 									size='icon'
-									variant='outline'
-									className={`${inspectorEnabled && 'bg-secondary'}`}
+									variant='ghost'
+									className={`hover:animate-wiggle-zoom hover:bg-transparent ${voted === 'yep' && 'text-green-600'}`}
 								>
-									<svg
-										className='inline-block h-4 w-4'
-										viewBox='0 0 16 16'
-										fill='none'
-										xmlns='http://www.w3.org/2000/svg'
-									>
-										<path
-											fillRule='evenodd'
-											clipRule='evenodd'
-											d='M5.5 2V0H7V2H5.5ZM0.96967 2.03033L2.46967 3.53033L3.53033 2.46967L2.03033 0.96967L0.96967 2.03033ZM4.24592 4.24592L4.79515 5.75631L7.79516 14.0063L8.46663 15.8529L9.19636 14.0285L10.2739 11.3346L13.4697 14.5303L14.5303 13.4697L11.3346 10.2739L14.0285 9.19636L15.8529 8.46663L14.0063 7.79516L5.75631 4.79516L4.24592 4.24592ZM11.6471 8.53337L10.1194 9.14447C9.6747 9.32235 9.32235 9.6747 9.14447 10.1194L8.53337 11.6471L6.75408 6.75408L11.6471 8.53337ZM0 7H2V5.5H0V7Z'
-											fill='currentColor'
-										/>
-									</svg>
+									<ThumbsUpIcon className='h-4 w-4' />
 								</Button>
 							</TooltipTrigger>
-							<TooltipContent>Comment on elements in the HTML</TooltipContent>
+							<TooltipContent>Click me if you like the UI</TooltipContent>
 						</Tooltip>
-					</div>
-
-					<div className='col-span-1 hidden items-center justify-center space-x-2 sm:flex'>
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button
-									onClick={() => setMedia('desktop')}
+									onClick={() => {
+										createVote(false)
+									}}
 									size='icon'
-									variant='outline'
+									variant='ghost'
+									className={`hover:animate-wiggle-zoom hover:bg-transparent ${voted === 'nope' && 'text-red-800'}`}
+								>
+									<ThumbsDownIcon className='h-4 w-4' />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>Click me if you dislike the UI</TooltipContent>
+						</Tooltip>
+						<Popover open={popoverOpen}>
+							<PopoverTrigger asChild>
+								<Button
+									className='-mr-2 border-none text-muted-foreground hover:animate-wiggle-zoom hover:bg-transparent'
+									variant='ghost'
+									size='icon'
+									type='button'
+									onClick={() => setPopoverOpen(true)}
+								>
+									<WandSparklesIcon className='h-4 w-4' />
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent
+								side='top'
+								className='w-80'
+								onOpenAutoFocus={() => {
+									if (modelSupportsImages) {
+										console.log('Taking screenshot')
+										iframeRef.current?.contentWindow?.postMessage(
+											{ action: 'take-screenshot' },
+											'*'
+										)
+									}
+								}}
+								onEscapeKeyDown={() => setPopoverOpen(false)}
+								onInteractOutside={() => setPopoverOpen(false)}
+							>
+								<div className='grid gap-4'>
+									<div className='space-y-2'>
+										<h4 className='font-medium leading-none'>
+											Iterate on this UI
+										</h4>
+										<p className='text-sm text-muted-foreground'>
+											Select one or more dimensions to guide the LLM.
+										</p>
+									</div>
+									<div className='grid gap-2'>
+										<div className='grid grid-cols-2 items-center gap-4'>
+											{adjectives.map(adjective => (
+												<div key={adjective}>
+													<Checkbox
+														id={adjective}
+														checked={facets.includes(adjective)}
+														onCheckedChange={() => toggleFacet(adjective)}
+														className='mr-1'
+													/>
+													<Label htmlFor={adjective}>
+														{!adjective.endsWith('er') && 'More '}
+														{adjective.endsWith('er')
+															? adjective.charAt(0).toUpperCase() +
+																adjective.slice(1)
+															: adjective}
+													</Label>
+												</div>
+											))}
+										</div>
+										<Button
+											type='button'
+											className='mt-2'
+											onClick={() => {
+												setPopoverOpen(false)
+												navigation(`/ai/${id}?regen=1`, { replace: true })
+											}}
+										>
+											Make Magic
+										</Button>
+									</div>
+								</div>
+							</PopoverContent>
+						</Popover>
+					</div>
+
+					<div className='col-span-1 flex items-center justify-center'>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									onClick={() =>
+										setUserMedia(
+											userMedia === 'desktop' ? undefined : 'desktop'
+										)
+									}
+									size='icon'
+									variant='ghost'
+									className={cn(
+										'hover:bg-transparent',
+										media === 'desktop' && 'text-primary'
+									)}
 								>
 									<span className='sr-only'>Toggle desktop view</span>
 									<svg
@@ -296,9 +532,13 @@ export default function HTMLAnnotator({
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button
-									onClick={() => setMedia('tablet')}
-									variant='outline'
+									onClick={() => setUserMedia('tablet')}
 									size='icon'
+									variant='ghost'
+									className={cn(
+										'hidden hover:bg-transparent sm:flex',
+										media === 'tablet' && 'text-primary'
+									)}
 								>
 									<span className='sr-only'>Toggle tablet view</span>
 									<svg
@@ -324,9 +564,13 @@ export default function HTMLAnnotator({
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button
-									onClick={() => setMedia('mobile')}
-									variant='outline'
+									onClick={() => setUserMedia('mobile')}
 									size='icon'
+									variant='ghost'
+									className={cn(
+										'hidden hover:bg-transparent sm:flex',
+										media === 'mobile' && 'text-primary'
+									)}
 								>
 									<span className='sr-only'>Toggle mobile view</span>
 									<svg
@@ -350,28 +594,139 @@ export default function HTMLAnnotator({
 						</Tooltip>
 					</div>
 
+					{/* TODO: Use a Drawer when on mobile here */}
 					<div className='col-span-1 flex justify-end'>
+						<Popover open={themePopoverOpen} onOpenChange={setThemePopoverOpen}>
+							<PopoverTrigger asChild>
+								<Button
+									size='icon'
+									variant='ghost'
+									className={cn(
+										'ml-2 rounded-full text-primary-foreground hover:bg-transparent hover:text-primary-foreground'
+									)}
+								>
+									<span
+										className='flex h-6 w-6 items-center justify-center rounded-full opacity-40 hover:opacity-100'
+										style={{
+											backgroundColor: `hsl(${themeColor})`
+										}}
+									>
+										<PaintbrushIcon strokeWidth={1} className='h-4 w-4' />
+									</span>
+									<span className='sr-only'>Change theme</span>
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent side='top' className='w-96'>
+								<div className='flex flex-col gap-2'>
+									<h2 className='flex text-sm font-medium'>
+										UI Theme{' '}
+										<HoverCard>
+											<HoverCardTrigger asChild>
+												<QuestionMarkCircledIcon className='ml-1 h-3 w-3' />
+											</HoverCardTrigger>
+											<HoverCardContent side='top' className='w-96'>
+												<p>
+													We use CSS variables to define custom tailwind colors
+													and instruct the LLM to prefer them over hard-coded
+													colors. The approach is modelled after{' '}
+													<a
+														href='https://ui.shadcn.com/themes'
+														rel='noreferrer'
+														target='_blank'
+														className='underline'
+													>
+														ShadCN
+													</a>
+													.
+												</p>
+												<p className='mt-2'>
+													If changing the color isn&apos;t working for your UI,
+													try editing the code and adding the class
+													&quot;bg-primary&quot; to a button or
+													&quot;text-primary&quot; to a link.
+												</p>
+												<HoverCardArrow />
+											</HoverCardContent>
+										</HoverCard>
+									</h2>
+									<div className='grid grid-cols-3 gap-2'>
+										{themes.map(theme => {
+											const isActive = uiTheme === theme.name
+
+											return (
+												<Button
+													variant='outline'
+													size='sm'
+													key={theme.name}
+													onClick={() => {
+														setUiTheme(theme.name)
+														setThemePopoverOpen(false)
+													}}
+													className={cn(
+														'justify-start',
+														isActive && 'border-2 border-primary'
+													)}
+													// TODO: handle system dark mode
+													style={
+														{
+															'--theme-primary': `hsl(${
+																theme.activeColor[
+																	darkMode === 'dark' ? 'dark' : 'light'
+																]
+															})`
+														} as React.CSSProperties
+													}
+												>
+													<span
+														className={cn(
+															'flex h-5 w-5 shrink-0 -translate-x-1 items-center justify-center rounded-full bg-[--theme-primary]'
+														)}
+													>
+														{isActive ? (
+															<CheckIcon className='h-4 w-4 text-white' />
+														) : undefined}
+													</span>
+													{theme.label}
+												</Button>
+											)
+										})}
+									</div>
+								</div>
+							</PopoverContent>
+						</Popover>
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button
-									onClick={() => {
+									onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+										if (e.shiftKey && image) {
+											const newTab = window.open()
+											newTab?.document.write(
+												`<img src="${image.url}" alt="Image">`
+											)
+											newTab?.document.close()
+											return
+										}
+										const newMode =
+											previewDarkMode === 'dark' ? 'light' : 'dark'
+										setPreviewDarkMode(newMode)
 										if (iframeRef.current) {
-											setDarkMode(!darkMode)
 											iframeRef.current.contentWindow?.postMessage(
 												{
-													action: 'toggle-dark-mode'
+													action: 'toggle-dark-mode',
+													mode: newMode
 												},
 												'*'
 											)
 										}
 									}}
-									variant='outline'
 									size='icon'
+									variant='ghost'
+									className='hover:bg-transparent'
 								>
 									<svg
 										data-toggle-icon='moon'
 										className={`${
-											!darkMode && 'hidden'
+											previewDarkMode === 'light' && 'hidden'
 										} inline-block h-3.5 w-3.5`}
 										aria-hidden='true'
 										xmlns='http://www.w3.org/2000/svg'
@@ -383,7 +738,7 @@ export default function HTMLAnnotator({
 									<svg
 										data-toggle-icon='sun'
 										className={`${
-											darkMode && 'hidden'
+											previewDarkMode === 'dark' && 'hidden'
 										} inline-block h-3.5 w-3.5`}
 										aria-hidden='true'
 										xmlns='http://www.w3.org/2000/svg'
@@ -397,104 +752,29 @@ export default function HTMLAnnotator({
 							</TooltipTrigger>
 							<TooltipContent>Toggle dark/light mode</TooltipContent>
 						</Tooltip>
-						<Sheet>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<SheetTrigger asChild>
-										<Button className='ml-2' variant='outline' size='icon'>
-											<MessageCircleMore strokeWidth={1} />
-										</Button>
-									</SheetTrigger>
-								</TooltipTrigger>
-								<TooltipContent>View chat history</TooltipContent>
-							</Tooltip>
-
-							<SheetContent className='w-[100%] overflow-scroll sm:max-lg:max-w-[75%] md:max-w-[50%]'>
-								<SheetHeader>
-									<SheetTitle>Chat history</SheetTitle>
-									<SheetDescription asChild>
-										<Suspense fallback={<Scaffold isLoading />}>
-											<Markdown
-												className='prose prose-sm prose-zinc max-w-full dark:prose-invert'
-												components={{
-													code(props) {
-														// TS was complaining about the ref
-														// eslint-disable-next-line react/prop-types
-														const { children, className, node, ref, ...rest } =
-															props
-														const match = /language-(\w+)/.exec(className ?? '')
-														return match ? (
-															<SyntaxHighlighter
-																className='max-h-[300px] overflow-scroll text-xs'
-																// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-																language={match[1]}
-																// eslint-disable-next-line react/jsx-props-no-spreading
-																{...rest}
-															>
-																{String(children).replace(/\n$/, '')}
-															</SyntaxHighlighter>
-														) : (
-															<code>{children}</code>
-														)
-													}
-												}}
-											>
-												{formatMarkdown(item)}
-											</Markdown>
-										</Suspense>
-									</SheetDescription>
-								</SheetHeader>
-							</SheetContent>
-						</Sheet>
-					</div>
-				</div>
-			</div>
-
-			<div className='code-preview-wrapper'>
-				<div className='code-preview flex border-x bg-background bg-gradient-to-r p-0'>
-					{/* max-w-lg and max-w-sm for responsive */}
-					<div className='code-responsive-wrapper h-[60vh] w-full overflow-auto'>
-						{/* we allow-same-origin so the iframe can keep state */}
-						{/* eslint-disable-next-line react/iframe-missing-sandbox */}
-						<iframe
-							title='HTML preview'
-							sandbox='allow-same-origin allow-scripts allow-forms allow-popups allow-modals'
-							ref={iframeRef}
-							className={`iframe-code mx-auto max-h-[60vh] w-full bg-background ${
-								media === 'tablet' && 'max-w-lg'
-							} ${media === 'mobile' && 'max-w-sm'}`}
-							style={{ height: preview && !error ? '100%' : 0 }}
-							src={`${iframeSrc}/openui/index.html?buster=113`}
-						/>
-						{!preview &&
-							// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-							(isRendering || error ? (
-								<Scaffold isLoading error={error} />
-							) : // eslint-disable-next-line unicorn/no-nested-ternary
-							screenshot ? (
-								<Screenshot />
-							) : (
-								<FileUpload
-									onClick={() => imageUploadRef?.current?.click()}
-									onDropFile={file => {
-										const reader = new FileReader()
-										reader.addEventListener('load', () =>
-											setScreenshot(reader.result as string)
-										)
-										reader.readAsDataURL(file as File)
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									size='icon'
+									variant='ghost'
+									className={cn(
+										'hover:bg-transparent',
+										isCodeVisible && 'text-primary'
+									)}
+									onClick={() => {
+										setSidebarState('closed')
+										setIsCodeVisible(!isCodeVisible)
 									}}
-								/>
-							))}
+								>
+									<CodeIcon strokeWidth={4} className='h-5 w-5' />
+									<span className='sr-only'>Edit HTML</span>
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>Edit HTML</TooltipContent>
+						</Tooltip>
 					</div>
 				</div>
 			</div>
-		</>
+		</div>
 	)
-}
-
-HTMLAnnotator.defaultProps = {
-	error: undefined,
-	imageUploadRef: undefined,
-	isRendering: false,
-	js: []
 }

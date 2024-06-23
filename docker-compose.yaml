@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   ollama:
     container_name: ollama
@@ -9,8 +7,9 @@ services:
     volumes:
       - ${OLLAMA_VOLUME_PATH:-ollama}:/root/.ollama
 
-  backend:
+  openui:
     container_name: openui
+    image: ghcr.io/wandb/openui:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -18,11 +17,11 @@ services:
       - "7878:7878"
     environment:
       - OLLAMA_HOST=http://ollama:11434
-      # Just remove `=xxx` to have the env variable passed forward
-      - OPENAI_API_KEY=xxx
-      - GROQ_API_KEY=xxx
-    depends_on:
-      - ollama
+      - OPENAI_API_KEY
+      - ANTHROPIC_API_KEY
+      - GROQ_API_KEY
+    env_file:
+      - .env
 
 volumes:
   ollama:

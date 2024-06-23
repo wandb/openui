@@ -10,9 +10,10 @@
 **/*.egg-info
 **/.DS_Store
 **/build
+**/wandb
+**/*.db
 
 # flyctl launch added from openui/eval/.gitignore
-openui/eval/**/wandb
 openui/eval/**/datasets
 openui/eval/**/components
 fly.toml

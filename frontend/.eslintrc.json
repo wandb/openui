@@ -85,7 +85,6 @@
 			"error",
 			{
 				"devDependencies": [
-					"cypress.config.ts",
 					"vite.config.ts",
 					"src/setupTests.ts",
 					"src/testUtils.tsx",
@@ -109,6 +108,7 @@
 		"react/sort-comp": "off",
 		"react/state-in-constructor": "off",
 		"react/static-property-placement": "off",
+		"react/require-default-props": "off",
 
 		"react/boolean-prop-naming": [
 			"error",
@@ -183,7 +183,7 @@
 			}
 		},
 		{
-			"files": ["vite.config.ts", "cypress.config.ts"],
+			"files": ["vite.config.ts", "playwright.config.ts"],
 			"parserOptions": {
 				"project": ["./tsconfig.node.json"]
 			}

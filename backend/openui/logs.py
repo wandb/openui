@@ -1,4 +1,5 @@
 import logging
+import os
 
 
 logger = logging.getLogger("openui")
@@ -20,7 +21,7 @@ def setup_logger(file: str | None = None):
 
     if file is None:
         uvlogger = logging.getLogger("uvicorn")
-        uvlogger.setLevel(logging.INFO)
+        uvlogger.setLevel(logging.DEBUG if os.getenv("DEBUG") else logging.INFO)
         uvlogger.addHandler(handler)
 
     logger = logging.getLogger("openui")

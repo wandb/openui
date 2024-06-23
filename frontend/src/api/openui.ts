@@ -1,6 +1,8 @@
-import type { HistoryItem } from '../state/atoms/history'
+import type { HistoryItem, ItemWrapper } from '../state/atoms/history'
 
 export interface SessionData {
+	email?: string
+	max_tokens?: number
 	username?: string
 	token_count?: number
 }
@@ -14,17 +16,41 @@ interface ErrorBody {
 
 const API_HOST = (import.meta.env.VITE_API_HOST ?? '/v1') as string
 
-export async function share(id: string, item: HistoryItem) {
+export async function share(id: string, item: ItemWrapper, versionIdx: number) {
 	const r = await fetch(`${API_HOST}/share/${id}`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json'
 		},
 		body: JSON.stringify({
-			prompt: item.prompt,
-			html: item.html,
+			prompt: item.prompt(versionIdx),
+			html: item.pureHTML(versionIdx),
 			name: item.name,
 			emoji: item.emoji
+		})
+	})
+	if (r.status !== 201) {
+		const body = (await r.json()) as ErrorBody
+		throw new Error(body.error.message)
+	}
+}
+
+export async function voteRequest(
+	vote: boolean,
+	item: ItemWrapper,
+	versionIdx: number
+) {
+	const r = await fetch(`${API_HOST}/vote`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			prompt: item.prompt(versionIdx),
+			html: item.pureHTML(versionIdx),
+			name: item.name,
+			emoji: item.emoji,
+			vote
 		})
 	})
 	if (r.status !== 201) {

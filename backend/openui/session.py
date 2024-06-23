@@ -3,11 +3,15 @@ import datetime
 from pydantic import BaseModel
 from typing import Optional
 from .db.models import Session, ensure_migrated, Usage
+from . import config
+from .util import get_git_user_email
 
 
 class SessionData(BaseModel):
     token_count: Optional[int]
+    max_tokens: Optional[int]
     username: Optional[str]
+    email: Optional[str]
     model: Optional[str] = ""
 
 
@@ -34,11 +38,21 @@ class DBSessionStore:
         else:
             session = None
         if session is None:
-            return SessionData(token_count=0, username="")
+            return SessionData(
+                token_count=0,
+                username="",
+                max_tokens=config.MAX_TOKENS,
+                email=get_git_user_email(),
+            )
         else:
             day_ago = datetime.datetime.now() - datetime.timedelta(days=1)
             token_count = Usage.tokens_since(str(session.user_id), day_ago.date())
-            return SessionData(username=session.user.username, token_count=token_count)
+            return SessionData(
+                username=session.user.username,
+                email=session.user.email,
+                token_count=token_count,
+                max_tokens=config.MAX_TOKENS,
+            )
 
     def write(self, session_id: str, user_id: str, data: SessionData):
         Session.insert(
