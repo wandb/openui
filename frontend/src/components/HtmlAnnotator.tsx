@@ -423,7 +423,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 						<Popover open={popoverOpen}>
 							<PopoverTrigger asChild>
 								<Button
-									className='border-none text-muted-foreground hover:animate-wiggle-zoom hover:bg-transparent'
+									className='-mr-2 border-none text-muted-foreground hover:animate-wiggle-zoom hover:bg-transparent'
 									variant='ghost'
 									size='icon'
 									type='button'

@@ -44,6 +44,7 @@ test('test good flow', async ({ page }) => {
 	await page.keyboard.type(
 		'<div class="edited">Inserted some cool text</div>\n'
 	)
+	await page.getByRole('button', { name: 'Edit HTML', exact: true }).click()
 	iframe = await page.frameLocator('#version-1')
 	await expect(iframe.locator('div.edited')).toHaveText(
 		'Inserted some cool text'
