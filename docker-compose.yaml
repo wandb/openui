@@ -9,7 +9,7 @@ services:
 
   openui:
     container_name: openui
-    image: wandb/openui:latest
+    image: ghcr.io/wandb/openui:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -17,29 +17,11 @@ services:
       - "7878:7878"
     environment:
       - OLLAMA_HOST=http://ollama:11434
-      # Just remove `=xxx` to have the env variable passed forward
-      - OPENAI_API_KEY=xxx
-      - GROQ_API_KEY
-      - LITELLM_API_KEY=${LITELLM_MASTER_KEY:-xxx}
-      - LITELLM_BASE_URL=http://litellm:4000/v1
-    env_file:
-      - .env
-
-  litellm:
-    container_name: litellm
-    image: ghcr.io/berriai/litellm:main-latest
-    ports:
-      - "4000:4000"
-    volumes:
-      - ./litellm-config.yaml:/app/litellm-config.yaml
-    environment:
-      - LITELLM_MASTER_KEY
-      - GEMINI_API_KEY
+      - OPENAI_API_KEY
       - ANTHROPIC_API_KEY
-      - NVIDIA_API_KEY
+      - GROQ_API_KEY
     env_file:
       - .env
-    command: ["--config", "/app/litellm-config.yaml"]
 
 volumes:
   ollama:

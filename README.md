@@ -69,7 +69,7 @@ python -m openui
 
 1. `litellm-config.yaml` in the current directory
 2. `/app/litellm-config.yaml` when running in a docker container
-3. An arbitrary path specified by the `LITELLM_CONFIG` environment variable
+3. An arbitrary path specified by the `OPENUI_LITELLM_CONFIG` environment variable
 
 For example to use a custom config in docker you can run:
 

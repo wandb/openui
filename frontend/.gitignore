@@ -7,7 +7,6 @@ dist-ssr
 coverage
 .nyc_output
 .stylelintcache
-cypress/videos
 /test-results/
 /playwright-report/
 /blob-report/

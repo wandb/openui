@@ -36,6 +36,7 @@ if __name__ == "__main__":
     litellm = (
         any([arg == "--litellm" for arg in sys.argv])
         or "OPENUI_LITELLM_CONFIG" in os.environ
+        or os.path.exists("litellm-config.yaml")
     )
     # TODO: only render in interactive mode?
     print(

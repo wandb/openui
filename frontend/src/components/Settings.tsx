@@ -46,8 +46,9 @@ import { Textarea } from './ui/textarea'
 
 function slugToNiceName(slug?: string, float = true) {
 	if (slug) {
+		const niceSlug = slug.split('/').slice(1, -1).join('')
 		let icon: React.ReactNode | undefined
-		if (knownImageModels.some(regex => regex.test(slug))) {
+		if (knownImageModels.some(regex => regex.test(niceSlug))) {
 			icon = (
 				<ImageIcon
 					className={cn('mx-1 mt-1 h-3 w-3', float && 'float-left ml-0')}
@@ -94,7 +95,10 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 	// Default to another model if no OpenAI models are available
 	useEffect(() => {
 		if (searchParams.get('dummy')) {
-			setModel('dummy/good')
+			const available = ['bad']
+			setModel(
+				`dummy/${available.includes(searchParams.get('dummy') ?? '') ? searchParams.get('dummy') : 'good'}`
+			)
 		} else if (data && data.openai.length === 0 && model.startsWith('gpt')) {
 			if (data.groq.length > 0) {
 				// Defaulting to the 3rd model which is currently llama3-70b
