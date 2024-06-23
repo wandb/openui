@@ -20,7 +20,6 @@ import {
 } from 'lib/utils'
 import { CircleUser, ImageIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import {
 	ItemWrapper,
@@ -57,7 +56,7 @@ export default function Chat({ isShared = false }: { isShared: boolean }) {
 		[rawItem, setRawItem]
 	)
 
-	const { t } = useTranslation()
+	// const { t } = useTranslation()
 	const [uiState, setUiState] = useAtom(uiStateAtom)
 	const uiTheme = useAtomValue(uiThemeAtom)
 	const theme = themes.find(th => th.name === uiTheme)
@@ -208,11 +207,11 @@ export default function Chat({ isShared = false }: { isShared: boolean }) {
 							/>
 						) : undefined}
 						<h1 className='mb-1 flex-row text-center text-2xl font-medium text-zinc-800 dark:text-zinc-300 md:text-3xl'>
-							{t('Index Header')}
+							Describe the UI you&apos;d like to generate.
 						</h1>
 						{modelSupportsImages ? (
 							<h2 className='mb-4 text-center text-lg font-normal text-muted-foreground md:text-xl'>
-								{t('Pro Tip')}
+								Pro Tip: You can drag or paste a reference screenshot.
 							</h2>
 						) : undefined}
 					</div>
