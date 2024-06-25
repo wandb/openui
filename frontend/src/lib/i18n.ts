@@ -2,7 +2,7 @@ import i18n from 'i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import { initReactI18next } from 'react-i18next'
 
-await i18n
+i18n
 	.use(LanguageDetector)
 	.use(initReactI18next)
 	.init({
@@ -13,11 +13,11 @@ await i18n
 					'Pro Tip': 'Pro Tip: You can drag or paste a reference screenshot.'
 				}
 			},
-			jp: {
+			ja: {
 				translation: {
-					'Chat Header': '生成したい UI について説明します。',
+					'Chat Header': '生成したい UI について説明してください。',
 					'Pro Tip':
-						'プロのヒント: 参照スクリーンショットをドラッグまたは貼り付けることができます。'
+						'ヒント: 参照したいスクリーンショットをドラッグ&ドロップできます。'
 				}
 			},
 			kr: {
@@ -33,3 +33,13 @@ await i18n
 			escapeValue: false
 		}
 	})
+	// eslint-disable-next-line unicorn/prefer-top-level-await
+	.then(
+		() => {
+			const userLang = navigator.language
+			console.log('I18n initialized', userLang)
+		},
+		(error: unknown) => {
+			console.error('I18n error', error)
+		}
+	)
