@@ -19,9 +19,10 @@ test('test good flow', async ({ page }) => {
 	await page.getByRole('button', { name: 'Orange' }).click()
 	let iframe = await page.frameLocator('#version-0')
 	await expect(iframe.locator('h1')).toHaveText('Hello, world!')
+	// TODO: once we figure out how to get unsplash to work consistently...
 	await expect(iframe.locator('img')).toHaveAttribute(
 		'src',
-		/.*unsplash\.com.*/
+		/.*(unsplash|placehold)\.co.*/
 	)
 	const annotator = await page.$('#version-0')
 	await annotator?.screenshot({
