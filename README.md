@@ -36,7 +36,7 @@ The following command would forward the specified API keys from your shell envir
 ```bash
 export ANTHROPIC_API_KEY=xxx
 export OPENAI_API_KEY=xxx
-docker run --rm --name openui -p 7878:7878 -e OPENAI_API_KEY -e ANTHROPIC_API_KEY -e OLLAMA_HOST=http://host.docker.internal:11434 gchr.io/wandb/openui
+docker run --rm --name openui -p 7878:7878 -e OPENAI_API_KEY -e ANTHROPIC_API_KEY -e OLLAMA_HOST=http://host.docker.internal:11434 ghcr.io/wandb/openui
 ```
 
 Now you can goto [http://localhost:7878](http://localhost:7878) and generate new UI's!
@@ -74,7 +74,7 @@ python -m openui
 For example to use a custom config in docker you can run:
 
 ```bash
-docker run -n openui -p 7878:7878 -v $(pwd)/litellm-config.yaml:/app/litellm-config.yaml gchr.io/wandb/openui
+docker run -n openui -p 7878:7878 -v $(pwd)/litellm-config.yaml:/app/litellm-config.yaml ghcr.io/wandb/openui
 ```
 
 To use litellm from source you can run:
