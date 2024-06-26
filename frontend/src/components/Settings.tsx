@@ -43,6 +43,7 @@ import {
 	temperatureAtom
 } from 'state'
 import { Textarea } from './ui/textarea'
+import i18n from 'i18next'
 
 function slugToNiceName(slug?: string, float = true) {
 	if (slug) {
@@ -315,22 +316,27 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							</SelectContent>
 						</Select>
 					</div>
-					{/* <div className='grid grid-cols-8 items-center gap-4'>
-						<Label className='col-span-2 text-right' htmlFor='beast'>
-							Agent Mode
+					<div className='grid grid-cols-8 items-center gap-4'>
+						<Label className='col-span-2 text-right' htmlFor='language'>
+							Language
 						</Label>
-						<Switch
-							className='-zoom-1 col-span-1'
-							name='beast'
-							disabled
-							checked={beastMode}
-							onCheckedChange={checked => setBeastMode(checked)}
-						/>
-						<div className='-ml-15 col-span-5 text-xs italic'>
-							Coming soon! Agent mode will make multiple calls to an LLM with
-							vision capabilities to iterate on a design.
-						</div>
-						</div> */}
+						<Select
+							value={i18n.language}
+							name='language'
+							onValueChange={val => {
+								i18n.changeLanguage(val)
+							}}
+						>
+							<SelectTrigger className='min-w-[200px]'>
+								<SelectValue placeholder='Select Language' />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value='en'>English</SelectItem>
+								<SelectItem value='ja'>Japanese</SelectItem>
+								<SelectItem value='kr'>Korean</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
 					<div className='mt-3 grid grid-cols-4 items-center gap-4'>
 						<div className='col-start-4 flex justify-end'>
 							<Button
