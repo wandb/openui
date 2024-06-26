@@ -27,12 +27,13 @@ import {
 } from 'components/ui/select'
 import { Slider } from 'components/ui/slider'
 import { Switch } from 'components/ui/switch'
+import i18n from 'i18next'
 import { useAtom } from 'jotai'
 import { knownImageModels } from 'lib/constants'
 import { cn } from 'lib/utils'
 import { ImageIcon } from 'lucide-react'
 import type { ChangeEvent } from 'react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
 	darkModeAtom,
@@ -75,6 +76,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 		queryKey: ['models'],
 		queryFn: getModels
 	})
+	const [language, setLanguage] = useState(i18n.language)
 	const [searchParams] = useSearchParams()
 	const [model, setModel] = useAtom(modelAtom)
 	const [systemPrompt, setSystemPrompt] = useAtom(systemPromptAtom)
@@ -315,22 +317,30 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							</SelectContent>
 						</Select>
 					</div>
-					{/* <div className='grid grid-cols-8 items-center gap-4'>
-						<Label className='col-span-2 text-right' htmlFor='beast'>
-							Agent Mode
+					<div className='grid grid-cols-8 items-center gap-4'>
+						<Label className='col-span-2 text-right' htmlFor='language'>
+							Language
 						</Label>
-						<Switch
-							className='-zoom-1 col-span-1'
-							name='beast'
-							disabled
-							checked={beastMode}
-							onCheckedChange={checked => setBeastMode(checked)}
-						/>
-						<div className='-ml-15 col-span-5 text-xs italic'>
-							Coming soon! Agent mode will make multiple calls to an LLM with
-							vision capabilities to iterate on a design.
-						</div>
-						</div> */}
+						<Select
+							value={language}
+							name='language'
+							onValueChange={val => {
+								setLanguage(val)
+								i18n
+									.changeLanguage(val)
+									.catch((error_: unknown) => console.error(error_))
+							}}
+						>
+							<SelectTrigger className='min-w-[200px]'>
+								<SelectValue placeholder='Select Language' />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value='en'>English</SelectItem>
+								<SelectItem value='ja'>Japanese</SelectItem>
+								<SelectItem value='kr'>Korean</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
 					<div className='mt-3 grid grid-cols-4 items-center gap-4'>
 						<div className='col-start-4 flex justify-end'>
 							<Button
