@@ -27,12 +27,13 @@ import {
 } from 'components/ui/select'
 import { Slider } from 'components/ui/slider'
 import { Switch } from 'components/ui/switch'
+import i18n from 'i18next'
 import { useAtom } from 'jotai'
 import { knownImageModels } from 'lib/constants'
 import { cn } from 'lib/utils'
 import { ImageIcon } from 'lucide-react'
 import type { ChangeEvent } from 'react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
 	darkModeAtom,
@@ -43,7 +44,6 @@ import {
 	temperatureAtom
 } from 'state'
 import { Textarea } from './ui/textarea'
-import i18n from 'i18next'
 
 function slugToNiceName(slug?: string, float = true) {
 	if (slug) {
@@ -76,6 +76,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 		queryKey: ['models'],
 		queryFn: getModels
 	})
+	const [language, setLanguage] = useState(i18n.language)
 	const [searchParams] = useSearchParams()
 	const [model, setModel] = useAtom(modelAtom)
 	const [systemPrompt, setSystemPrompt] = useAtom(systemPromptAtom)
@@ -321,10 +322,13 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							Language
 						</Label>
 						<Select
-							value={i18n.language}
+							value={language}
 							name='language'
 							onValueChange={val => {
-								i18n.changeLanguage(val)
+								setLanguage(val)
+								i18n
+									.changeLanguage(val)
+									.catch((error_: unknown) => console.error(error_))
 							}}
 						>
 							<SelectTrigger className='min-w-[200px]'>
