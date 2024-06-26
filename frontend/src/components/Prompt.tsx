@@ -444,7 +444,7 @@ export default function Prompt({
 			id='llm-input'
 			className={cn(
 				`z-0 mx-auto my-4 flex w-full max-w-full justify-center rounded-full bg-muted px-4 py-3 align-middle transition-all md:w-full lg:w-10/12`,
-				isFocused ? 'border-2 border-primary bg-white' : ''
+				isFocused ? 'border-2 border-primary bg-white dark:bg-muted' : ''
 			)}
 		>
 			{/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
@@ -505,7 +505,7 @@ export default function Prompt({
 						/* TODO: make this width calculation dynamic */
 						cn(
 							'my-auto max-h-[130px] flex-1 resize-none items-center justify-center overflow-y-hidden rounded-none align-middle text-lg placeholder:text-lg',
-							'border-none bg-muted outline-none ring-0 transition-all focus-visible:bg-white focus-visible:ring-0 focus-visible:ring-offset-0'
+							'border-none bg-muted outline-none ring-0 transition-all focus-visible:bg-white focus-visible:ring-0 focus-visible:ring-offset-0 dark:focus-visible:bg-muted'
 						)
 					}
 					style={{
