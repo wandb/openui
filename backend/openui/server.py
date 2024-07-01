@@ -145,6 +145,18 @@ async def chat_completions(
                 openai_stream_generator(response, input_tokens, user_id, multiplier),
                 media_type="text/event-stream",
             )
+        # OpenAI Drop in replacement
+        elif config.OPENAI_BASE_URL != "https://api.openai.com/v1":
+            response: AsyncStream[
+                ChatCompletionChunk
+            ] = await openai.chat.completions.create(
+                **data,
+            )
+            multiplier = 1
+            return StreamingResponse(
+                openai_stream_generator(response, input_tokens, user_id, multiplier),
+                media_type="text/event-stream",
+            )
         # Groq Models
         elif data.get("model").startswith("groq/"):
             data["model"] = data["model"].replace("groq/", "")
@@ -393,8 +405,12 @@ async def vote(request: Request, payload: VoteRequest):
 
 async def get_openai_models():
     try:
-        await openai.models.list()
-        # We only support 3.5 and 4 for now
+        model_list = None
+        if config.OPENAI_BASE_URL != "https://api.openai.com/v1":
+            model_list = await openai.models.list()
+        if model_list is not None:
+            return [model_name.id for model_name in model_list.data]
+        # We only support 3.5 and 4 for now on real OpenAI
         return ["gpt-3.5-turbo", "gpt-4o", "gpt-4-turbo"]
     except Exception:
         logger.warning("Couldn't connect to OpenAI at %s", config.OPENAI_BASE_URL)
@@ -595,7 +611,7 @@ def check_wandb_auth():
 wandb_enabled = check_wandb_auth()
 
 if not wandb_enabled:
-    from weave.monitoring import openai as wandb_openai
+    from weave.legacy.monitoring import openai as wandb_openai
 
     wandb_openai.unpatch()
 
