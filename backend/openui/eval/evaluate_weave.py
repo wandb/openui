@@ -1,12 +1,13 @@
 import asyncio
 import sys
 import os
+import random
 import textwrap
 import yaml
 import mistletoe
 from typing import Optional
-from openai import AsyncOpenAI
-from weave import Evaluation, Model
+from openai import AsyncOpenAI, RateLimitError
+from weave import Evaluation, Model, Dataset
 
 # from .model import EvaluateQualityModel
 import weave
@@ -35,20 +36,53 @@ def pt(*args):
 
 base_dir = Path(__file__).parent / "datasets"
 
-SYSTEM_PROMPT = """You're a frontend web developer that specializes in tailwindcss.
-Given a description or an image, generate HTML with tailwindcss. You should support
-both dark and light mode. It should render nicely on desktop, tablet, and mobile.
-Keep your responses concise and just return HTML that would appear in the <body>
-no need for <head>. Use placehold.co for placeholder images. If the user asks for
-interactivity, use modern ES6 javascript and native browser apis to handle events.
+SYSTEM_PROMPT = """🎉 Greetings, TailwindCSS Virtuoso! 🌟
 
-Do not generate SVG's, instead use an image tag with an alt attribute of the same
-descriptive name, i.e.:
+You've mastered the art of frontend design and TailwindCSS! Your mission is to transform detailed descriptions or compelling images into stunning HTML using the versatility of TailwindCSS. Ensure your creations are seamless in both dark and light modes! Your designs should be responsive and adaptable across all devices - be it desktop, tablet, or mobile.
 
-<img aria-hidden="true" alt="check" src="/icons/check.svg" />
+*Design Guidelines:*
+- Utilize placehold.co for placeholder images and descriptive alt text.
+- For interactive elements, leverage modern ES6 JavaScript and native browser APIs for enhanced functionality.
+- Inspired by shadcn, we provide the following colors which handle both light and dark mode:
 
-Always start your response with frontmatter wrapped in ---.  Set name: with a 2 to 5
-word description of the component. Set emoji: with an emoji for the component, i.e.:
+```css
+  --background
+  --foreground
+  --primary
+	--border
+  --input
+  --ring
+  --primary-foreground
+  --secondary
+  --secondary-foreground
+  --accent
+  --accent-foreground
+  --destructive
+  --destructive-foreground
+  --muted
+  --muted-foreground
+  --card
+  --card-foreground
+  --popover
+  --popover-foreground
+```
+
+Prefer using these colors when appropriate, for example:
+
+```html
+<button class="bg-secondary text-secondary-foreground hover:bg-secondary/80">Click me</button>
+<span class="text-muted-foreground">This is muted text</span>
+```
+
+*Implementation Rules:*
+- Only implement elements within the `<body>` tag, don't bother with `<html>` or `<head>` tags.
+- Avoid using SVGs directly. Instead, use the `<img>` tag with a descriptive title as the alt attribute and add .svg to the placehold.co url, for example:
+
+```html
+<img aria-hidden="true" alt="magic-wand" src="/icons/24x24.svg?text=🪄" />
+```
+
+Always start your response with frontmatter wrapped in ---.  Set name: with a 2 to 5 word description of the component. Set emoji: with an emoji for the component, i.e.:
 
 ---
 name: Fancy Button
@@ -56,6 +90,7 @@ emoji: 🎉
 ---
 
 <button class="bg-blue-500 text-white p-2 rounded-lg">Click me</button>
+
 """
 
 
@@ -80,6 +115,11 @@ class OpenUIModel(PromptModel):
     def client(self):
         if self.model_name.startswith("ollama/"):
             return AsyncOpenAI(base_url="http://localhost:11434/v1")
+        if self.model_name.startswith("litellm/"):
+            return AsyncOpenAI(
+                api_key=os.getenv("LITELLM_API_KEY", "xxx"),
+                base_url=os.getenv("LITELLM_BASE_URL", "http://0.0.0.0:4000"),
+            )
         if self.model_name.startswith("fireworks/"):
             return AsyncOpenAI(
                 api_key=os.getenv("FIREWORKS_API_KEY"),
@@ -92,6 +132,8 @@ class OpenUIModel(PromptModel):
     def model(self):
         if self.model_name.startswith("ollama/"):
             return self.model_name.replace("ollama/", "")
+        if self.model_name.startswith("litellm/"):
+            return self.model_name.replace("litellm/", "")
         if self.model_name.startswith("fireworks/"):
             return (
                 f"accounts/fireworks/models/{self.model_name.replace('fireworks/', '')}"
@@ -102,10 +144,8 @@ class OpenUIModel(PromptModel):
     def model_dir(self):
         return self.model_name.split("/")[-1]
 
-    @weave.op()
-    async def predict(self, prompt: str) -> dict:
-        pt("Actually predicting", prompt)
-        completion = await self.client.chat.completions.create(
+    async def actually_predict(self, prompt: str):
+        return await self.client.chat.completions.create(
             messages=[
                 {
                     "role": "system",
@@ -120,6 +160,23 @@ class OpenUIModel(PromptModel):
             temperature=self.temp,
             model=self.model,
         )
+
+    @weave.op()
+    async def predict(self, prompt: str) -> dict:
+        pt("Actually predicting", prompt)
+        # TODO: lame
+        try:
+            completion = await self.actually_predict(prompt)
+        except RateLimitError:
+            pt("Rate limit exceeded, retrying...")
+            try:
+                # sleep randomly
+                await asyncio.sleep(random.randint(1, 5))
+                completion = await self.actually_predict(prompt)
+            except RateLimitError:
+                pt("Rate limit exceeded, retrying...")
+                await asyncio.sleep(random.randint(1, 5))
+                completion = await self.actually_predict(prompt)
         result = completion.choices[0].message.content
         parsed = self.extract_html(result)
         if self.take_screenshot:
@@ -128,9 +185,7 @@ class OpenUIModel(PromptModel):
             await self.screenshot(parsed["html"], name)
             parsed["desktop_img"] = f"./{self.model_dir}/{name}.combined.png"
             parsed["mobile_img"] = f"./{self.model_dir}/{name}.combined.mobile.png"
-            parsed["desktop_uri"] = self.data_url(
-                base_dir / parsed["desktop_img"]
-            )
+            parsed["desktop_uri"] = self.data_url(base_dir / parsed["desktop_img"])
             parsed["mobile_uri"] = self.data_url(base_dir / parsed["mobile_img"])
         return parsed
 
@@ -143,6 +198,7 @@ class OpenUIModel(PromptModel):
         fm = {}
         parts = result.split("---")
         try:
+            print("len(parts)", len(parts))
             if len(parts) > 2:
                 fm = yaml.safe_load(parts[1])
                 if not isinstance(fm, dict):
@@ -174,6 +230,9 @@ class OpenUIModel(PromptModel):
         if blocks == 0:
             html = md
         fm["html"] = html.strip()
+        fm["name"] = fm.get("name", "Component")
+        fm["emoji"] = fm.get("emoji", "🎉")
+        print("WTF FM", fm)
         return fm
 
 
@@ -325,13 +384,18 @@ async def eval(mod="gpt-3.5-turbo"):
     weave.init("openui-dev")
     model = OpenUIModel(prompt_template=SYSTEM_PROMPT, model_name=mod)
     pt("Loading dataset")
-    dataset = weave.ref("eval").get()
+    dataset = weave.ref("eval:v0").get()
+    # dataset = Dataset(
+    #    name="eval",
+    #    rows=[{"prompt": "Make a cool SaaS landing page for an AI startup"}],
+    # )
     evaluation = Evaluation(
         dataset=dataset,
         scorers=[scores],
     )
     pt("Running evaluation")
     await evaluation.evaluate(model)
+
 
 def run_prompt_search(mod: str):
     weave.init("openui-dev")
@@ -347,7 +411,9 @@ def run_prompt_search(mod: str):
         model=model,
         dataset=dataset,
         evaluation=evaluation,
-        eval_result_to_score=lambda evals: evals["scores"]["polish"]["mean"] + evals["scores"]["relevance"]["mean"])
+        eval_result_to_score=lambda evals: evals["scores"]["polish"]["mean"]
+        + evals["scores"]["relevance"]["mean"],
+    )
     ps.steps(10)
 
 

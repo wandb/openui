@@ -595,10 +595,11 @@ def check_wandb_auth():
 wandb_enabled = check_wandb_auth()
 
 if not wandb_enabled:
-    from weave.monitoring import openai as wandb_openai
-
-    wandb_openai.unpatch()
-
+    try:
+        from weave.integrations.openai.openai_sdk import openai_patcher
+        openai_patcher.undo_patch()
+    except Exception:
+        pass
 
 class Server(uvicorn.Server):
     # TODO: this still isn't working for some reason, can't ctrl-c when not in dev mode

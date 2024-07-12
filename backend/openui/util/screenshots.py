@@ -1,5 +1,6 @@
 import io
 import json
+import asyncio
 from PIL import Image
 from playwright.async_api import async_playwright, TimeoutError
 
@@ -64,6 +65,8 @@ async def gen_screenshots(root_name, html, img_dir):
             await page.wait_for_function(
                 "() => Array.from(document.images).every((img) => img.complete && (typeof img.naturalWidth != 'undefined'))"
             )
+            # Temp sleep to ensure we fade in...
+            await asyncio.sleep(0.5)
         except TimeoutError:
             print("Timed out waiting for images to load")
             return None
