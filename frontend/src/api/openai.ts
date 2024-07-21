@@ -115,7 +115,7 @@ emoji: 🎉
 		if (image) {
 			// TODO: configurable
 			if (model.startsWith('gpt')) {
-				model = 'gpt-4o'
+				model = 'gpt-4o-mini'
 			}
 			const textImageRequirements = query
 				? `The following are some special requirements: \n ${query}`
@@ -156,7 +156,7 @@ emoji: 🎉
 		if (image) {
 			// TODO: configurable
 			if (model.startsWith('gpt')) {
-				model = 'gpt-4o'
+				model = 'gpt-4o-mini'
 			}
 			messages.push({
 				role: 'user',
