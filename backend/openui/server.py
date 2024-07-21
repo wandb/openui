@@ -395,7 +395,7 @@ async def get_openai_models():
     try:
         await openai.models.list()
         # We only support 3.5 and 4 for now
-        return ["gpt-3.5-turbo", "gpt-4o", "gpt-4-turbo"]
+        return ["gpt-3.5-turbo", "gpt-4o-mini", "gpt-4o", "gpt-4-turbo"]
     except Exception:
         logger.warning("Couldn't connect to OpenAI at %s", config.OPENAI_BASE_URL)
         return []
