@@ -9133,54 +9133,53 @@
       let ambiguousCharacterCount = 0;
       let invisibleCharacterCount = 0;
       let nonBasicAsciiCharacterCount = 0;
-      forLoop:
-        for (let lineNumber = startLine, lineCount = endLine; lineNumber <= lineCount; lineNumber++) {
-          const lineContent = model.getLineContent(lineNumber);
-          const lineLength = lineContent.length;
-          searcher.reset(0);
-          do {
-            m = searcher.next(lineContent);
-            if (m) {
-              let startIndex = m.index;
-              let endIndex = m.index + m[0].length;
-              if (startIndex > 0) {
-                const charCodeBefore = lineContent.charCodeAt(startIndex - 1);
-                if (isHighSurrogate(charCodeBefore)) {
-                  startIndex--;
-                }
-              }
-              if (endIndex + 1 < lineLength) {
-                const charCodeBefore = lineContent.charCodeAt(endIndex - 1);
-                if (isHighSurrogate(charCodeBefore)) {
-                  endIndex++;
-                }
-              }
-              const str = lineContent.substring(startIndex, endIndex);
-              let word = getWordAtText(startIndex + 1, DEFAULT_WORD_REGEXP, lineContent, 0);
-              if (word && word.endColumn <= startIndex + 1) {
-                word = null;
-              }
-              const highlightReason = codePointHighlighter.shouldHighlightNonBasicASCII(str, word ? word.word : null);
-              if (highlightReason !== 0) {
-                if (highlightReason === 3) {
-                  ambiguousCharacterCount++;
-                } else if (highlightReason === 2) {
-                  invisibleCharacterCount++;
-                } else if (highlightReason === 1) {
-                  nonBasicAsciiCharacterCount++;
-                } else {
-                  assertNever(highlightReason);
-                }
-                const MAX_RESULT_LENGTH = 1e3;
-                if (ranges.length >= MAX_RESULT_LENGTH) {
-                  hasMore = true;
-                  break forLoop;
-                }
-                ranges.push(new Range(lineNumber, startIndex + 1, lineNumber, endIndex + 1));
+      forLoop: for (let lineNumber = startLine, lineCount = endLine; lineNumber <= lineCount; lineNumber++) {
+        const lineContent = model.getLineContent(lineNumber);
+        const lineLength = lineContent.length;
+        searcher.reset(0);
+        do {
+          m = searcher.next(lineContent);
+          if (m) {
+            let startIndex = m.index;
+            let endIndex = m.index + m[0].length;
+            if (startIndex > 0) {
+              const charCodeBefore = lineContent.charCodeAt(startIndex - 1);
+              if (isHighSurrogate(charCodeBefore)) {
+                startIndex--;
               }
             }
-          } while (m);
-        }
+            if (endIndex + 1 < lineLength) {
+              const charCodeBefore = lineContent.charCodeAt(endIndex - 1);
+              if (isHighSurrogate(charCodeBefore)) {
+                endIndex++;
+              }
+            }
+            const str = lineContent.substring(startIndex, endIndex);
+            let word = getWordAtText(startIndex + 1, DEFAULT_WORD_REGEXP, lineContent, 0);
+            if (word && word.endColumn <= startIndex + 1) {
+              word = null;
+            }
+            const highlightReason = codePointHighlighter.shouldHighlightNonBasicASCII(str, word ? word.word : null);
+            if (highlightReason !== 0) {
+              if (highlightReason === 3) {
+                ambiguousCharacterCount++;
+              } else if (highlightReason === 2) {
+                invisibleCharacterCount++;
+              } else if (highlightReason === 1) {
+                nonBasicAsciiCharacterCount++;
+              } else {
+                assertNever(highlightReason);
+              }
+              const MAX_RESULT_LENGTH = 1e3;
+              if (ranges.length >= MAX_RESULT_LENGTH) {
+                hasMore = true;
+                break forLoop;
+              }
+              ranges.push(new Range(lineNumber, startIndex + 1, lineNumber, endIndex + 1));
+            }
+          }
+        } while (m);
+      }
       return {
         ranges,
         hasMore,
@@ -10627,34 +10626,33 @@
       const paths = new FastArrayNegativeIndices();
       paths.set(0, V.get(0) === 0 ? null : new SnakePath(null, 0, 0, V.get(0)));
       let k = 0;
-      loop:
-        while (true) {
-          d++;
-          if (!timeout.isValid()) {
-            return DiffAlgorithmResult.trivialTimedOut(seqX, seqY);
+      loop: while (true) {
+        d++;
+        if (!timeout.isValid()) {
+          return DiffAlgorithmResult.trivialTimedOut(seqX, seqY);
+        }
+        const lowerBound = -Math.min(d, seqY.length + d % 2);
+        const upperBound = Math.min(d, seqX.length + d % 2);
+        for (k = lowerBound; k <= upperBound; k += 2) {
+          let step = 0;
+          const maxXofDLineTop = k === upperBound ? -1 : V.get(k + 1);
+          const maxXofDLineLeft = k === lowerBound ? -1 : V.get(k - 1) + 1;
+          step++;
+          const x = Math.min(Math.max(maxXofDLineTop, maxXofDLineLeft), seqX.length);
+          const y = x - k;
+          step++;
+          if (x > seqX.length || y > seqY.length) {
+            continue;
           }
-          const lowerBound = -Math.min(d, seqY.length + d % 2);
-          const upperBound = Math.min(d, seqX.length + d % 2);
-          for (k = lowerBound; k <= upperBound; k += 2) {
-            let step = 0;
-            const maxXofDLineTop = k === upperBound ? -1 : V.get(k + 1);
-            const maxXofDLineLeft = k === lowerBound ? -1 : V.get(k - 1) + 1;
-            step++;
-            const x = Math.min(Math.max(maxXofDLineTop, maxXofDLineLeft), seqX.length);
-            const y = x - k;
-            step++;
-            if (x > seqX.length || y > seqY.length) {
-              continue;
-            }
-            const newMaxX = getXAfterSnake(x, y);
-            V.set(k, newMaxX);
-            const lastPath = x === maxXofDLineTop ? paths.get(k + 1) : paths.get(k - 1);
-            paths.set(k, newMaxX !== x ? new SnakePath(lastPath, x, y, newMaxX - x) : lastPath);
-            if (V.get(k) === seqX.length && V.get(k) - k === seqY.length) {
-              break loop;
-            }
+          const newMaxX = getXAfterSnake(x, y);
+          V.set(k, newMaxX);
+          const lastPath = x === maxXofDLineTop ? paths.get(k + 1) : paths.get(k - 1);
+          paths.set(k, newMaxX !== x ? new SnakePath(lastPath, x, y, newMaxX - x) : lastPath);
+          if (V.get(k) === seqX.length && V.get(k) - k === seqY.length) {
+            break loop;
           }
         }
+      }
       let path = paths.get(k);
       const result = [];
       let lastAligningPosS1 = seqX.length;
@@ -12671,22 +12669,21 @@
       const sw = new StopWatch();
       const wordDefRegExp = new RegExp(wordDef, wordDefFlags);
       const seen = /* @__PURE__ */ new Set();
-      outer:
-        for (const url of modelUrls) {
-          const model = this._getModel(url);
-          if (!model) {
+      outer: for (const url of modelUrls) {
+        const model = this._getModel(url);
+        if (!model) {
+          continue;
+        }
+        for (const word of model.words(wordDefRegExp)) {
+          if (word === leadingWord || !isNaN(Number(word))) {
             continue;
           }
-          for (const word of model.words(wordDefRegExp)) {
-            if (word === leadingWord || !isNaN(Number(word))) {
-              continue;
-            }
-            seen.add(word);
-            if (seen.size > _EditorSimpleWorker._suggestionsLimit) {
-              break outer;
-            }
+          seen.add(word);
+          if (seen.size > _EditorSimpleWorker._suggestionsLimit) {
+            break outer;
           }
         }
+      }
       return { words: Array.from(seen), duration: sw.elapsed() };
     }
     // ---- END suggest --------------------------------------------------------------------------
