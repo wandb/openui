@@ -415,7 +415,7 @@ async def get_groq_models():
             d for d in (await groq.models.list()).data if not d.id.startswith("whisper")
         ]
     except Exception:
-        logger.warning("Couldn't connect to Ollama at %s", config.GROQ_BASE_URL)
+        logger.warning("Couldn't connect to Groq at %s", config.GROQ_BASE_URL)
         return []
 
 
@@ -593,13 +593,6 @@ def check_wandb_auth():
 
 
 wandb_enabled = check_wandb_auth()
-
-if not wandb_enabled:
-    try:
-        from weave.integrations.openai.openai_sdk import openai_patcher
-        openai_patcher.undo_patch()
-    except Exception:
-        pass
 
 class Server(uvicorn.Server):
     # TODO: this still isn't working for some reason, can't ctrl-c when not in dev mode
