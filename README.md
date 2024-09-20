@@ -18,7 +18,7 @@ OpenUI let's you describe UI using your imagination, then see it rendered live. 
 
 ## Running Locally
 
-OpenUI supports [OpenAI](https://platform.openai.com/api-keys), [Groq](https://console.groq.com/keys), and any model [LiteLLM](https://docs.litellm.ai/docs/) supports such as [Gemini](https://aistudio.google.com/app/apikey) or [Anthropic (Claude)](https://console.anthropic.com/settings/keys).  The following environment variables are optional, but need to be set in your environment for these services to work:
+OpenUI supports [OpenAI](https://platform.openai.com/api-keys), [Groq](https://console.groq.com/keys), and any model [LiteLLM](https://docs.litellm.ai/docs/) supports such as [Gemini](https://aistudio.google.com/app/apikey) or [Anthropic (Claude)](https://console.anthropic.com/settings/keys).  The following environment variables are optional, but need to be set in your environment for alternative models to work:
 
 - **OpenAI** `OPENAI_API_KEY`
 - **Groq** `GROQ_API_KEY`
@@ -26,8 +26,13 @@ OpenUI supports [OpenAI](https://platform.openai.com/api-keys), [Groq](https://c
 - **Anthropic** `ANTHROPIC_API_KEY`
 - **Cohere** `COHERE_API_KEY`
 - **Mistral** `MISTRAL_API_KEY`
+- **OpenAI Compatible** `OPENAI_COMPATIBLE_ENDPOINT` and `OPENAI_COMPATIBLE_API_KEY`
 
-You can also use models available to [Ollama](https://ollama.com).  [Install Ollama](https://ollama.com/download) and pull a model like [Llava](https://ollama.com/library/llava).  If Ollama is not running on http://127.0.0.1:11434, you can set the `OLLAMA_HOST` environment variable to the host and port of your Ollama instance.
+For example, if you're running a tool like [localai](https://localai.io/) you can set `OPENAI_COMPATIBLE_ENDPOINT` and optionally `OPENAI_COMPATIBLE_API_KEY` to have the models available listed in the UI's model selector under LiteLLM.
+
+### Ollama
+
+You can also use models available to [Ollama](https://ollama.com).  [Install Ollama](https://ollama.com/download) and pull a model like [Llava](https://ollama.com/library/llava).  If Ollama is not running on http://127.0.0.1:11434, you can set the `OLLAMA_HOST` environment variable to the host and port of your Ollama instance.  For example when running in docker you'll need to point to http://host.docker.internal:11434 as shown below.
 
 ### Docker (preferred)
 
@@ -43,23 +48,15 @@ Now you can goto [http://localhost:7878](http://localhost:7878) and generate new
 
 ### From Source / Python
 
-Assuming you have git and python installed:
-
-> **Note:** There's a .python-version file that specifies **openui** as the virtual env name.  Assuming you have pyenv and pyenv-virtualenv you can run the following from the root of the repository or just run `pyenv local 3.X` where X is the version of python you have installed.
-> ```bash
-> pyenv virtualenv 3.12.2 openui
-> pyenv local openui
-> ```
+Assuming you have git and [uv](https://github.com/astral-sh/uv) installed:
 
 ```bash
 git clone https://github.com/wandb/openui
 cd openui/backend
-# You probably want to do this from a virtual environment
-pip install .
+uv sync --frozen --extra litellm
+source .venv/bin/activate
 # Set API keys for any LLM's you want to use
 export OPENAI_API_KEY=xxx
-# You may change the base url to use an OpenAI-compatible api by setting the OPENAI_BASE_URL environment variable
-# export OPENAI_BASE_URL=https://api.myopenai.com/v1
 python -m openui
 ```
 
@@ -82,6 +79,7 @@ To use litellm from source you can run:
 ```bash
 pip install .[litellm]
 export ANTHROPIC_API_KEY=xxx
+export OPENAI_COMPATIBLE_ENDPOINT=http://localhost:8080/v1
 python -m openui --litellm
 ```
 

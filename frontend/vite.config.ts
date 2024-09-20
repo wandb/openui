@@ -61,7 +61,8 @@ export default defineConfig(({ mode }) => ({
 		VitePWA({
 			registerType: 'autoUpdate',
 			workbox: {
-				globIgnores: ['**/annotator/**'],
+				maximumFileSizeToCacheInBytes: 4000000,
+				globIgnores: ['**/annotator/**', '**/monacoeditorwork/**'],
 				navigateFallbackDenylist: [/\/openui\/.*/, /\/v1\/.*/]
 			},
 			manifest: {
