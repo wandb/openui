@@ -415,7 +415,7 @@ async def get_groq_models():
             d for d in (await groq.models.list()).data if not d.id.startswith("whisper")
         ]
     except Exception:
-        logger.warning("Couldn't connect to Ollama at %s", config.GROQ_BASE_URL)
+        logger.warning("Couldn't connect to Groq at %s", config.GROQ_BASE_URL)
         return []
 
 

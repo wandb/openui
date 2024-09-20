@@ -62,7 +62,7 @@ export default defineConfig(({ mode }) => ({
 			registerType: 'autoUpdate',
 			workbox: {
 				maximumFileSizeToCacheInBytes: 4000000,
-				globIgnores: ['**/annotator/**', '**/monacoeditorwork/**'],
+				globIgnores: ['**/annotator/**', '**/ts.worker.bundle.js'],
 				navigateFallbackDenylist: [/\/openui\/.*/, /\/v1\/.*/]
 			},
 			manifest: {

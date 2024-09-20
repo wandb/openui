@@ -2,6 +2,7 @@ import yaml
 import os
 import tempfile
 import openai
+from .logs import logger
 
 
 def generate_config():
@@ -104,17 +105,20 @@ def generate_config():
         try:
             for model in client.models.list().data:
                 models.append(
-                {
-                    "model_name": model.id,
-                    "litellm_params": {
-                        "model": f"openai/{model.id}",
-                        "api_key": os.getenv("OPENAI_COMPATIBLE_API_KEY"),
-                        "base_url": os.getenv("OPENAI_COMPATIBLE_ENDPOINT"),
-                    },
+                    {
+                        "model_name": model.id,
+                        "litellm_params": {
+                            "model": f"openai/{model.id}",
+                            "api_key": os.getenv("OPENAI_COMPATIBLE_API_KEY"),
+                            "base_url": os.getenv("OPENAI_COMPATIBLE_ENDPOINT"),
+                        },
                     }
                 )
         except Exception as e:
-            print(f"Error listing models for {os.getenv('OPENAI_COMPATIBLE_ENDPOINT')}: {e}")
+            logger.exception(
+                f"Error listing models for {os.getenv('OPENAI_COMPATIBLE_ENDPOINT')}: %s",
+                e,
+            )
 
     yaml_structure = {"model_list": models}
     with tempfile.NamedTemporaryFile(
