@@ -38,6 +38,12 @@ if __name__ == "__main__":
         or "OPENUI_LITELLM_CONFIG" in os.environ
         or os.path.exists("litellm-config.yaml")
     )
+    # allow setting the port with --port
+    port = (
+        int(sys.argv[sys.argv.index("--port") + 1])
+        if "--port" in sys.argv and len(sys.argv) > sys.argv.index("--port") + 1
+        else None
+    ) or int(os.environ.get("PORT", 7878))
     # TODO: only render in interactive mode?
     print(
         (Path(__file__).parent / "logo.ascii").read_text(), file=sys.stderr, flush=True
@@ -68,7 +74,7 @@ if __name__ == "__main__":
             "openui.server:app",
             host="0.0.0.0" if is_running_in_docker() else "127.0.0.1",
             log_config=str(config_file) if ui else None,
-            port=7878,
+            port=port,
             reload=reload,
         )
     )
@@ -111,7 +117,7 @@ if __name__ == "__main__":
             uvicorn.run(
                 "openui.server:app",
                 host="0.0.0.0" if is_running_in_docker() else "127.0.0.1",
-                port=7878,
+                port=port,
                 reload=reload,
             )
         else:
