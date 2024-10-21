@@ -25,7 +25,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build]
-include = ["openui/**/*.py", "openui/assets/*", "openui/dist/*"]
+include = ["openui/**/*.py", "openui/*.yaml", "openui/*.ascii", "openui/assets/*", "openui/dist/*"]
 exclude = [
   "openui/eval/components/*",
   "openui/eval/datasets/*",
