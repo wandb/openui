@@ -90,7 +90,7 @@ if __name__ == "__main__":
                 f"Starting LiteLLM in the background with config: {config_path}"
             )
             litellm_process = subprocess.Popen(
-                ["litellm", "--config", config_path],
+                ["litellm", "--config", config_path, "--port", "4000"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
