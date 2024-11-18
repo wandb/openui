@@ -3,6 +3,7 @@ import type { ModelResponse } from 'ollama'
 
 export interface Models {
 	openai: string[]
+	azure: string[]
 	groq: Model[]
 	ollama: ModelResponse[]
 	litellm: Model[]
@@ -18,6 +19,7 @@ export async function getModels(): Promise<Models> {
 		console.error(error)
 		return {
 			openai: [],
+			azure: [],
 			groq: [],
 			ollama: [],
 			litellm: []

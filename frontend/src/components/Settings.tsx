@@ -47,7 +47,9 @@ import { Textarea } from './ui/textarea'
 
 function slugToNiceName(slug?: string, float = true) {
 	if (slug) {
-		const niceSlug = slug.split('/').slice(1, -1).join('')
+		const parts = slug.split('/')
+		const isAzure = parts[0] === 'azure'
+		const niceSlug = isAzure ? parts[1] : parts.slice(1, -1).join('')
 		let icon: React.ReactNode | undefined
 		if (knownImageModels.some(regex => regex.test(niceSlug))) {
 			icon = (
@@ -62,6 +64,7 @@ function slugToNiceName(slug?: string, float = true) {
 				{slug
 					.replace(':latest', '')
 					.replace('gpt', 'GPT')
+					.replace('azure/', '')
 					.replaceAll(/[:-]/g, ' ')
 					.replaceAll(/\b\w/g, char => char.toUpperCase())}
 			</>
@@ -92,7 +95,10 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 		if (error) {
 			console.error('Error fetching models', error)
 		}
-	}, [error])
+		if (data) {
+			console.log('Models data:', data)
+		}
+	}, [error, data])
 
 	// Default to another model if no OpenAI models are available
 	useEffect(() => {
@@ -102,7 +108,10 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 				`dummy/${available.includes(searchParams.get('dummy') ?? '') ? searchParams.get('dummy') : 'good'}`
 			)
 		} else if (data && data.openai.length === 0 && model.startsWith('gpt')) {
-			if (data.groq.length > 0) {
+			// Try Azure OpenAI first, then fall back to other providers
+			if (data.azure.length > 0) {
+				setModel(data.azure[0]) // Use the first available Azure model
+			} else if (data.groq.length > 0) {
 				// Defaulting to the 3rd model which is currently llama3-70b
 				setModel(`groq/${data.groq[2].id}`)
 			} else if (data.ollama.length > 0) {
@@ -203,6 +212,16 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 														{slugToNiceName(m)}
 													</SelectItem>
 												))}
+										</SelectGroup>
+									)}
+									{data.azure.length > 0 && (
+										<SelectGroup>
+											<SelectLabel>Azure OpenAI</SelectLabel>
+											{data.azure.map(m => (
+												<SelectItem key={m} value={m}>
+													{slugToNiceName(m)}
+												</SelectItem>
+											))}
 										</SelectGroup>
 									)}
 									{data.groq.length > 0 && (
