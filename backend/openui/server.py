@@ -134,11 +134,9 @@ async def chat_completions(
         if data.get("model").startswith("gpt"):
             if data["model"] == "gpt-4" or data["model"] == "gpt-4-32k":
                 raise HTTPException(status=400, data="Model not supported")
-            response: AsyncStream[
-                ChatCompletionChunk
-            ] = await openai.chat.completions.create(
+            response = await openai.chat.completions.create(
                 **data,
-            )
+            ) # Type inference handles AsyncStream[ChatCompletionChunk]
             # gpt-4 tokens are 20x more expensive
             multiplier = 20 if "gpt-4" in data["model"] else 1
             return StreamingResponse(
@@ -150,11 +148,9 @@ async def chat_completions(
             data["model"] = data["model"].replace("groq/", "")
             if groq is None:
                 raise HTTPException(status=500, detail="Groq API key is not set.")
-            response: AsyncStream[
-                ChatCompletionChunk
-            ] = await groq.chat.completions.create(
+            response = await groq.chat.completions.create(
                 **data,
-            )
+            ) # Type inference handles AsyncStream[ChatCompletionChunk]
             return StreamingResponse(
                 openai_stream_generator(response, input_tokens, user_id, 1),
                 media_type="text/event-stream",
@@ -164,11 +160,9 @@ async def chat_completions(
             data["model"] = data["model"].replace("litellm/", "")
             if litellm is None:
                 raise HTTPException(status=500, detail="LiteLLM API key is not set.")
-            response: AsyncStream[
-                ChatCompletionChunk
-            ] = await litellm.chat.completions.create(
+            response = await litellm.chat.completions.create(
                 **data,
-            )
+            ) # Type inference handles AsyncStream[ChatCompletionChunk]
             return StreamingResponse(
                 openai_stream_generator(response, input_tokens, user_id, 1),
                 media_type="text/event-stream",
@@ -191,11 +185,9 @@ async def chat_completions(
                 )
                 gen = await ollama_stream_generator(response, data)
             else:
-                response: AsyncStream[
-                    ChatCompletionChunk
-                ] = await ollama_openai.chat.completions.create(
+                response = await ollama_openai.chat.completions.create(
                     **data,
-                )
+                ) # Type inference handles AsyncStream[ChatCompletionChunk]
 
                 def gen():
                     return openai_stream_generator(response, input_tokens, user_id, 0)
