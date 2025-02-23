@@ -130,6 +130,13 @@ def alter(schema: SchemaMigration, ops: list[list], version: str) -> bool:
 
 
 def perform_migration(schema: SchemaMigration) -> bool:
+    """Perform database schema migration.
+    
+    Args:
+        schema: Current schema migration record
+    Returns:
+        bool: True if migration was performed, False otherwise
+    """
     if schema.version == "2024-03-08":
         version = "2024-03-12"
         aaguid = CharField(null=True)
@@ -143,14 +150,16 @@ def perform_migration(schema: SchemaMigration) -> bool:
             version,
         )
         if altered:
-            perform_migration(schema)
+            return perform_migration(schema)
+        return True
     if schema.version == "2024-03-12":
         version = "2024-05-14"
         database.create_tables([Vote])
-        schema.version = version
-        schema.save()
+        schema.update(version=version).where(SchemaMigration.id == schema.id).execute()
         if version != CURRENT_VERSION:
-            perform_migration(schema)
+            return perform_migration(schema)
+        return True
+    return False  # No migration needed
 
 
 def ensure_migrated():
