@@ -415,10 +415,13 @@ async def get_ollama_models() -> List[Dict[str, Any]]:
 async def get_groq_models() -> List[Any]:
     """Get list of available Groq models."""
     try:
-        if groq is None:
+        if groq is None or not hasattr(groq, 'models'):
+            return []
+        models = await groq.models.list()
+        if models is None:
             return []
         return [
-            d for d in (await groq.models.list()).data if not d.id.startswith("whisper")
+            d for d in models.data if not d.id.startswith("whisper")
         ]
     except Exception:
         logger.warning("Couldn't connect to Groq at %s", config.GROQ_BASE_URL)
@@ -428,9 +431,12 @@ async def get_groq_models() -> List[Any]:
 async def get_litellm_models() -> List[Any]:
     """Get list of available LiteLLM models."""
     try:
-        if litellm is None:
+        if litellm is None or not hasattr(litellm, 'models'):
             return []
-        return (await litellm.models.list()).data
+        models = await litellm.models.list()
+        if models is None:
+            return []
+        return models.data
     except Exception:
         logger.warning("Couldn't connect to LiteLLM at %s", config.LITELLM_BASE_URL)
         return []
