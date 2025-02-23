@@ -116,7 +116,13 @@ app.add_middleware(
 async def chat_completions(
     request: Request,
 ) -> StreamingResponse:
-    """Handle chat completion requests with streaming responses."""
+    """Handle chat completion requests with streaming responses.
+    
+    Args:
+        request: FastAPI request object
+    Returns:
+        StreamingResponse: Server-sent events stream
+    """
     if request.session.get("user_id") is None:
         raise HTTPException(status_code=401, detail="Login required to use OpenUI")
     user_id = request.session["user_id"]
@@ -431,7 +437,12 @@ async def get_litellm_models() -> List[Any]:
 
 
 @router.get("/v1/models", tags="openui/models")
-async def models():
+async def models() -> Dict[str, List[Union[str, Dict[str, Any]]]]:
+    """Get available models from all providers.
+    
+    Returns:
+        Dict containing lists of models from each provider
+    """
     tasks = [
         get_openai_models(),
         get_groq_models(),
@@ -495,6 +506,8 @@ async def get_session(
         else:
             raise HTTPException(status_code=404, detail="No session found")
     session_data = session_store.get(session_id)
+    if session_data is None:
+        raise HTTPException(status_code=404, detail="Session data not found")
     return JSONResponse(
         content=session_data.model_dump(),
         status_code=200,
