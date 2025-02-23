@@ -448,11 +448,11 @@ async def get_litellm_models() -> List[Any]:
 
 
 @router.get("/v1/models", tags="openui/models")
-async def models() -> Dict[str, List[Union[str, Dict[str, Any]]]]:
+async def models() -> Dict[str, Dict[str, List[Union[str, Dict[str, Any]]]]]:
     """Get available models from all providers.
     
     Returns:
-        Dict containing lists of models from each provider
+        Dict containing provider name to list of models mapping
     """
     tasks = [
         get_openai_models(),
@@ -463,13 +463,14 @@ async def models() -> Dict[str, List[Union[str, Dict[str, Any]]]]:
     openai_models, groq_models, ollama_models, litellm_models = await asyncio.gather(
         *tasks
     )
-    models_dict: Dict[str, List[Union[str, Dict[str, Any]]]] = {
-        "openai": openai_models,
-        "groq": groq_models,
-        "ollama": ollama_models,
-        "litellm": litellm_models,
+    return {
+        "models": {
+            "openai": openai_models,
+            "groq": groq_models,
+            "ollama": ollama_models,
+            "litellm": litellm_models,
+        }
     }
-    return {"models": models_dict}
 
 
 @router.get(
