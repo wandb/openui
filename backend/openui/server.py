@@ -39,16 +39,14 @@ from .db.models import User, Usage, Vote, Component
 from .util import storage
 from .util import get_git_user_email
 from . import config
+from .code_executor import CodeExecutor, CodeExecutionRequest
 from pydantic import ValidationError
 from multiprocessing import Queue
-from openai._client import AsyncOpenAI
-from openai.types.chat import ChatCompletionChunk
-from openai.types.chat.chat_completion import ChatCompletion
+from openai import AsyncOpenAI, APIError as APIStatusError
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from openai.types.completion import Completion
-from openai._streaming import AsyncStream
-from openai.types.error import APIError as APIStatusError
-from ollama.client import AsyncClient
-from ollama.errors import ResponseError
+from openai import AsyncStream
+from ollama import AsyncClient, ResponseError
 from typing import Optional, Any, AsyncGenerator, Dict, List, Union
 from pathlib import Path
 from typing import Optional
@@ -541,6 +539,28 @@ async def delete_session(
         content={},
         status_code=200,
     )
+
+
+@router.post("/v1/execute", tags=["openui/execute"])
+async def execute_code(request: Request, code_request: CodeExecutionRequest):
+    """Execute code in an isolated container.
+    
+    Args:
+        request: FastAPI request object
+        code_request: Code execution parameters
+        
+    Returns:
+        CodeExecutionResponse with execution results
+        
+    Raises:
+        HTTPException: If user is not authenticated
+    """
+    if request.session.get("user_id") is None:
+        raise HTTPException(status_code=401, detail="Login required")
+        
+    executor = CodeExecutor()
+    result = await executor.execute(code_request)
+    return result
 
 
 @router.get("/openui/{name}.svg", tags=["openui/svg"])

@@ -17,12 +17,16 @@ import {
 	convertFrameworkAtom,
 	historyAtomFamily,
 	selectedFrameworkAtom,
-	uiThemeAtom,
-	type Framework
+	uiThemeAtom
 } from 'state'
+
+import { Framework } from '../state/atoms/history'
 import { wrappedCode } from '../lib/html'
 import { cn } from '../lib/utils'
 import Scaffold from './Scaffold'
+
+
+const isExecutableLanguage = (f: Framework): boolean => ['python', 'javascript', 'bash'].includes(f)
 
 const CodeEditor = lazy(async () => import('components/CodeEditor'))
 
@@ -66,6 +70,13 @@ ${render
 interface ViewerProps {
 	id: string
 	code: string
+	framework?: string
+}
+
+interface ExecutionResult {
+	output: string
+	error?: string
+	status: string
 }
 
 function stripCodeblocks(code: string) {
@@ -78,6 +89,9 @@ export default function CodeViewer({ id, code }: ViewerProps) {
 	const theme = themes.find(t => t.name === uiTheme)
 	const [framework, setFramework] = useAtom(selectedFrameworkAtom)
 	const [convertFramework, setConvertFramework] = useAtom(convertFrameworkAtom)
+	const handleFrameworkChange = (f: Framework) => {
+		setFramework(f)
+	}
 
 	// local state
 	const [currentCode, setCurrentCode] = useState<string>(code)
@@ -109,6 +123,33 @@ export default function CodeViewer({ id, code }: ViewerProps) {
 		frameworks.push('jsx')
 	}
 
+	const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null)
+	const [isExecuting, setIsExecuting] = useState(false)
+
+	const executeCode = async () => {
+		setIsExecuting(true)
+		try {
+			const response = await fetch('/v1/execute', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					code: currentCode,
+					language: isExecutableLanguage(framework) ? framework : 'javascript'
+				})
+			})
+			const result = await response.json()
+			setExecutionResult(result)
+		} catch (error) {
+			setExecutionResult({
+				output: '',
+				error: String(error),
+				status: 'error'
+			})
+		} finally {
+			setIsExecuting(false)
+		}
+	}
+
 	return (
 		<div className='code-syntax-wrapper'>
 			<div className='code-syntax relative rounded-lg border'>
@@ -119,7 +160,7 @@ export default function CodeViewer({ id, code }: ViewerProps) {
 								<button
 									type='button'
 									// eslint-disable-next-line react/jsx-handler-names
-									onClick={() => setFramework(f)}
+									onClick={() => handleFrameworkChange(f)}
 									className={cn(
 										'inline-block w-full whitespace-nowrap border-r p-2 px-3 text-secondary-foreground',
 										f === framework
@@ -206,6 +247,28 @@ export default function CodeViewer({ id, code }: ViewerProps) {
 						</Suspense>
 					</div>
 				</div>
+			</div>
+			<div className='execution-controls mt-4'>
+				<button
+					onClick={executeCode}
+					disabled={isExecuting || !isExecutableLanguage(framework)}
+					className='bg-primary text-primary-foreground px-4 py-2 rounded disabled:opacity-50'
+				>
+					{isExecuting ? 'Running...' : 'Run Code'}
+				</button>
+				{executionResult && (
+					<div
+						className={`mt-4 p-4 rounded ${
+							executionResult.status === 'error'
+								? 'bg-red-100'
+								: 'bg-zinc-800'
+						}`}
+					>
+						<pre className='whitespace-pre-wrap'>
+							{executionResult.error || executionResult.output}
+						</pre>
+					</div>
+				)}
 			</div>
 		</div>
 	)

@@ -13,6 +13,9 @@ export type Framework =
 	| 'svelte'
 	| 'vue'
 	| 'web component'
+	| 'python'
+	| 'javascript'
+	| 'bash'
 
 export const FRAMEWORKS: Framework[] = [
 	'preact',
