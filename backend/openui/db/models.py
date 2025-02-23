@@ -81,6 +81,7 @@ class Usage(BaseModel):
     output_tokens = IntegerField()
     day = DateField()
     user = ForeignKeyField(User, backref="usage")
+    user_id = BinaryUUIDField()  # Explicit field for foreign key
 
     class Meta:
         primary_key = CompositeKey("user", "day")
@@ -122,8 +123,8 @@ def alter(schema: SchemaMigration, ops: list[list], version: str) -> bool:
     except OperationalError as e:
         print("Migration failed", e)
         return False
-    schema.version = version
-    schema.save()
+    # Update version through model API
+    schema.update(version=version).where(SchemaMigration.id == schema.id).execute()
     print(f"Migrated {version}")
     return version != CURRENT_VERSION
 
@@ -153,7 +154,7 @@ def perform_migration(schema: SchemaMigration) -> bool:
 
 
 def ensure_migrated():
-    if not config.DB.exists():
+    if not config.DB.exists_ok():  # Use exists_ok() instead of exists()
         database.create_tables(
             [User, Credential, Session, Component, SchemaMigration, Usage, Vote]
         )
