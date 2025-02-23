@@ -41,11 +41,12 @@ from .util import get_git_user_email
 from . import config
 from pydantic import ValidationError
 from multiprocessing import Queue
-from openai import AsyncOpenAI, APIStatusError, AsyncStream
-from openai.types.chat import (
-    ChatCompletionChunk,
-)
+from openai import AsyncOpenAI, APIStatusError, AsyncStream, AsyncResponse
+from openai.types.chat import ChatCompletionChunk
+from openai.types.chat.chat_completion import ChatCompletion
+from openai.types.completion import Completion
 from ollama import AsyncClient, ResponseError
+from typing import Optional, Any, AsyncGenerator, Dict, List, Union
 from pathlib import Path
 from typing import Optional
 import traceback
