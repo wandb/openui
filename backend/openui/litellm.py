@@ -1,7 +1,7 @@
 import yaml
 import os
 import tempfile
-from openai import OpenAI
+from openai._client import AsyncOpenAI as OpenAI
 from .logs import logger
 
 
