@@ -13,6 +13,7 @@ from peewee import (
 )
 import uuid
 import datetime
+from pathlib import Path
 from playhouse.sqlite_ext import SqliteExtDatabase, JSONField
 from playhouse.migrate import SqliteMigrator, migrate
 from openui import config
@@ -34,6 +35,7 @@ class BaseModel(Model):
 
 
 class SchemaMigration(BaseModel):
+    id = BinaryUUIDField(primary_key=True)
     version = CharField()
 
 
@@ -81,6 +83,7 @@ class Usage(BaseModel):
     output_tokens = IntegerField()
     day = DateField()
     user = ForeignKeyField(User, backref="usage")
+    user_id = BinaryUUIDField()  # Explicit field for foreign key
 
     class Meta:
         primary_key = CompositeKey("user", "day")
@@ -122,13 +125,20 @@ def alter(schema: SchemaMigration, ops: list[list], version: str) -> bool:
     except OperationalError as e:
         print("Migration failed", e)
         return False
-    schema.version = version
-    schema.save()
+    # Update version through model API
+    schema.update(version=version).where(SchemaMigration.id == schema.id).execute()
     print(f"Migrated {version}")
     return version != CURRENT_VERSION
 
 
 def perform_migration(schema: SchemaMigration) -> bool:
+    """Perform database schema migration.
+    
+    Args:
+        schema: Current schema migration record
+    Returns:
+        bool: True if migration was performed, False otherwise
+    """
     if schema.version == "2024-03-08":
         version = "2024-03-12"
         aaguid = CharField(null=True)
@@ -142,18 +152,21 @@ def perform_migration(schema: SchemaMigration) -> bool:
             version,
         )
         if altered:
-            perform_migration(schema)
+            return perform_migration(schema)
+        return True
     if schema.version == "2024-03-12":
         version = "2024-05-14"
         database.create_tables([Vote])
-        schema.version = version
-        schema.save()
+        schema.update(version=version).where(SchemaMigration.id == schema.id).execute()
         if version != CURRENT_VERSION:
-            perform_migration(schema)
+            return perform_migration(schema)
+        return True
+    return False  # No migration needed
 
 
 def ensure_migrated():
-    if not config.DB.exists():
+    db_path = Path(config.DB)
+    if not db_path.exists():
         database.create_tables(
             [User, Credential, Session, Component, SchemaMigration, Usage, Vote]
         )
