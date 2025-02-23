@@ -41,7 +41,7 @@ from .util import get_git_user_email
 from . import config
 from pydantic import ValidationError
 from multiprocessing import Queue
-from openai import AsyncOpenAI
+from openai._client import AsyncOpenAI
 from openai.types.chat import ChatCompletionChunk
 from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.completion import Completion
@@ -406,7 +406,12 @@ async def get_openai_models() -> List[str]:
 async def get_ollama_models() -> List[Dict[str, Any]]:
     """Get list of available Ollama models."""
     try:
-        return (await ollama.list())["models"]
+        if ollama is None or not hasattr(ollama, 'list'):
+            return []
+        response = await ollama.list()
+        if response is None or not isinstance(response, dict):
+            return []
+        return response.get("models", [])
     except Exception:
         logger.warning("Couldn't connect to Ollama at %s", config.OLLAMA_HOST)
         return []
@@ -458,14 +463,13 @@ async def models() -> Dict[str, List[Union[str, Dict[str, Any]]]]:
     openai_models, groq_models, ollama_models, litellm_models = await asyncio.gather(
         *tasks
     )
-    return {
-        "models": {
-            "openai": openai_models,
-            "groq": groq_models,
-            "ollama": ollama_models,
-            "litellm": litellm_models,
-        }
+    models_dict: Dict[str, List[Union[str, Dict[str, Any]]]] = {
+        "openai": openai_models,
+        "groq": groq_models,
+        "ollama": ollama_models,
+        "litellm": litellm_models,
     }
+    return {"models": models_dict}
 
 
 @router.get(
