@@ -1,7 +1,7 @@
 import yaml
 import os
 import tempfile
-import openai
+from openai import OpenAI
 from .logs import logger
 
 
@@ -98,7 +98,7 @@ def generate_config():
         )
 
     if "OPENAI_COMPATIBLE_ENDPOINT" in os.environ:
-        client = openai.OpenAI(
+        client = OpenAI(
             api_key=os.getenv("OPENAI_COMPATIBLE_API_KEY"),
             base_url=os.getenv("OPENAI_COMPATIBLE_ENDPOINT"),
         )
