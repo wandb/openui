@@ -13,6 +13,7 @@ from peewee import (
 )
 import uuid
 import datetime
+from pathlib import Path
 from playhouse.sqlite_ext import SqliteExtDatabase, JSONField
 from playhouse.migrate import SqliteMigrator, migrate
 from openui import config
@@ -34,6 +35,7 @@ class BaseModel(Model):
 
 
 class SchemaMigration(BaseModel):
+    id = BinaryUUIDField(primary_key=True)
     version = CharField()
 
 
@@ -163,7 +165,8 @@ def perform_migration(schema: SchemaMigration) -> bool:
 
 
 def ensure_migrated():
-    if not config.DB.exists_ok():  # Use exists_ok() instead of exists()
+    db_path = Path(config.DB)
+    if not db_path.exists():
         database.create_tables(
             [User, Credential, Session, Component, SchemaMigration, Usage, Vote]
         )
