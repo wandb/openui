@@ -112,9 +112,8 @@ app.add_middleware(
 )
 async def chat_completions(
     request: Request,
-    # chat_request: CompletionCreateParams,  # TODO: lots' fo weirdness here, just using raw json
-    # ctx: Any = Depends(weave_context),
-):
+) -> StreamingResponse:
+    """Handle chat completion requests with streaming responses."""
     if request.session.get("user_id") is None:
         raise HTTPException(status_code=401, detail="Login required to use OpenUI")
     user_id = request.session["user_id"]
@@ -392,7 +391,8 @@ async def vote(request: Request, payload: VoteRequest):
     return payload
 
 
-async def get_openai_models():
+async def get_openai_models() -> List[str]:
+    """Get list of supported OpenAI models."""
     try:
         await openai.models.list()
         # We only support 3.5 and 4 for now
@@ -402,7 +402,8 @@ async def get_openai_models():
         return []
 
 
-async def get_ollama_models():
+async def get_ollama_models() -> List[Dict[str, Any]]:
+    """Get list of available Ollama models."""
     try:
         return (await ollama.list())["models"]
     except Exception:
@@ -410,8 +411,11 @@ async def get_ollama_models():
         return []
 
 
-async def get_groq_models():
+async def get_groq_models() -> List[Any]:
+    """Get list of available Groq models."""
     try:
+        if groq is None:
+            return []
         return [
             d for d in (await groq.models.list()).data if not d.id.startswith("whisper")
         ]
@@ -420,8 +424,11 @@ async def get_groq_models():
         return []
 
 
-async def get_litellm_models():
+async def get_litellm_models() -> List[Any]:
+    """Get list of available LiteLLM models."""
     try:
+        if litellm is None:
+            return []
         return (await litellm.models.list()).data
     except Exception:
         logger.warning("Couldn't connect to LiteLLM at %s", config.LITELLM_BASE_URL)
