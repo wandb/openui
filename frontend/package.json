@@ -15,6 +15,7 @@
 		"preview:test": "start-server-and-test preview http://localhost:4173",
 		"test": "vitest",
 		"test:ci": "vitest run",
+		"test:push": "vitest run --coverage=false",
 		"test:e2e": "pnpm preview:test 'cypress open'",
 		"test:e2e:headless": "pnpm preview:test 'cypress run'",
 		"test:e2e:ci": "vite build && pnpm preview:test 'cypress run --record'",
