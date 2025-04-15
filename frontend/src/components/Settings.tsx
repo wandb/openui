@@ -106,7 +106,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 				// Defaulting to the 3rd model which is currently llama3-70b
 				setModel(`groq/${data.groq[2].id}`)
 			} else if (data.ollama.length > 0) {
-				setModel(`ollama/${data.ollama[0].name}`)
+				setModel(`ollama/${data.ollama[0].model}`)
 			} else if (data.litellm.length > 0) {
 				setModel(`litellm/${data.litellm[0].id}`)
 			}
@@ -229,8 +229,8 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 										<SelectGroup>
 											<SelectLabel>Ollama</SelectLabel>
 											{data.ollama.map(m => (
-												<SelectItem key={m.digest} value={`ollama/${m.name}`}>
-													{slugToNiceName(m.name)}
+												<SelectItem key={m.digest} value={`ollama/${m.model}`}>
+													{slugToNiceName(m.model)}
 												</SelectItem>
 											))}
 										</SelectGroup>
