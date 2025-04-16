@@ -68,7 +68,7 @@ if __name__ == "__main__":
             "openui.server:app",
             host="0.0.0.0" if is_running_in_docker() else "127.0.0.1",
             log_config=str(config_file) if ui else None,
-            port=7878,
+            port=config.PORT,
             reload=reload,
         )
     )
@@ -90,7 +90,7 @@ if __name__ == "__main__":
                 f"Starting LiteLLM in the background with config: {config_path}"
             )
             litellm_process = subprocess.Popen(
-                ["litellm", "--config", config_path],
+                ["litellm", "--config", config_path, "--port", "4000"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -111,7 +111,7 @@ if __name__ == "__main__":
             uvicorn.run(
                 "openui.server:app",
                 host="0.0.0.0" if is_running_in_docker() else "127.0.0.1",
-                port=7878,
+                port=config.PORT,
                 reload=reload,
             )
         else:
