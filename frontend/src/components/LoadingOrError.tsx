@@ -10,7 +10,10 @@ export default function LoadingOrError({ error }: Properties): ReactElement {
 				{error ? (
 					error.message
 				) : (
-					<div className='h-16 w-16 animate-spin rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-red-500' />
+					<div
+						role='status'
+						className='h-16 w-16 animate-spin rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-red-500'
+					/>
 				)}
 			</h1>
 			{error ? (

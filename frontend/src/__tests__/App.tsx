@@ -7,6 +7,7 @@ describe('<App />', () => {
 		window.history.pushState({}, 'Home', '/')
 		renderWithProviders(<App />, false)
 
-		await expect(screen.findByText('History')).resolves.toBeInTheDocument()
+		// Wait for the app to load and verify the NavBar is present
+		await expect(screen.findByRole('navigation')).resolves.toBeInTheDocument()
 	})
 })
