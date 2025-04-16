@@ -39,13 +39,15 @@ from .db.models import User, Usage, Vote, Component
 from .util import storage
 from .util import get_git_user_email
 from . import config
+from .code_executor import CodeExecutor, CodeExecutionRequest
 from pydantic import ValidationError
 from multiprocessing import Queue
-from openai import AsyncOpenAI, APIStatusError, AsyncStream
-from openai.types.chat import (
-    ChatCompletionChunk,
-)
+from openai import AsyncOpenAI, APIError as APIStatusError
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
+from openai.types.completion import Completion
+from openai import AsyncStream
 from ollama import AsyncClient, ResponseError
+from typing import Optional, Any, AsyncGenerator, Dict, List, Union
 from pathlib import Path
 from typing import Optional
 import traceback
@@ -111,9 +113,14 @@ app.add_middleware(
 )
 async def chat_completions(
     request: Request,
-    # chat_request: CompletionCreateParams,  # TODO: lots' fo weirdness here, just using raw json
-    # ctx: Any = Depends(weave_context),
-):
+) -> StreamingResponse:
+    """Handle chat completion requests with streaming responses.
+    
+    Args:
+        request: FastAPI request object
+    Returns:
+        StreamingResponse: Server-sent events stream
+    """
     if request.session.get("user_id") is None:
         raise HTTPException(status_code=401, detail="Login required to use OpenUI")
     user_id = request.session["user_id"]
@@ -134,11 +141,9 @@ async def chat_completions(
         if data.get("model").startswith("gpt"):
             if data["model"] == "gpt-4" or data["model"] == "gpt-4-32k":
                 raise HTTPException(status=400, data="Model not supported")
-            response: AsyncStream[
-                ChatCompletionChunk
-            ] = await openai.chat.completions.create(
+            response = await openai.chat.completions.create(
                 **data,
-            )
+            ) # Type inference handles AsyncStream[ChatCompletionChunk]
             # gpt-4 tokens are 20x more expensive
             multiplier = 20 if "gpt-4" in data["model"] else 1
             return StreamingResponse(
@@ -150,11 +155,9 @@ async def chat_completions(
             data["model"] = data["model"].replace("groq/", "")
             if groq is None:
                 raise HTTPException(status=500, detail="Groq API key is not set.")
-            response: AsyncStream[
-                ChatCompletionChunk
-            ] = await groq.chat.completions.create(
+            response = await groq.chat.completions.create(
                 **data,
-            )
+            ) # Type inference handles AsyncStream[ChatCompletionChunk]
             return StreamingResponse(
                 openai_stream_generator(response, input_tokens, user_id, 1),
                 media_type="text/event-stream",
@@ -164,11 +167,9 @@ async def chat_completions(
             data["model"] = data["model"].replace("litellm/", "")
             if litellm is None:
                 raise HTTPException(status=500, detail="LiteLLM API key is not set.")
-            response: AsyncStream[
-                ChatCompletionChunk
-            ] = await litellm.chat.completions.create(
+            response = await litellm.chat.completions.create(
                 **data,
-            )
+            ) # Type inference handles AsyncStream[ChatCompletionChunk]
             return StreamingResponse(
                 openai_stream_generator(response, input_tokens, user_id, 1),
                 media_type="text/event-stream",
@@ -191,11 +192,9 @@ async def chat_completions(
                 )
                 gen = await ollama_stream_generator(response, data)
             else:
-                response: AsyncStream[
-                    ChatCompletionChunk
-                ] = await ollama_openai.chat.completions.create(
+                response = await ollama_openai.chat.completions.create(
                     **data,
-                )
+                ) # Type inference handles AsyncStream[ChatCompletionChunk]
 
                 def gen():
                     return openai_stream_generator(response, input_tokens, user_id, 0)
@@ -391,7 +390,8 @@ async def vote(request: Request, payload: VoteRequest):
     return payload
 
 
-async def get_openai_models():
+async def get_openai_models() -> List[str]:
+    """Get list of supported OpenAI models."""
     try:
         await openai.models.list()
         # We only support 3.5 and 4 for now
@@ -401,34 +401,57 @@ async def get_openai_models():
         return []
 
 
-async def get_ollama_models():
+async def get_ollama_models() -> List[Dict[str, Any]]:
+    """Get list of available Ollama models."""
     try:
-        return (await ollama.list())["models"]
+        if ollama is None or not hasattr(ollama, 'list'):
+            return []
+        response = await ollama.list()
+        if response is None or not isinstance(response, dict):
+            return []
+        return response.get("models", [])
     except Exception:
         logger.warning("Couldn't connect to Ollama at %s", config.OLLAMA_HOST)
         return []
 
 
-async def get_groq_models():
+async def get_groq_models() -> List[Any]:
+    """Get list of available Groq models."""
     try:
+        if groq is None or not hasattr(groq, 'models'):
+            return []
+        models = await groq.models.list()
+        if models is None:
+            return []
         return [
-            d for d in (await groq.models.list()).data if not d.id.startswith("whisper")
+            d for d in models.data if not d.id.startswith("whisper")
         ]
     except Exception:
         logger.warning("Couldn't connect to Groq at %s", config.GROQ_BASE_URL)
         return []
 
 
-async def get_litellm_models():
+async def get_litellm_models() -> List[Any]:
+    """Get list of available LiteLLM models."""
     try:
-        return (await litellm.models.list()).data
+        if litellm is None or not hasattr(litellm, 'models'):
+            return []
+        models = await litellm.models.list()
+        if models is None:
+            return []
+        return models.data
     except Exception:
         logger.warning("Couldn't connect to LiteLLM at %s", config.LITELLM_BASE_URL)
         return []
 
 
 @router.get("/v1/models", tags="openui/models")
-async def models():
+async def models() -> Dict[str, Dict[str, List[Union[str, Dict[str, Any]]]]]:
+    """Get available models from all providers.
+    
+    Returns:
+        Dict containing provider name to list of models mapping
+    """
     tasks = [
         get_openai_models(),
         get_groq_models(),
@@ -492,6 +515,8 @@ async def get_session(
         else:
             raise HTTPException(status_code=404, detail="No session found")
     session_data = session_store.get(session_id)
+    if session_data is None:
+        raise HTTPException(status_code=404, detail="Session data not found")
     return JSONResponse(
         content=session_data.model_dump(),
         status_code=200,
@@ -514,6 +539,28 @@ async def delete_session(
         content={},
         status_code=200,
     )
+
+
+@router.post("/v1/execute", tags=["openui/execute"])
+async def execute_code(request: Request, code_request: CodeExecutionRequest):
+    """Execute code in an isolated container.
+    
+    Args:
+        request: FastAPI request object
+        code_request: Code execution parameters
+        
+    Returns:
+        CodeExecutionResponse with execution results
+        
+    Raises:
+        HTTPException: If user is not authenticated
+    """
+    if request.session.get("user_id") is None:
+        raise HTTPException(status_code=401, detail="Login required")
+        
+    executor = CodeExecutor()
+    result = await executor.execute(code_request)
+    return result
 
 
 @router.get("/openui/{name}.svg", tags=["openui/svg"])

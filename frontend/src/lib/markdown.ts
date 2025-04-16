@@ -80,20 +80,20 @@ export function parseMarkdown(
 	}
 	*/
 
-	const parsed = unified().use(remarkParse).parse(cleanMarkdown)
+	const parsed = unified().use(remarkParse).parse(cleanMarkdown) as { children: any[] }
 
 	let htmlBlocks = parsed.children.filter(
-		c =>
-			(c.type === 'code' && ['html', ''].includes(c.lang ?? '')) ||
+		(c: any) =>
+			(c.type === 'code' && ['html', ''].includes((c as Code).lang ?? '')) ||
 			c.type === 'html'
 	) as Code[]
 	// TODO: maybe do this first and only if the first paragraph is chill
-	for (const c of parsed.children) {
+	for (const c of parsed.children as any[]) {
 		if (c.type === 'paragraph') {
 			let html = ''
-			if (c.children[0].type === 'html') {
+			if (c.children?.[0]?.type === 'html') {
 				for (const c2 of c.children) {
-					html = html + (c2 as unknown as Code).value || ''
+					html = html + ((c2 as unknown as Code).value || '')
 				}
 			}
 			htmlBlocks.push({ type: 'code', lang: 'html', value: html })
@@ -114,7 +114,7 @@ export function parseMarkdown(
 		]
 	}
 	const jsBlocks = parsed.children.filter(
-		c => c.type === 'code' && c.lang === 'javascript'
+		(c: any) => c.type === 'code' && (c as Code).lang === 'javascript'
 	) as Code[]
 	result.html = fixHTML(
 		[

@@ -14,9 +14,12 @@
 		"strict": true,
 		"target": "ESNext",
 		"paths": {
-			"@/*": ["./app/*"]
+			"@/*": ["./app/*"],
+			"components/*": ["./components/*"],
+			"lib/*": ["./lib/*"],
+			"state": ["./state"]
 		},
-		"types": ["vite/client", "vitest/globals", "vite-plugin-pwa/client"]
+		"types": ["vite/client", "vitest/globals", "vite-plugin-pwa/client", "react", "node"]
 	},
 	"include": ["src"],
 	"references": [{ "path": "./tsconfig.node.json" }]

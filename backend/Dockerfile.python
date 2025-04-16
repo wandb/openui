@@ -1,0 +1,15 @@
+FROM python:3.12-slim
+WORKDIR /app
+
+# Create non-root user
+RUN adduser --disabled-password --gecos "" executor
+
+# Create execution directory with proper permissions
+RUN mkdir /app/execution && chown executor:executor /app/execution
+
+# Switch to non-root user
+USER executor
+WORKDIR /app/execution
+
+# Keep container running
+CMD ["tail", "-f", "/dev/null"]

@@ -20,8 +20,32 @@ services:
       - OPENAI_API_KEY
       - ANTHROPIC_API_KEY
       - GROQ_API_KEY
+    networks:
+      - code-execution
     env_file:
       - .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - ${DOCKER_GROUP_ID:-999}  # Default Docker group ID on most systems
+
+  code-executor:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.python
+    security_opt:
+      - no-new-privileges
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/execution
+    networks:
+      - code-execution
+    restart: always
+
+networks:
+  code-execution:
+    name: code-execution
 
 volumes:
   ollama:

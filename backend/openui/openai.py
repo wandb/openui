@@ -1,8 +1,7 @@
 import json
-from openai import AsyncStream
-from openai.types.chat import (
-    ChatCompletionChunk,
-)
+from openai._streaming import AsyncStream
+from openai.types.chat import ChatCompletionChunk
+from typing import AsyncGenerator
 from .db.models import Usage
 
 
@@ -11,7 +10,7 @@ async def openai_stream_generator(
     input_tokens: int,
     user_id: str,
     multiplier: int = 1,
-):
+) -> AsyncGenerator[str, None]:
     # async for chunk in subscription.response.aiter_bytes():
     #    yield chunk
     output_tokens = 0

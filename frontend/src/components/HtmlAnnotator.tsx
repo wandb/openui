@@ -161,13 +161,13 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 
 	const toggleFacet = useCallback(
 		(name: string) => {
-			setFacets(prevFacets => {
+			setFacets((prevFacets: string[]) => {
 				// Clear all non-official facets
-				const cleanFacets = prevFacets.filter(facet =>
+				const cleanFacets = prevFacets.filter((facet: string) =>
 					adjectives.includes(facet)
 				)
 				if (cleanFacets.includes(name)) {
-					return cleanFacets.filter(facet => facet !== name)
+					return cleanFacets.filter((facet: string) => facet !== name)
 				}
 				return [...cleanFacets, name]
 			})
