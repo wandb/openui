@@ -246,14 +246,14 @@ export default function Chat({ isShared = false }: { isShared: boolean }) {
 												)}
 											</span>
 										</div>
-										<span className='my-auto ml-2 hidden h-4 flex-shrink-0 rounded-sm bg-muted px-2 text-xs text-zinc-500 brightness-[.95] md:block'>
+										<span className='my-auto ml-2 hidden h-4 shrink-0 rounded-sm bg-muted px-2 text-xs text-zinc-500 brightness-[.95] md:block'>
 											Version {item.version(versionIdx)}
 										</span>
 									</HoverCardTrigger>
 									<HoverCardContent className='ml-36 w-[1000px] max-w-[calc(70vw)] rounded-[20px]'>
 										<div className='flex'>
 											{image ?? lastRender ? (
-												<div className='mr-2 flex-shrink-0'>
+												<div className='mr-2 shrink-0'>
 													<img
 														src={image?.url ?? lastRender?.url}
 														alt='Screenshot'
@@ -261,7 +261,7 @@ export default function Chat({ isShared = false }: { isShared: boolean }) {
 													/>
 												</div>
 											) : undefined}
-											<div className='flex-grow'>
+											<div className='grow'>
 												<p>{uiState.prompt}</p>
 											</div>
 										</div>

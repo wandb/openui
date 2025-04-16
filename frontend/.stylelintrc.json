@@ -4,7 +4,22 @@
 		"at-rule-no-unknown": [
 			true,
 			{
-				"ignoreAtRules": ["tailwind", "layer"]
+				"ignoreAtRules": [
+					"tailwind",
+					"layer",
+					"plugin",
+					"theme",
+					"custom-variant",
+					"utility"
+				]
+			}
+		],
+		"media-query-no-invalid": null,
+		"custom-property-pattern": null,
+		"selector-pseudo-class-no-unknown": [
+			true,
+			{
+				"ignorePseudoClasses": ["is"]
 			}
 		]
 	}

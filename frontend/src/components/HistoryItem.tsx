@@ -54,7 +54,7 @@ export default function HistoryItem({
 						{/* TODO: the right group-hover translation is finicky */}
 						<div
 							className={cn(
-								'absolute bottom-0 right-0 top-0 w-8 bg-gradient-to-l from-background from-0% to-transparent group-hover:right-5 group-hover:from-secondary dark:from-zinc-900',
+								'absolute bottom-0 right-0 top-0 w-8 bg-linear-to-l from-background from-0% to-transparent group-hover:right-5 group-hover:from-secondary dark:from-zinc-900',
 								{
 									'from-secondary': isActive,
 									'dark:from-secondary': isActive
