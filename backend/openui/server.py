@@ -582,8 +582,16 @@ def spa(full_path: str):
     return HTMLResponse((dist_dir / "index.html").read_bytes())
 
 
+base_url = "https://api.wandb.ai"
 def check_wandb_auth():
-    auth = requests.utils.get_netrc_auth("https://api.wandb.ai")
+    global base_url
+    try:
+        from wandb.cli.cli import _get_cling_api
+        api = _get_cling_api()
+        base_url = api.settings("base_url")
+    except:
+        base_url = "https://api.wandb.ai"
+    auth = requests.utils.get_netrc_auth(base_url)
     key = None
     if auth:
         key = auth[-1]
@@ -593,6 +601,8 @@ def check_wandb_auth():
 
 
 wandb_enabled = check_wandb_auth()
+if wandb_enabled:
+    logger.info(f"WANDB_API_KEY found, enabling wandb for {base_url}")
 
 class Server(uvicorn.Server):
     # TODO: this still isn't working for some reason, can't ctrl-c when not in dev mode
