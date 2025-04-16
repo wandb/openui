@@ -22,4 +22,5 @@ const Input = ({
 )
 Input.displayName = 'Input'
 
-export default Input
+// eslint-disable-next-line import/prefer-default-export
+export { Input }

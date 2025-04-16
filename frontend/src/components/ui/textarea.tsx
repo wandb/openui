@@ -20,4 +20,5 @@ const Textarea = ({
 )
 Textarea.displayName = 'Textarea'
 
-export default Textarea
+// eslint-disable-next-line import/prefer-default-export
+export { Textarea }
