@@ -205,7 +205,7 @@ const anysphere = {
 		'pickerGroup.border': '#383838',
 		'pickerGroup.foreground': '#d6d6dd',
 		'progressBar.background': '#15ac91',
-		'scrollbar.shadow': '#d6d6dd00',
+		'scrollbar.shadow-sm': '#d6d6dd00',
 		'scrollbarSlider.activeBackground': '#676767',
 		'scrollbarSlider.background': '#67676750',
 		'scrollbarSlider.hoverBackground': '#676767',
@@ -272,7 +272,7 @@ const anysphere = {
 		'titleBar.inactiveForeground': '#cccccc99',
 		'tree.indentGuidesStroke': '#d6d6dd00',
 		'walkThrough.embeddedEditorBackground': '#00000050',
-		'widget.shadow': '#111111eb'
+		'widget.shadow-sm': '#111111eb'
 	},
 	rules: [
 		{
