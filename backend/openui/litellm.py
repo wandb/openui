@@ -37,6 +37,12 @@ def generate_config():
                 {
                     "model_name": "claude-3-5-haiku",
                     "litellm_params": {
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+                        "model": "claude-3-5-sonnet-20240620",
+=======
+>>>>>>> Stashed changes
                         "model": "claude-3-5-haiku-latest",
                     },
                 },
@@ -49,7 +55,12 @@ def generate_config():
                 {
                     "model_name": "gemini-2.5-pro",
                     "litellm_params": {
+<<<<<<< Updated upstream
                         "model": "gemini/gemini-1.5-flash-latest",
+=======
+                        "model": "gemini/gemini-2.5-pro-exp-03-25",
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
                     },
                 },
                 {

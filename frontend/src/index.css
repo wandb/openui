@@ -1,124 +1,128 @@
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap')
 layer(base);
-
-@import 'tailwindcss';
+@import url('tailwindcss');
 
 @plugin 'tailwindcss-animate';
 @plugin '@tailwindcss/typography';
 
 @custom-variant dark (&:is(.dark *));
 
-@theme {
-  --font-*: initial;
-  --font-sans: 'Source Sans 3', sans-serif;
+@theme inline {
+	--font-*: initial;
+	--font-sans: 'Source Sans 3', sans-serif;
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--radius-lg: var(--radius);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-sm: calc(var(--radius) - 4px);
+	--animate-accordion-down: accordion-down 0.2s ease-out;
+	--animate-accordion-up: accordion-up 0.2s ease-out;
+	--animate-rotate-180: rotate-180 1s ease-in-out;
+	--animate-wiggle-zoom: wiggle-zoom 0.5s ease-in-out infinite;
+	--animate-slide-in: slide-in 0.2s ease-out forwards;
+	--animate-slide-out: slide-out 0.2s ease-in forwards;
+	--animate-slide-in-right: slide-in-right 0.2s ease-out forwards;
 
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+	@keyframes accordion-down {
+		from {
+			height: 0;
+		}
 
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
+		to {
+			height: var(--radix-accordion-content-height);
+		}
+	}
 
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
+	@keyframes accordion-up {
+		from {
+			height: var(--radix-accordion-content-height);
+		}
 
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+		to {
+			height: 0;
+		}
+	}
 
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
+	@keyframes slide-in {
+		0% {
+			transform: translateX(-100%);
+		}
 
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+		100% {
+			transform: translateX(0);
+		}
+	}
 
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
+	@keyframes slide-in-right {
+		0% {
+			transform: translateX(100%);
+		}
 
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
+		100% {
+			transform: translateX(0);
+		}
+	}
 
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+	@keyframes slide-out {
+		0% {
+			transform: translateX(0);
+		}
 
-  --animate-accordion-down: accordion-down 0.2s ease-out;
-  --animate-accordion-up: accordion-up 0.2s ease-out;
-  --animate-rotate-180: rotate-180 1s ease-in-out;
-  --animate-wiggle-zoom: wiggle-zoom 0.5s ease-in-out infinite;
-  --animate-slide-in: slide-in 0.2s ease-out forwards;
-  --animate-slide-out: slide-out 0.2s ease-in forwards;
-  --animate-slide-in-right: slide-in-right 0.2s ease-out forwards;
+		100% {
+			transform: translateX(-100%);
+		}
+	}
 
-  @keyframes accordion-down {
-    from {
-      height: 0;
-    }
-    to {
-      height: var(--radix-accordion-content-height);
-    }
-  }
-  @keyframes accordion-up {
-    from {
-      height: var(--radix-accordion-content-height);
-    }
-    to {
-      height: 0;
-    }
-  }
-  @keyframes slide-in {
-    0% {
-      transform: translateX(-100%);
-    }
-    100% {
-      transform: translateX(0);
-    }
-  }
-  @keyframes slide-in-right {
-    0% {
-      transform: translateX(100%);
-    }
-    100% {
-      transform: translateX(0);
-    }
-  }
-  @keyframes slide-out {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(-100%);
-    }
-  }
-  @keyframes wiggle-zoom {
-    0%,
-    100% {
-      transform: rotate(-3deg) scale(1);
-    }
-    50% {
-      transform: rotate(3deg) scale(1.15);
-    }
-  }
-  @keyframes rotate-180 {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(180deg);
-    }
-  }
+	@keyframes wiggle-zoom {
+		0%,
+		100% {
+			transform: rotate(-3deg) scale(1);
+		}
+
+		50% {
+			transform: rotate(3deg) scale(1.15);
+		}
+	}
+
+	@keyframes rotate-180 {
+		0% {
+			transform: rotate(0deg);
+		}
+
+		100% {
+			transform: rotate(180deg);
+		}
+	}
 }
 
 @utility container {
-  margin-inline: auto;
-  padding-inline: 2rem;
-  @media (width >= --theme(--breakpoint-sm)) {
-    max-width: none;
-  }
-  @media (width >= 1400px) {
-    max-width: 1400px;
-  }
+	margin-inline: auto;
+	padding-inline: 2rem;
+
+	@media (width >= --theme(--breakpoint-sm)) {
+		max-width: none;
+	}
+
+	@media (width >= 1400px) {
+		max-width: 1400px;
+	}
 }
 
 /*
@@ -130,64 +134,64 @@ layer(base);
   color utility to any element that depends on these defaults.
 */
 @layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-  }
+	*,
+	::after,
+	::before,
+	::backdrop,
+	::file-selector-button {
+		border-color: var(--color-gray-200, currentcolor);
+	}
 }
 
 @layer base {
 	:root {
-		--background: hsl(0 0% 100%);
-		--foreground: hsl(240 10% 3.9%);
-		--card: hsl(0 0% 100%);
-		--card-foreground: hsl(240 10% 3.9%);
-		--popover: hsl(0 0% 100%);
-		--popover-foreground: hsl(240 10% 3.9%);
+		--background: hsl(0deg 0% 100%);
+		--foreground: hsl(240deg 10% 3.9%);
+		--card: hsl(0deg 0% 100%);
+		--card-foreground: hsl(240deg 10% 3.9%);
+		--popover: hsl(0deg 0% 100%);
+		--popover-foreground: hsl(240deg 10% 3.9%);
 
 		/* --primary: 240 5.9% 10%;
 		*/
-		--primary: hsl(186 80% 41%);
-		--primary-foreground: hsl(0 0% 98%);
-		--secondary: hsl(240 4.8% 95.9%);
-		--secondary-foreground: hsl(240 5.9% 10%);
-		--muted: hsl(240 4.8% 95.9%);
-		--muted-foreground: hsl(240 3.8% 46.1%);
-		--accent: hsl(240 4.8% 95.9%);
-		--accent-foreground: hsl(240 5.9% 10%);
-		--destructive: hsl(0 84.2% 60.2%);
-		--destructive-foreground: hsl(0 0% 98%);
-		--border: hsl(240 5.9% 90%);
-		--input: hsl(240 5.9% 90%);
-		--ring: hsl(240 10% 3.9%);
+		--primary: hsl(186deg 80% 41%);
+		--primary-foreground: hsl(0deg 0% 98%);
+		--secondary: hsl(240deg 4.8% 95.9%);
+		--secondary-foreground: hsl(240deg 5.9% 10%);
+		--muted: hsl(240deg 4.8% 95.9%);
+		--muted-foreground: hsl(240deg 3.8% 46.1%);
+		--accent: hsl(240deg 4.8% 95.9%);
+		--accent-foreground: hsl(240deg 5.9% 10%);
+		--destructive: hsl(0deg 84.2% 60.2%);
+		--destructive-foreground: hsl(0deg 0% 98%);
+		--border: hsl(240deg 5.9% 90%);
+		--input: hsl(240deg 5.9% 90%);
+		--ring: hsl(240deg 10% 3.9%);
 		--radius: 0.5rem;
 	}
 
 	.dark {
-		--background: hsl(240 10% 3.9%);
-		--foreground: hsl(0 0% 98%);
-		--card: hsl(240 10% 3.9%);
-		--card-foreground: hsl(0 0% 98%);
-		--popover: hsl(240 10% 3.9%);
-		--popover-foreground: hsl(0 0% 98%);
+		--background: hsl(240deg 10% 3.9%);
+		--foreground: hsl(0deg 0% 98%);
+		--card: hsl(240deg 10% 3.9%);
+		--card-foreground: hsl(0deg 0% 98%);
+		--popover: hsl(240deg 10% 3.9%);
+		--popover-foreground: hsl(0deg 0% 98%);
 
 		/* --primary: 0 0% 98%; */
-		--primary: hsl(186 80% 41%);
-		--primary-foreground: hsl(240 5.9% 10%);
-		--secondary: hsl(240 3.7% 15.9%);
-		--secondary-foreground: hsl(0 0% 98%);
-		--muted: hsl(240 3.7% 15.9%);
-		--muted-foreground: hsl(240 5% 64.9%);
-		--accent: hsl(240 3.7% 15.9%);
-		--accent-foreground: hsl(0 0% 98%);
-		--destructive: hsl(0 62.8% 30.6%);
-		--destructive-foreground: hsl(0 0% 98%);
-		--border: hsl(240 3.7% 15.9%);
-		--input: hsl(240 3.7% 15.9%);
-		--ring: hsl(240 4.9% 83.9%);
+		--primary: hsl(186deg 80% 41%);
+		--primary-foreground: hsl(240deg 5.9% 10%);
+		--secondary: hsl(240deg 3.7% 15.9%);
+		--secondary-foreground: hsl(0deg 0% 98%);
+		--muted: hsl(240deg 3.7% 15.9%);
+		--muted-foreground: hsl(240deg 5% 64.9%);
+		--accent: hsl(240deg 3.7% 15.9%);
+		--accent-foreground: hsl(0deg 0% 98%);
+		--destructive: hsl(0deg 62.8% 30.6%);
+		--destructive-foreground: hsl(0deg 0% 98%);
+		--border: hsl(240deg 3.7% 15.9%);
+		--input: hsl(240deg 3.7% 15.9%);
+		--ring: hsl(240deg 4.9% 83.9%);
 	}
 }
 
