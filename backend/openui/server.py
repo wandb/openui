@@ -32,24 +32,19 @@ from starlette.middleware.sessions import SessionMiddleware
 from .session import DBSessionStore, SessionData
 from .logs import logger
 from .models import count_tokens, ShareRequest, VoteRequest
-from .ollama import ollama_stream_generator, openai_to_ollama
-from .openai import openai_stream_generator
-from .dummy import DummyStreamGenerator
 from .db.models import User, Usage, Vote, Component
 from .util import storage
 from .util import get_git_user_email
 from . import config
 from pydantic import ValidationError
 from multiprocessing import Queue
-from openai import AsyncOpenAI, APIStatusError, AsyncStream
-from openai.types.chat import (
-    ChatCompletionChunk,
-)
-from ollama import AsyncClient, ResponseError
+from openai import APIStatusError
+from ollama import ResponseError
 from pathlib import Path
 from typing import Optional
 import traceback
 import os
+from .model_router import ModelRouter
 
 
 @asynccontextmanager
@@ -69,20 +64,8 @@ app = FastAPI(
     description="API for proxying LLM requests to different services",
 )
 
-openai = AsyncOpenAI(base_url=config.OPENAI_BASE_URL, api_key=config.OPENAI_API_KEY)
+model_router = ModelRouter(config, logger)
 
-litellm = AsyncOpenAI(
-    api_key=config.LITELLM_API_KEY,
-    base_url=config.LITELLM_BASE_URL,
-)
-
-if config.GROQ_API_KEY is not None:
-    groq = AsyncOpenAI(base_url=config.GROQ_BASE_URL, api_key=config.GROQ_API_KEY)
-else:
-    groq = None
-
-ollama = AsyncClient()
-ollama_openai = AsyncOpenAI(base_url=config.OLLAMA_HOST + "/v1", api_key="xxx")
 router = APIRouter()
 session_store = DBSessionStore()
 github_sso = GithubSSO(
@@ -111,8 +94,6 @@ app.add_middleware(
 )
 async def chat_completions(
     request: Request,
-    # chat_request: CompletionCreateParams,  # TODO: lots' fo weirdness here, just using raw json
-    # ctx: Any = Depends(weave_context),
 ):
     if request.session.get("user_id") is None:
         raise HTTPException(status_code=401, detail="Login required to use OpenUI")
@@ -125,87 +106,10 @@ async def chat_completions(
             detail="You've exceeded our usage quota, come back tomorrow to generate more UI.",
         )
     try:
-        data = await request.json()  # chat_request.model_dump(exclude_unset=True)
+        data = await request.json()
         input_tokens = count_tokens(data["messages"])
-        # TODO: we always assume 4096 max tokens (random fudge factor here)
         data["max_tokens"] = 4096 - input_tokens - 20
-        # TODO: refactor all these blocks into one once Ollama supports vision
-        # OpenAI Models
-        if data.get("model").startswith("gpt"):
-            if data["model"] == "gpt-4" or data["model"] == "gpt-4-32k":
-                raise HTTPException(status=400, data="Model not supported")
-            response: AsyncStream[
-                ChatCompletionChunk
-            ] = await openai.chat.completions.create(
-                **data,
-            )
-            # gpt-4 tokens are 20x more expensive
-            multiplier = 20 if "gpt-4" in data["model"] else 1
-            return StreamingResponse(
-                openai_stream_generator(response, input_tokens, user_id, multiplier),
-                media_type="text/event-stream",
-            )
-        # Groq Models
-        elif data.get("model").startswith("groq/"):
-            data["model"] = data["model"].replace("groq/", "")
-            if groq is None:
-                raise HTTPException(status=500, detail="Groq API key is not set.")
-            response: AsyncStream[
-                ChatCompletionChunk
-            ] = await groq.chat.completions.create(
-                **data,
-            )
-            return StreamingResponse(
-                openai_stream_generator(response, input_tokens, user_id, 1),
-                media_type="text/event-stream",
-            )
-        # Litellm Models
-        elif data.get("model").startswith("litellm/"):
-            data["model"] = data["model"].replace("litellm/", "")
-            if litellm is None:
-                raise HTTPException(status=500, detail="LiteLLM API key is not set.")
-            response: AsyncStream[
-                ChatCompletionChunk
-            ] = await litellm.chat.completions.create(
-                **data,
-            )
-            return StreamingResponse(
-                openai_stream_generator(response, input_tokens, user_id, 1),
-                media_type="text/event-stream",
-            )
-        # Ollama Time
-        elif data.get("model").startswith("ollama/"):
-            data["model"] = data["model"].replace("ollama/", "")
-            data.pop("max_tokens")
-            data["messages"] = openai_to_ollama(data)
-            ollama_vision_models = ["llava", "moondream"]
-            if any([data["model"].startswith(m) for m in ollama_vision_models]):
-                # The Ollama OpenAPI compatibility layer doesn't support images
-                # see: https://github.com/ollama/ollama/issues/3690
-                # TODO: remove this when it does or make it configurable
-                data["options"] = {
-                    "temperature": data.pop("temperature", 0.7),
-                }
-                response = await ollama.chat(
-                    **data,
-                )
-                gen = await ollama_stream_generator(response, data)
-            else:
-                response: AsyncStream[
-                    ChatCompletionChunk
-                ] = await ollama_openai.chat.completions.create(
-                    **data,
-                )
-
-                def gen():
-                    return openai_stream_generator(response, input_tokens, user_id, 0)
-
-            return StreamingResponse(gen(), media_type="text/event-stream")
-        elif data.get("model").startswith("dummy"):
-            return StreamingResponse(
-                DummyStreamGenerator(data), media_type="text/event-stream"
-            )
-        raise HTTPException(status=404, detail="Invalid model")
+        return await model_router.stream_chat_completion(data, input_tokens, user_id)
     except (ResponseError, APIStatusError) as e:
         traceback.print_exc()
         logger.exception("Known Error: %s", str(e))
@@ -393,7 +297,7 @@ async def vote(request: Request, payload: VoteRequest):
 
 async def get_openai_models():
     try:
-        await openai.models.list()
+        await model_router.openai.models.list()
         # We only support 3.5 and 4 for now
         return ["gpt-3.5-turbo", "gpt-4o-mini", "gpt-4o", "gpt-4-turbo"]
     except Exception:
@@ -403,7 +307,7 @@ async def get_openai_models():
 
 async def get_ollama_models():
     try:
-        return (await ollama.list())["models"]
+        return (await model_router.ollama.list())["models"]
     except Exception:
         logger.warning("Couldn't connect to Ollama at %s", config.OLLAMA_HOST)
         return []
@@ -412,7 +316,7 @@ async def get_ollama_models():
 async def get_groq_models():
     try:
         return [
-            d for d in (await groq.models.list()).data if not d.id.startswith("whisper")
+            d for d in (await model_router.groq.models.list()).data if not d.id.startswith("whisper")
         ]
     except Exception:
         logger.warning("Couldn't connect to Groq at %s", config.GROQ_BASE_URL)
@@ -421,7 +325,7 @@ async def get_groq_models():
 
 async def get_litellm_models():
     try:
-        return (await litellm.models.list()).data
+        return (await model_router.litellm.models.list()).data
     except Exception:
         logger.warning("Couldn't connect to LiteLLM at %s", config.LITELLM_BASE_URL)
         return []
