@@ -158,7 +158,8 @@
 				}
 			}
 		],
-		"unicorn/no-nested-ternary": ["error"]
+		"unicorn/no-nested-ternary": ["error"],
+		"unicorn/no-null": "off"
 	},
 	"settings": {
 		"react": {
@@ -179,7 +180,8 @@
 				"react/require-default-props": "off",
 				"react/prop-types": "off",
 				"@typescript-eslint/no-empty-interface": "off",
-				"@typescript-eslint/no-magic-numbers": ["off"]
+				"@typescript-eslint/no-magic-numbers": ["off"],
+				"unicorn/no-null": "off"
 			}
 		},
 		{

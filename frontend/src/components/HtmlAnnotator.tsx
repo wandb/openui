@@ -350,7 +350,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 				<div
 					ref={annotatorRef}
 					className={cn(
-						'code-preview-wrapper flex-grow',
+						'code-preview-wrapper grow',
 						isCodeVisible && 'hidden w-1/2 lg:block'
 					)}
 				>
@@ -380,7 +380,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 					</div>
 				</div>
 				<div
-					className={`flex-shrink-0 py-0 pl-4 transition-all duration-500 ease-in-out ${
+					className={`shrink-0 py-0 pl-4 transition-all duration-500 ease-in-out ${
 						isCodeVisible ? 'sm:w-full md:w-full lg:w-1/2' : 'hidden w-0'
 					}`}
 				>
@@ -679,7 +679,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 												>
 													<span
 														className={cn(
-															'flex h-5 w-5 shrink-0 -translate-x-1 items-center justify-center rounded-full bg-[--theme-primary]'
+															'flex h-5 w-5 shrink-0 -translate-x-1 items-center justify-center rounded-full bg-(--theme-primary)'
 														)}
 													>
 														{isActive ? (

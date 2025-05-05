@@ -505,7 +505,7 @@ export default function Prompt({
 						/* TODO: make this width calculation dynamic */
 						cn(
 							'my-auto max-h-[130px] flex-1 resize-none items-center justify-center overflow-y-hidden rounded-none align-middle text-lg placeholder:text-lg',
-							'border-none bg-muted outline-none ring-0 transition-all focus-visible:bg-white focus-visible:ring-0 focus-visible:ring-offset-0 dark:focus-visible:bg-muted'
+							'border-none bg-muted outline-hidden ring-0 transition-all focus-visible:bg-white focus-visible:ring-0 focus-visible:ring-offset-0 dark:focus-visible:bg-muted'
 						)
 					}
 					style={{
@@ -609,7 +609,7 @@ export default function Prompt({
 						</Tooltip>
 					) : undefined}
 					{rendering ? (
-						<div className='rendering h-8 w-8 flex-none animate-spin rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-red-500' />
+						<div className='rendering h-8 w-8 flex-none animate-spin rounded-full bg-linear-to-r from-purple-500 via-pink-500 to-red-500' />
 					) : (
 						<Button
 							className={cn(
