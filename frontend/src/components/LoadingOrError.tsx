@@ -12,7 +12,7 @@ export default function LoadingOrError({ error }: Properties): ReactElement {
 				) : (
 					<div
 						role='status'
-						className='h-16 w-16 animate-spin rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-red-500'
+						className='h-16 w-16 animate-spin rounded-full bg-linear-to-r from-purple-500 via-pink-500 to-red-500'
 					/>
 				)}
 			</h1>

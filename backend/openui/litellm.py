@@ -29,21 +29,44 @@ def generate_config():
         models.extend(
             [
                 {
-                    "model_name": "claude-3-opus",
+                    "model_name": "claude-3-7-sonnet",
                     "litellm_params": {
-                        "model": "claude-3-opus-20240229",
+                        "model": "claude-3-7-sonnet-latest",
                     },
                 },
                 {
-                    "model_name": "claude-3-5-sonnet",
+                    "model_name": "claude-3-5-haiku",
                     "litellm_params": {
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
                         "model": "claude-3-5-sonnet-20240620",
+=======
+>>>>>>> Stashed changes
+                        "model": "claude-3-5-haiku-latest",
+                    },
+                },
+            ]
+        )
+
+    if "GEMINI_API_KEY" in os.environ:
+        models.extend(
+            [
+                {
+                    "model_name": "gemini-2.5-pro",
+                    "litellm_params": {
+<<<<<<< Updated upstream
+                        "model": "gemini/gemini-1.5-flash-latest",
+=======
+                        "model": "gemini/gemini-2.5-pro-exp-03-25",
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
                     },
                 },
                 {
-                    "model_name": "claude-3-haiku",
+                    "model_name": "gemini-2.0-flash-thinking-exp",
                     "litellm_params": {
-                        "model": "claude-3-haiku-20240307",
+                        "model": "gemini/gemini-2.0-flash-thinking-exp",
                     },
                 },
             ]
