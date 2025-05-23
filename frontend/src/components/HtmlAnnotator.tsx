@@ -300,7 +300,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 				})
 				setInspectorEnabled(false)
 			}
-			/* Got rid of this in favor of using the iframe for state display 
+			/* Got rid of this in favor of using the iframe for state display
 				else if (event.data.action === 'loaded' && uiState.renderedHTML) {
 				setPreview(event.data.preview)
 			} */
@@ -354,7 +354,6 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 				>
 					<div className='code-responsive-wrapper relative h-[calc(100vh-315px)] w-full flex-none overflow-auto rounded-lg bg-background'>
 						{/* We allow-same-origin so the iframe can keep state */}
-						{}
 						<iframe
 							title='HTML preview'
 							id={`version-${versionIdx}`}

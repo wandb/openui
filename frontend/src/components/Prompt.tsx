@@ -447,7 +447,6 @@ export default function Prompt({
 				isFocused ? 'border-2 border-primary bg-white dark:bg-muted' : ''
 			)}
 		>
-			{}
 			<Form
 				onSubmit={onSubmit}
 				className={cn(
