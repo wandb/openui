@@ -12,7 +12,6 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 const isObjectWithDefaultFunction = (
 	module: unknown
 ): module is { default: typeof monacoEditorPluginModule } =>
-	// eslint-disable-next-line eqeqeq
 	module != undefined &&
 	typeof module === 'object' &&
 	'default' in module &&
@@ -26,7 +25,6 @@ const inCodespace = process.env.GITHUB_CODESPACE_TOKEN !== undefined
 const plugins: PluginOption[] = [eslintPlugin()]
 // Don't listen on SSL in codespaces
 if (!inCodespace) {
-	// eslint-disable-next-line @typescript-eslint/no-floating-promises
 	plugins.push(mkcert())
 }
 export default defineConfig(({ mode }) => ({

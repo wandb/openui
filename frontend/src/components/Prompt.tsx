@@ -104,7 +104,7 @@ export default function Prompt({
 	const saveMarkdown = useCallback(
 		(final: string) => {
 			// The empty markdown check is rather important, without it we get into an
-			// infinite re-render
+			// Infinite re-render
 			if (final.trim() !== '') {
 				setItem(it => ({
 					...it,
@@ -160,7 +160,7 @@ export default function Prompt({
 					if (queryRef.current) {
 						queryRef.current.value = ''
 					}
-					// setLLMHidden(true)
+					// SetLLMHidden(true)
 				})
 				.catch((error: unknown) => {
 					setScreenshot('')
@@ -206,7 +206,7 @@ export default function Prompt({
 
 	// This effect is called when rendering a new component.
 	// CAUTION: mucking with the deps here is a recipe for disaster,
-	// we don't want this getting called twice in fast succession
+	// We don't want this getting called twice in fast succession
 	useEffect(() => {
 		// TODO: not sure if we want this searchParam trash
 		const clear = searchParams.get('clear') === 'true'
@@ -277,7 +277,7 @@ export default function Prompt({
 			})
 			console.error(error)
 		}
-		// we only key off throttledMD while referencing markdown
+		// We only key off throttledMD while referencing markdown
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [throttledMD])
 
@@ -299,11 +299,11 @@ export default function Prompt({
 
 			if (action === 'create') {
 				// Keep the screenshot
-				// saveMarkdown('')
+				// SaveMarkdown('')
 				newComponent(query, screenshot === '')
 				return
 			}
-			// setMarkdown('')
+			// SetMarkdown('')
 			// TODO: save screenshots
 			setItem(it => ({
 				...it,
@@ -327,7 +327,7 @@ export default function Prompt({
 		]
 	)
 
-	// convert HTML to a framework
+	// Convert HTML to a framework
 	useEffect(() => {
 		if (!convertFramework) {
 			return
@@ -447,7 +447,7 @@ export default function Prompt({
 				isFocused ? 'border-2 border-primary bg-white dark:bg-muted' : ''
 			)}
 		>
-			{/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+			{}
 			<Form
 				onSubmit={onSubmit}
 				className={cn(
@@ -536,13 +536,11 @@ export default function Prompt({
 					placeholder={
 						isEditing
 							? 'Ask for changes to the current UI'
-							: // eslint-disable-next-line unicorn/no-nested-ternary
-								screenshot
+							: screenshot
 								? 'Describe the screenshot you uploaded (Optional)'
 								: bufferedExample
 					}
 					ref={queryRef}
-					// eslint-disable-next-line react/jsx-handler-names
 					onKeyDown={(e: React.KeyboardEvent) => {
 						if (e.key === 'Enter') {
 							onSubmit(e)
@@ -589,8 +587,7 @@ export default function Prompt({
 							</TooltipTrigger>
 							<TooltipContent>Select elements in the HTML</TooltipContent>
 						</Tooltip>
-					) : // eslint-disable-next-line unicorn/no-nested-ternary
-					modelSupportsImages ? (
+					) : modelSupportsImages ? (
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button

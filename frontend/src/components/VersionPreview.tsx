@@ -129,7 +129,7 @@ export default function VersionPreview({
 					</div>
 				</div>
 				<div className={`relative w-full max-w-[${DW}px] overflow-hidden`}>
-					{/* eslint-disable-next-line react/iframe-missing-sandbox */}
+					{}
 					<iframe
 						src={`${iframeSrc}/openui/index.html?preview=1&id=${id}`}
 						className={cn(

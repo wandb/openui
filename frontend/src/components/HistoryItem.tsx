@@ -30,10 +30,10 @@ export default function HistoryItem({
 	const navigate = useNavigate()
 	const setHistoryIds = useSetAtom(historyIdsAtom)
 	const setSidebarState = useSetAtom(historySidebarStateAtom)
-	// border-[1px] border-b-zinc-500
+	// Border-[1px] border-b-zinc-500
 	return (
 		<>
-			{!!label && (
+			{Boolean(label) && (
 				<div className='mb-2 w-full text-xs'>
 					<h3>{label}</h3>
 				</div>

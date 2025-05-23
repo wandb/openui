@@ -79,7 +79,7 @@ export default function CodeViewer({ id, code }: ViewerProps) {
 	const [framework, setFramework] = useAtom(selectedFrameworkAtom)
 	const [convertFramework, setConvertFramework] = useAtom(convertFrameworkAtom)
 
-	// local state
+	// Local state
 	const [currentCode, setCurrentCode] = useState<string>(code)
 
 	// TODO: likely throttle / debounce
@@ -113,12 +113,11 @@ export default function CodeViewer({ id, code }: ViewerProps) {
 		<div className='code-syntax-wrapper'>
 			<div className='code-syntax relative rounded-lg border'>
 				<div className='grid w-full grid-cols-4 rounded-t-md border-b'>
-					<ul className='z-10 col-span-3 flex max-h-9 w-full overflow-y-hidden overflow-x-auto rounded-tl-lg bg-background text-center text-sm font-medium text-gray-500 dark:text-gray-400'>
+					<ul className='z-10 col-span-3 flex max-h-9 w-full overflow-x-auto overflow-y-hidden rounded-tl-lg bg-background text-center text-sm font-medium text-gray-500 dark:text-gray-400'>
 						{frameworks.map((f, i) => (
 							<li key={f}>
 								<button
 									type='button'
-									// eslint-disable-next-line react/jsx-handler-names
 									onClick={() => setFramework(f)}
 									className={cn(
 										'inline-block w-full whitespace-nowrap border-r p-2 px-3 text-secondary-foreground',
@@ -171,7 +170,6 @@ export default function CodeViewer({ id, code }: ViewerProps) {
 					<div className='flex justify-end'>
 						<button
 							type='button'
-							// eslint-disable-next-line react/jsx-handler-names
 							onClick={() =>
 								copyTextToClipboard(
 									wrappedCode(currentCode, framework, theme ?? themes[0])

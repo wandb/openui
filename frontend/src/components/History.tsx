@@ -21,14 +21,14 @@ export default function History() {
 	const store = useStore()
 
 	const now = new Date()
-	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+
 	const today = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+
 	const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 	let lastLabel = 'Today'
 
 	useEffect(() => {
-		// setIsCollapsed(!bigEnough)
+		// SetIsCollapsed(!bigEnough)
 	}, [bigEnough, setIsCollapsed])
 
 	return (

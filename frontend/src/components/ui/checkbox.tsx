@@ -25,5 +25,4 @@ const Checkbox = React.forwardRef<
 ))
 Checkbox.displayName = CheckboxPrimitive.Root.displayName
 
-// eslint-disable-next-line import/prefer-default-export
 export { Checkbox }

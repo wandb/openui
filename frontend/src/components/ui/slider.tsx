@@ -23,5 +23,4 @@ const Slider = React.forwardRef<
 ))
 Slider.displayName = SliderPrimitive.Root.displayName
 
-// eslint-disable-next-line import/prefer-default-export
 export { Slider }

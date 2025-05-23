@@ -1,6 +1,6 @@
 /* This is from an earlier experiment and is not currently being used */
 
-export const encode = (byteArray: ArrayBuffer) =>
+export const encode = (byteArray: ArrayBuffer | Uint8Array) =>
 	btoa(
 		[...new Uint8Array(byteArray)]
 			.map(val => String.fromCodePoint(val))
@@ -27,12 +27,10 @@ export const createKey = async (
 	rpName: string,
 	requireResidentKey = true,
 	timeout?: number
-	// eslint-disable-next-line @typescript-eslint/max-params
 ) => {
-	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 	challenge = random(32)
 	// This where the magic happens, we can use this as a password
-	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+
 	const userId = random(16)
 	const credential = await navigator.credentials.create({
 		publicKey: {
@@ -54,12 +52,12 @@ export const createKey = async (
 			pubKeyCredParams: [
 				{
 					type: 'public-key',
-					// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+
 					alg: -7
 				},
 				{
 					type: 'public-key',
-					// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+
 					alg: -257
 				}
 			]
@@ -101,7 +99,7 @@ export const authenticate = async (id?: string) => {
 	if (credentialID === null) {
 		throw new Error('No credential ID found')
 	}
-	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+
 	challenge = random(32)
 	const credential = await navigator.credentials.get({
 		publicKey: {

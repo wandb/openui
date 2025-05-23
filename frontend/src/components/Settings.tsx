@@ -67,7 +67,7 @@ function slugToNiceName(slug?: string, float = true) {
 			</>
 		)
 	}
-	// eslint-disable-next-line unicorn/no-useless-undefined
+
 	return undefined
 }
 

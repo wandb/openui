@@ -21,5 +21,4 @@ const Label = React.forwardRef<
 ))
 Label.displayName = LabelPrimitive.Root.displayName
 
-// eslint-disable-next-line import/prefer-default-export
 export { Label }
