@@ -50,7 +50,6 @@ export default defineConfig(({ mode }) => ({
 	server: {
 		proxy: {
 			'/v1': 'http://localhost:7878',
-			// TODO: Currently having this proxy to /annotator, kinda lame
 			'/openui': 'http://localhost:7878'
 		}
 	},
@@ -94,6 +93,20 @@ export default defineConfig(({ mode }) => ({
 				presets: ['jotai/babel/preset']
 			}
 		}),
+		{
+			name: 'dev-permissions-policy',
+			configureServer(server) {
+				// this runs _before_ Vite’s normal request handler
+				server.middlewares.use((req, res, next) => {
+					// set your Permissions-Policy here
+					res.setHeader(
+						'Permissions-Policy',
+						'geolocation=(self), microphone=(self), camera=(self)'
+					)
+					next()
+				})
+			}
+		},
 		...(mode === 'test' ? [] : plugins)
 	]
 }))

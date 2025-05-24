@@ -11,15 +11,15 @@ def generate_config():
         models.extend(
             [
                 {
-                    "model_name": "gemini-1.5-flash",
+                    "model_name": "Gemini 2.5 Pro Preview 05-06",
                     "litellm_params": {
-                        "model": "gemini/gemini-1.5-flash-latest",
+                        "model": "gemini/gemini-2.5-pro-preview-05-06",
                     },
                 },
                 {
-                    "model_name": "gemini-1.5-pro",
+                    "model_name": "Gemini 2.5 Flash Preview 04-17",
                     "litellm_params": {
-                        "model": "gemini/gemini-1.5-pro-latest",
+                        "model": "gemini/gemini-2.5-flash-preview-04-17",
                     },
                 },
             ]
@@ -28,6 +28,18 @@ def generate_config():
     if "ANTHROPIC_API_KEY" in os.environ:
         models.extend(
             [
+                {
+                    "model_name": "claude-sonnet-4-0",
+                    "litellm_params": {
+                        "model": "claude-sonnet-4-0",
+                    },
+                },
+                {
+                    "model_name": "claude-opus-4-0",
+                    "litellm_params": {
+                        "model": "claude-opus-4-0",
+                    },
+                },
                 {
                     "model_name": "claude-3-7-sonnet",
                     "litellm_params": {
@@ -38,24 +50,6 @@ def generate_config():
                     "model_name": "claude-3-5-haiku",
                     "litellm_params": {
                         "model": "claude-3-5-haiku-latest",
-                    },
-                },
-            ]
-        )
-
-    if "GEMINI_API_KEY" in os.environ:
-        models.extend(
-            [
-                {
-                    "model_name": "gemini-2.5-pro",
-                    "litellm_params": {
-                        "model": "gemini/gemini-1.5-flash-latest",
-                    },
-                },
-                {
-                    "model_name": "gemini-2.0-flash-thinking-exp",
-                    "litellm_params": {
-                        "model": "gemini/gemini-2.0-flash-thinking-exp",
                     },
                 },
             ]

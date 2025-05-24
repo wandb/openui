@@ -14,7 +14,7 @@ import {
 	useSaveHistory,
 	type ItemWrapper
 } from 'state'
-import type { IFrameEvent } from './HtmlAnnotator'
+import type { IFrameEvent } from './CurrentUiContext'
 import { Button } from './ui/button'
 
 export default function VersionPreview({

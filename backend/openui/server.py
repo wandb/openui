@@ -16,6 +16,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi_sso.sso.github import GithubSSO
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware import Middleware
 from datetime import datetime, timedelta
 import html
 import uuid
@@ -26,8 +27,13 @@ import threading
 import time
 import getpass
 from peewee import IntegrityError
+from cachetools import LRUCache
+from threading import Lock
+
 
 import weave
+from weave.trace.context.call_context import set_call_stack
+from weave.trace.context.weave_client_context import get_weave_client
 from starlette.middleware.sessions import SessionMiddleware
 from .session import DBSessionStore, SessionData
 from .logs import logger
@@ -50,7 +56,7 @@ from .model_router import ModelRouter
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.setLevel("DEBUG")
-    logger.debug("Starting up server in %d...", os.getpid())
+    logger.debug("Starting up server in %d (%s)...", os.getpid(), config.ENV)
     yield
     # any more cleanup here?
 
@@ -86,6 +92,121 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+""" Tims approach: https://weightsandbiases.slack.com/archives/C01T8BLDHKP/p1746641179766999?thread_ts=1746624453.973939&cid=C01T8BLDHKP
+def better_trace(trace_id: str | None):
+    if trace_id is None:
+        trace_id = generate_id()
+    call_id = trace_id
+    project_id = client._project_id()
+    
+    # Blocking call - could push to background thread
+    if call_id not in assume_already_started_ids:
+        client.server.call_start(
+            CallStartReq(
+                start=StartedCallSchemaForInsert(
+                    project_id=project_id,
+                    id=call_id,
+                    op_name="Trace",
+                    trace_id=trace_id,
+                    started_at=datetime.now(),
+                    parent_id=None,
+                    inputs={},
+                    attributes={},
+                    wb_run_id=None,
+                )
+            )
+        )
+
+        assume_already_started_ids.add(call_id)
+
+    call = synthetic_call(trace_id, call_id)
+    with set_call_stack([call]):
+        yield trace_id
+
+    # Blocking call - could push to background thread
+    if call_id not in assume_already_ended_ids:
+        client.server.call_end(
+            CallEndReq(
+                end=EndedCallSchemaForInsert(
+                    project_id=project_id,
+                    id=call.id,
+                    ended_at=datetime.now(),
+                    output=None,
+                    summary={},
+                    exception=None,
+                )
+            )
+        )
+
+        assume_already_ended_ids.add(call_id)
+"""
+
+class Trace:
+    calls = LRUCache(maxsize=100)
+    lock = Lock()
+
+    def __init__(self, trace_id: str | None, user_id: str):
+        self.client = get_weave_client()
+        self.user_id = user_id
+        self.trace_id = trace_id
+        self.call = None
+
+    def __enter__(self):
+        self.start()
+        if self.disabled:
+            self._stack_ctx = contextlib.nullcontext()
+        else:
+            self._stack_ctx = set_call_stack([self.call])
+        return self._stack_ctx.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_val is not None:
+            self.fail(exc_val)
+        self.finish()
+        return self._stack_ctx.__exit__(exc_type, exc_val, exc_tb)
+
+    @property
+    def disabled(self):
+        return self.client is None or self.trace_id is None
+
+    def start(self):
+        if self.disabled:
+            logger.info("Trace disabled, skipping")
+            return
+        logger.info("Starting trace %s", self.trace_id)
+        with self.lock:
+            self.call = self.calls.get(self.trace_id)
+            if self.call is None:
+                self.call = self.client.create_call("openui", {}, None, {"user_id": self.user_id, "trace_id": self.trace_id}, "OpenUI Generation")
+                self.calls[self.trace_id] = self.call
+        return self.call
+
+    def fail(self, e: Exception):
+        with self.lock:
+            if self.disabled or self.call is None:
+                return
+            self.client.fail_call(self.call, e)
+            self.call = None
+
+    def finish(self):
+        with self.lock:
+            if self.disabled or self.call is None:
+                return
+            self.client.finish_call(self.call)
+            self.call = None
+
+# TODO: move around to a more general place, cool
+@app.middleware("http")
+async def add_permissions_policy(request: Request, call_next):
+    # dispatch the request
+    response: Response = await call_next(request)
+    # set the Permissions-Policy header
+    # (replace the value below with whatever policy you need)
+    response.headers["Permissions-Policy"] = (
+        'geolocation=(self "https://wandb.github.io"), microphone=(self "https://wandb.github.io"), camera=(self "https://wandb.github.io")'
+    )
+    return response
+
 
 @router.post("/v1/chat/completions", tags=["openui/chat"])
 @router.post(
@@ -105,11 +226,14 @@ async def chat_completions(
             status_code=429,
             detail="You've exceeded our usage quota, come back tomorrow to generate more UI.",
         )
+
     try:
         data = await request.json()
         input_tokens = count_tokens(data["messages"])
         data["max_tokens"] = 4096 - input_tokens - 20
-        return await model_router.stream_chat_completion(data, input_tokens, user_id)
+        logger.info("Starting trace %s", request.headers.get("X-Wandb-Trace-Id"))
+        with Trace(request.headers.get("X-Wandb-Trace-Id"), user_id):
+            return await model_router.stream_chat_completion(data, input_tokens, user_id)
     except (ResponseError, APIStatusError) as e:
         traceback.print_exc()
         logger.exception("Known Error: %s", str(e))
@@ -298,10 +422,11 @@ async def vote(request: Request, payload: VoteRequest):
 async def get_openai_models():
     try:
         await model_router.openai.models.list()
-        # We only support 3.5 and 4 for now
-        return ["gpt-3.5-turbo", "gpt-4o-mini", "gpt-4o", "gpt-4-turbo"]
-    except Exception:
+        # Hand selected list
+        return ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "o4-mini"]
+    except Exception as e:
         logger.warning("Couldn't connect to OpenAI at %s", config.OPENAI_BASE_URL)
+        logger.exception("Error: %s", e)
         return []
 
 
@@ -330,6 +455,13 @@ async def get_litellm_models():
         logger.warning("Couldn't connect to LiteLLM at %s", config.LITELLM_BASE_URL)
         return []
 
+async def get_gemini_models():
+    try:
+        return (await model_router.gemeni.models.list()).data
+    except Exception:
+        logger.warning("Couldn't connect to Gemini at %s", config.GEMINI_BASE_URL)
+        return []
+
 
 @router.get("/v1/models", tags="openui/models")
 async def models():
@@ -338,8 +470,9 @@ async def models():
         get_groq_models(),
         get_ollama_models(),
         get_litellm_models(),
+        get_gemini_models(),
     ]
-    openai_models, groq_models, ollama_models, litellm_models = await asyncio.gather(
+    openai_models, groq_models, ollama_models, litellm_models, gemini_models = await asyncio.gather(
         *tasks
     )
     return {
@@ -348,6 +481,7 @@ async def models():
             "groq": groq_models,
             "ollama": ollama_models,
             "litellm": litellm_models,
+            "gemini": gemini_models,
         }
     }
 
@@ -361,7 +495,7 @@ async def get_session(
 ):
     session_id = request.session.get("session_id")
     if session_id is None:
-        if config.ENV == config.Env.LOCAL:
+        if config.ENV == config.Env.LOCAL or config.ENV == config.Env.DEV:
             # Give local users a session automatically
             session_id = session_store.generate_session_id()
             request.session["session_id"] = session_id
@@ -489,6 +623,8 @@ def spa(full_path: str):
 base_url = "https://api.wandb.ai"
 def check_wandb_auth():
     global base_url
+    if os.getenv("WANDB_DISABLED"):
+        return False
     try:
         from wandb.cli.cli import _get_cling_api
         api = _get_cling_api()
@@ -507,6 +643,8 @@ def check_wandb_auth():
 wandb_enabled = check_wandb_auth()
 if wandb_enabled:
     logger.info(f"WANDB_API_KEY found, enabling wandb for {base_url}")
+    # Uggg, this breaks weave and causes it to drop data when running in dev mode
+    weave.init(os.getenv("WANDB_PROJECT", "openui-dev"))
 
 class Server(uvicorn.Server):
     # TODO: this still isn't working for some reason, can't ctrl-c when not in dev mode

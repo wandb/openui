@@ -13,8 +13,8 @@ In a separate terminal navigate to the backend directory and run:
 
 ```bash
 cd openui/backend
-pip install -e .
-python -m openui --dev
+uv sync
+uv run python -m openui --dev
 ```
 
 All changes should now be live reloaded, god speed.

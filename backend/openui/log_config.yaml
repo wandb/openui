@@ -1,36 +1,28 @@
 version: 1
-disable_existing_loggers: False
+disable_existing_loggers: false
+
 formatters:
-  default:
-    # "()": uvicorn.logging.DefaultFormatter
-    format: "%(levelname)s:     %(message)s"
-    datefmt: "%H:%M:%S"
-  access:
-    # "()": uvicorn.logging.AccessFormatter
-    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    datefmt: "%H:%M:%S"
+  color:
+    "()": "uvicorn.logging.DefaultFormatter"
+    format: "%(levelprefix)s %(name)s: %(message)s"
+    use_colors: true
+
 handlers:
-  default:
-    formatter: default
-    class: logging.FileHandler
-    filename: /tmp/openui.log
-  access:
-    formatter: access
-    class: logging.FileHandler
-    filename: /tmp/openui.access.log
+  console:
+    class: logging.StreamHandler
+    formatter: color
+    stream: ext://sys.stdout
+
 loggers:
-  uvicorn.error:
-    level: INFO
-    handlers:
-      - default
+  openui:
+    level: DEBUG
+    handlers: [console]
     propagate: no
-  uvicorn.access:
-    level: INFO
-    handlers:
-      - access
+  uvicorn:
+    level: DEBUG
+    handlers: [console]
     propagate: no
+
 root:
-  level: DEBUG
-  handlers:
-    - default
-  propagate: no
+  level: WARNING
+  handlers: [console]

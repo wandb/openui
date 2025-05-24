@@ -205,6 +205,16 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 												))}
 										</SelectGroup>
 									)}
+									{data.gemini.length > 0 && (
+										<SelectGroup>
+											<SelectLabel>Gemini</SelectLabel>
+											{data.gemini.map(m => (
+												<SelectItem key={m.id} value={`gemini/${m.id}`}>
+													{slugToNiceName(m.id)}
+												</SelectItem>
+											))}
+										</SelectGroup>
+									)}
 									{data.groq.length > 0 && (
 										<SelectGroup>
 											<SelectLabel>Groq</SelectLabel>

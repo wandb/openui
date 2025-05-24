@@ -1,5 +1,6 @@
 import { useThrottle, useVersion } from 'hooks'
 import { useAtom } from 'jotai'
+import type { OpenAI } from 'openai'
 import eventEmitter, { type EventTarget } from 'lib/events'
 import { parseHTML, type HTMLAndJS } from 'lib/html'
 import type React from 'react'
@@ -9,8 +10,11 @@ import {
 	ItemWrapper,
 	cleanUiState,
 	historyAtomFamily,
-	uiStateAtom
+	uiStateAtom,
+	finishedToolCallsAtom
 } from 'state'
+import type { ToolEvent, ToolFinishEvent } from 'state'
+export type { IFrameEvent } from 'state'
 
 const CurrentUIContext = createContext<EventTarget>(eventEmitter)
 
@@ -20,6 +24,9 @@ export const CurrentUIProvider = ({
 	children: React.ReactNode
 }) => {
 	const { id } = useParams()
+	const [finishedToolCalls, setFinishedToolCalls] = useAtom(
+		finishedToolCallsAtom
+	)
 	const [rawItem, setRawItem] = useAtom(historyAtomFamily({ id: id ?? 'new' }))
 	const item = useMemo(
 		() => new ItemWrapper(rawItem, setRawItem),
@@ -48,10 +55,11 @@ export const CurrentUIProvider = ({
 			setUiState({ ...cleanUiState, ...update })
 		} else if (id === 'new') {
 			setUiState(cleanUiState)
+			setFinishedToolCalls({})
 		}
 		// We only want to trigger this when our ID or version changes, item will be updated
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [id, versionIdx, setUiState])
+	}, [id, versionIdx, setUiState, setFinishedToolCalls])
 
 	// Parse our HTML at most once per second
 	useEffect(() => {
@@ -71,6 +79,46 @@ export const CurrentUIProvider = ({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [htmlToParse, uiState.rendering, setUiState])
 
+	useEffect(() => {
+		const toolCalls: Record<string, ToolFinishEvent> = {}
+		for (const toolCall of Object.values(uiState.toolCalls)) {
+			toolCalls[toolCall.id] = { call: toolCall }
+		}
+		setFinishedToolCalls(toolCalls)
+		const toolCallHandler = (ev: unknown) => {
+			const event = ev as ToolEvent
+			if (event.action === 'edit' || event.action === 'exec-script') {
+				setFinishedToolCalls(state => ({
+					...state,
+					[event.toolCallId]: Object.assign(state[event.toolCallId], {
+						result: event
+					})
+				}))
+			} else {
+				console.warn('Unknown tool call event', event)
+			}
+		}
+		eventEmitter.on(`tool-call`, toolCallHandler)
+		return () => {
+			eventEmitter.off(`tool-call`, toolCallHandler)
+		}
+	}, [id, uiState.toolCalls, setFinishedToolCalls])
+
+	useEffect(() => {
+		const toolCallIds = Object.values(uiState.toolCalls).map(
+			toolCall => toolCall.id
+		)
+		const finishedToolCallIds = Object.keys(finishedToolCalls)
+		const missingToolCallIds = toolCallIds.filter(
+			id => !finishedToolCallIds.includes(id)
+		)
+		if (missingToolCallIds.length > 0) {
+			console.warn('Missing tool call ids', missingToolCallIds)
+		} else if (Object.keys(finishedToolCalls).length > 0) {
+			eventEmitter.emit(`tool-calls-finished`, finishedToolCalls)
+		}
+	}, [finishedToolCalls, uiState.toolCalls])
+
 	// To simplify modifying state and propagating changes to the UI
 	// We do it all with this the event emitter.  One day we could switch
 	// To an actual reducer...
@@ -82,6 +130,10 @@ export const CurrentUIProvider = ({
 				pureHTML?: string
 				rendering?: boolean
 				renderedHTML?: HTMLAndJS
+				toolCalls?: Record<
+					number,
+					OpenAI.Chat.Completions.ChatCompletionMessageToolCall
+				>
 			}
 			// TODO: we might want to refactor this
 			if (event.annotatedHTML) {

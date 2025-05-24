@@ -274,7 +274,11 @@ export class ItemWrapper {
 		return `\n\n---\nprompt: ${prompt}\nversion: ${version}\n---\n\n${html}\n`
 	}
 
-	public editChapter(html: string, versionIdx: number): number {
+	public editChapter(
+		html: string,
+		versionIdx: number,
+		editPrompt?: string
+	): number {
 		const { latestPrompt, chapters, item, saveHistory } = this
 		let newVersionIdx = versionIdx
 		const version = this.version(versionIdx)
@@ -287,7 +291,7 @@ export class ItemWrapper {
 		let markdown = ''
 		// TODO: decide if we want to be smart enough to edit the next item in line or not
 		if (editing) {
-			const prompt = this.prompt(versionIdx) ?? latestPrompt
+			const prompt = editPrompt ?? this.prompt(versionIdx) ?? latestPrompt
 			this.chapters = [
 				...chapters.slice(0, versionIdx),
 				{
@@ -311,7 +315,7 @@ export class ItemWrapper {
 					Number.parseFloat(chapters[newVersionIdx - 1].version) + 0.1
 				versionString = versionBump.toFixed(1)
 			}
-			const prompt = this.prompt(versionIdx) ?? ''
+			const prompt = editPrompt ?? this.prompt(versionIdx) ?? ''
 			this.chapters = [
 				...chapters.slice(0, newVersionIdx),
 				{
@@ -517,7 +521,6 @@ export const useSaveHistory = () => {
 						}
 					}
 				}
-				console.log('Saving history', safeValue)
 				try {
 					localStorage.setItem('serializedHistory', safeValue)
 				} catch (error) {

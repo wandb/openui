@@ -1,14 +1,3 @@
-import type { Code } from 'mdast'
-import remarkParse from 'remark-parse'
-import { unified } from 'unified'
-import { escapeHTML } from './html'
-
-interface ParsedMarkdown {
-	name?: string
-	emoji?: string
-	html?: string
-}
-
 export function newChapter(prompt: string) {
 	return `\n\n---\nprompt: ${prompt}\n---\n\n`
 }
@@ -54,10 +43,11 @@ export function parseMarkdown(
 	const emoji = header.split('\n').find(l => l.trim().startsWith('emoji: '))
 	// Mixtral sometimes started itself with ```yaml
 	// We remove double newlines to ensure html is captured as a single block
-	let cleanMarkdown = markdown.replace('```yaml\n', '').replaceAll('\n\n', '\n')
+	// let cleanMarkdown = markdown.replace('```yaml\n', '').replaceAll('\n\n', '\n')
 	// TODO: this seems brittle, but seems to work, we need to do this to remove
-	// Any comments added after the closing the HTML
-	cleanMarkdown = cleanMarkdown.replace(/^(<\/div>|<\/script>)\n/m, '$1\n\n')
+	// any comments added after the closing the HTML
+	// cleanMarkdown = cleanMarkdown.replace(/^(<\/div>|<\/script>)\n/m, '$1\n\n')
+	let cleanMarkdown = markdown
 	if (name) {
 		result.name = name.replace(/\s*name: /, '')
 	}
@@ -68,58 +58,87 @@ export function parseMarkdown(
 			cleanMarkdown = markdown.slice(Math.max(0, split + 3))
 		}
 	}
-	/* This is supposed to prevent us from writing frontmatter to the UI 
-		 TODO: this is brittle, and doesn't seem to work consistently :/
+	/* This is supposed to prevent us from writing frontmatter to the UI
+	TODO: this is brittle, and doesn't seem to work consistently :/
 	if (rendering && cleanMarkdown.slice(0, 1000).includes('---')) {
 		const offset = cleanMarkdown.split('---').slice(0, -1).join('---').length
 		cleanMarkdown = cleanMarkdown.slice(offset)
 		if (cleanMarkdown.slice(0, 100).includes('---')) {
 			cleanMarkdown = ''
 		}
-	}
+		}
 	*/
+	if (!rendering) {
+		// TODO maybe change logic?
+		console.log('rendered', cleanMarkdown)
+	}
+	let indexHtml = ''
+	let commentary = ''
+	const startTag = '<index_html>'
+	const endTag = '</index_html>'
+	const startIdx = cleanMarkdown.indexOf(startTag)
+	const endIdx = cleanMarkdown.indexOf(endTag)
+	if (startIdx !== -1) {
+		indexHtml = cleanMarkdown.slice(startIdx + startTag.length, endIdx).trim()
+		commentary = cleanMarkdown.slice(0, startIdx).trim()
+		if (endIdx !== -1) {
+			commentary += cleanMarkdown.slice(endIdx + endTag.length).trim()
+		}
+	} else {
+		// Fallback to just grabbing the first chunk of HTML
+		const openTagMatch = cleanMarkdown.match(/<([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>/)
+		if (openTagMatch) {
+			const tagName = openTagMatch[1]
+			const openTagIdx = cleanMarkdown.indexOf(openTagMatch[0])
 
-	const parsed = unified().use(remarkParse).parse(cleanMarkdown)
-
-	let htmlBlocks = parsed.children.filter(
-		c =>
-			(c.type === 'code' && ['html', ''].includes(c.lang ?? '')) ||
-			c.type === 'html'
-	) as Code[]
-	// TODO: maybe do this first and only if the first paragraph is chill
-	for (const c of parsed.children) {
-		if (c.type === 'paragraph') {
-			let html = ''
-			if (c.children[0].type === 'html') {
-				for (const c2 of c.children) {
-					html = html + (c2 as unknown as Code).value || ''
-				}
+			const closingTagRegex = new RegExp(`</${tagName}>`, 'g')
+			let lastCloseTagIdx = -1
+			let match
+			while ((match = closingTagRegex.exec(cleanMarkdown)) !== null) {
+				lastCloseTagIdx = match.index
 			}
-			htmlBlocks.push({ type: 'code', lang: 'html', value: html })
+
+			if (lastCloseTagIdx !== -1) {
+				const endOfCloseTag = lastCloseTagIdx + `</${tagName}>`.length
+				indexHtml = cleanMarkdown.slice(openTagIdx, endOfCloseTag)
+				commentary = (
+					cleanMarkdown.slice(0, openTagIdx) +
+					cleanMarkdown.slice(endOfCloseTag)
+				).trim()
+			} else {
+				indexHtml = cleanMarkdown.slice(openTagIdx, lastCloseTagIdx).trim()
+				commentary = cleanMarkdown.slice(0, openTagIdx).trim()
+			}
+		} else if (cleanMarkdown.length > 1000) {
+			console.warn('Malformed llm response:', cleanMarkdown)
 		}
 	}
-	// TODO: not convinced this is the best way to handle this
+
+	// const parsed = unified().use(remarkParse).parse(commentary)
+
+	/* TODO: not convinced this is the best way to handle this
 	if (
-		!rendering &&
-		htmlBlocks.filter(h => h.value.trim() !== '').length === 0
+		!rendering && indexHtml === ""
 	) {
-		console.warn('No HTML found, parse results:', parsed.children)
-		htmlBlocks = [
-			{
-				type: 'code',
-				lang: 'html',
-				value: `<div class="p-8 prose dark:prose-invert"><h1 class=text-xl font-bold ${cleanMarkdown === '' ? 'text-red-700' : ''}">Couldn't find any HTML, LLM Response:</h1>${cleanMarkdown === '' ? `<pre class="text-xs"><code class="language-html">${escapeHTML(markdown)}</code></pre>` : cleanMarkdown}</div>`
-			}
-		]
-	}
-	const jsBlocks = parsed.children.filter(
-		c => c.type === 'code' && c.lang === 'javascript'
-	) as Code[]
+		console.warn('No HTML found, parse results:', cleanMarkdown)
+		indexHtml = `<div class="p-8 prose dark:prose-invert"><h1 class=text-xl font-bold ${cleanMarkdown === '' ? 'text-red-700' : ''}">Couldn't find any HTML, LLM Response:</h1>${cleanMarkdown === '' ? `<pre class="text-xs"><code class="language-html">${escapeHTML(markdown)}</code></pre>` : cleanMarkdown}</div>`
+	}*/
+	//const jsBlocks = parsed.children.filter(
+	//	c => c.type === 'code' && c.lang === 'javascript'
+	//) as Code[]
 	result.html = fixHTML(
 		[
-			...htmlBlocks.map(h => h.value),
-			...jsBlocks.map(j => `<script type="text/javascript">${j.value}</script>`)
+			indexHtml
+			//...jsBlocks.map(j => `<script type="text/javascript">${j.value}</script>`)
 		].join('\n')
 	)
+	result.commentary = commentary
 	return result
+}
+
+interface ParsedMarkdown {
+	name?: string
+	emoji?: string
+	html?: string
+	commentary?: string
 }

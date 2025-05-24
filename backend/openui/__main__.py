@@ -108,11 +108,17 @@ if __name__ == "__main__":
         if reload:
             # TODO: hot reload wasn't working with the server approach, and ctrl-C doesn't
             # work with the uvicorn.run approach, so here we are
-            uvicorn.run(
-                "openui.server:app",
-                host="0.0.0.0" if is_running_in_docker() else "127.0.0.1",
-                port=config.PORT,
-                reload=reload,
+            config_file = Path(__file__).parent / "log_config.yaml"
+            proc = subprocess.Popen(
+                ["uvicorn", "openui.server:app", "--reload", "--port", str(config.PORT), "--log-config", str(config_file.resolve())],
+                stdout=None,
+                stderr=None,
+                text=True,
             )
+            try:
+                proc.wait()
+            except KeyboardInterrupt:
+                proc.terminate()
+                proc.wait()
         else:
             api_server.run_with_wandb()

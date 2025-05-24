@@ -6,6 +6,7 @@ export interface Models {
 	groq: Model[]
 	ollama: ModelResponse[]
 	litellm: Model[]
+	gemini: Model[]
 }
 
 export async function getModels(): Promise<Models> {
@@ -19,7 +20,8 @@ export async function getModels(): Promise<Models> {
 			openai: [],
 			groq: [],
 			ollama: [],
-			litellm: []
+			litellm: [],
+			gemini: []
 		}
 	}
 }

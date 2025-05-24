@@ -37,7 +37,6 @@ import {
 	HoverCardTrigger
 } from 'components/ui/hover-card'
 import { adjectives } from 'lib/constants'
-import type { Script } from 'lib/html'
 import { themes } from 'lib/themes'
 import { cn, resizeImage } from 'lib/utils'
 import {
@@ -47,10 +46,9 @@ import {
 	ThumbsUpIcon,
 	WandSparklesIcon
 } from 'lucide-react'
-import { nanoid } from 'nanoid'
 import { useNavigate } from 'react-router-dom'
 import CodeViewer from './CodeViewer'
-import CurrentUIContext from './CurrentUiContext'
+import CurrentUIContext, { type IFrameEvent } from './CurrentUiContext'
 import { Checkbox } from './ui/checkbox'
 import { Label } from './ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -78,27 +76,17 @@ interface HTMLAnnotatorProps {
 	error?: string
 }
 
-export interface IFrameEvent {
-	action: string
-	id?: string
-	html: string
-	js: Script[]
-	screenshot: string
-	comment: string
-	height: number
-	preview: boolean
-}
-
 export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 	const currentUI = useContext(CurrentUIContext)
 
 	// Only point to our local annotator in development / running locally otherwise use github pages
+	// const localProxy = `http://${document.location.hostname}:${document.location.port === '5173' ? '7878' : document.location.port}`
 	const iframeSrc = /127\.0\.0\.1|localhost/.test(document.location.hostname)
-		? `http://${document.location.hostname}:${document.location.port === '5173' ? '7878' : document.location.port}`
+		? document.location.origin
 		: 'https://wandb.github.io'
 	const iframeRef = useRef<HTMLIFrameElement | null>(null)
 	const annotatorRef = useRef<HTMLDivElement | null>(null)
-	const iframeId = useMemo(() => nanoid(8), [])
+	const iframeId = id // useMemo(() => nanoid(8), [])
 	const saveHistory = useSaveHistory()
 	const [rawItem, setRawItem] = useAtom(historyAtomFamily({ id }))
 	const item = useMemo(
@@ -286,14 +274,47 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 			}
 			if (event.data.action === 'ready') {
 				setIsReady(true)
-			} else if (event.data.screenshot) {
+			} else if (event.data.action === 'screenshot') {
 				console.log('Saving screenshot')
 				resizeImage(event.data.screenshot, 1024)
 					.then(setImage)
 					.catch((error_: unknown) =>
 						console.error('Screenshot failure', error_)
 					)
-			} else if (event.data.comment) {
+			} else if (event.data.action === 'edit') {
+				currentUI.emit('tool-call', event.data)
+				if (event.data.success) {
+					console.log('DOM manipulated within iframe', event.data.html)
+					/* trying edited for now... this probably messes up the editor */
+					const editedHTML = formatHTML(event.data.html.trim())
+					currentUI.emit('ui-state', {
+						editedHTML
+					})
+					item.editChapter(editedHTML, versionIdx, event.data.description)
+					if (event.data.consoleOutput && event.data.consoleOutput.length > 0) {
+						console.log(
+							'Console output',
+							event.data.consoleOutput,
+							event.data.mutationCount
+						)
+					}
+				} else {
+					console.error(
+						'DOM manipulation within iframe failed',
+						event.data.error
+					)
+				}
+			} else if (event.data.action === 'exec-script') {
+				currentUI.emit('tool-call', event.data)
+				if (event.data.success) {
+					console.log('Script executed within iframe', event.data.consoleOutput)
+				} else {
+					console.error(
+						'Script execution within iframe failed',
+						event.data.error
+					)
+				}
+			} else if (event.data.action === 'comment') {
 				setComments([...comments, event.data.comment])
 				currentUI.emit('ui-state', {
 					annotatedHTML: formatHTML(event.data.html.trim())
@@ -318,7 +339,9 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 		setInspectorEnabled,
 		currentUI,
 		setImage,
-		image
+		image,
+		item,
+		versionIdx
 	])
 
 	const createVote = useCallback(
@@ -356,8 +379,9 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 						{/* We allow-same-origin so the iframe can keep state */}
 						<iframe
 							title='HTML preview'
-							id={`version-${versionIdx}`}
-							sandbox='allow-same-origin allow-scripts allow-forms allow-popups allow-modals'
+							id={`iframe-${iframeId}`}
+							sandbox='allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-storage-access-by-user-activation'
+							allow='microphone, camera'
 							ref={iframeRef}
 							style={{
 								transform: `scale(${scale.toFixed(2)})`,

@@ -272,6 +272,51 @@
 		</div>
 	</body>
 	<script type="text/javascript">
+		class DomMutationAndConsoleCapture {
+			constructor(target = document.body) {
+				this.target = target;
+				this.consoleOutput = [];
+				this.originalConsole = {};
+				this.mutationCount = 0;
+				this.observer = null;
+			}
+
+			start() {
+				// Capture console
+				['log', 'error', 'warn', 'info', 'debug'].forEach(method => {
+					this.originalConsole[method] = console[method];
+					console[method] = (...args) => {
+						this.consoleOutput.push({ type: method, args });
+						this.originalConsole[method].apply(console, args);
+					};
+				});
+				// Observe DOM mutations
+				this.mutationCount = 0;
+				this.observer = new MutationObserver(mutationsList => {
+					this.mutationCount += mutationsList.length;
+				});
+				this.observer.observe(this.target, { childList: true, subtree: true, attributes: true, characterData: true });
+			}
+
+			stop() {
+				if (this.observer) {
+					this.observer.disconnect();
+					this.observer = null;
+				}
+				['log', 'error', 'warn', 'info', 'debug'].forEach(method => {
+					if (this.originalConsole[method]) {
+						console[method] = this.originalConsole[method];
+					}
+				});
+			}
+
+			getResults() {
+				return {
+					consoleOutput: this.consoleOutput,
+					mutationCount: this.mutationCount
+				};
+			}
+		}
 		// Setup the room
 		window.theRoom.configure({
 			blockRedirection: false,
@@ -472,6 +517,8 @@
 					element.parentNode.insertBefore(c, element)
 					window.parent.parent.postMessage(
 						{
+							action: 'comment',
+							id: id,
 							comment: text,
 							idx: commentIdx,
 							html: document.getElementById('wrapper').innerHTML
@@ -510,6 +557,7 @@
 		}, 500)
 
 		// handle events from parent
+		let currentHTML = ''
 		window.addEventListener(
 			'message',
 			function (event) {
@@ -531,6 +579,44 @@
 							'*'
 						)
 					})
+				} else if (event.data.action === 'exec-script') {
+					const { javascript, toolCallId, description } = event.data;
+					if (event.data.id && event.data.id !== id) {
+						return
+					}
+
+					const capture = new DomMutationAndConsoleCapture(document.body);
+					capture.start();
+
+					try {
+						eval(javascript);
+						const { mutationCount, consoleOutput } = capture.getResults();
+						window.parent.parent.postMessage({
+							action: 'exec-script',
+							id,
+							toolCallId,
+							success: true,
+							description,
+							mutationCount,
+							consoleOutput
+						}, '*');
+					} catch (e) {
+						const { mutationCount, consoleOutput } = capture.getResults();
+						window.parent.parent.postMessage({
+							action: 'exec-script',
+							id,
+							toolCallId,
+							success: false,
+							error: e.message,
+							description,
+							mutationCount,
+							consoleOutput
+						}, '*');
+						capture.stop();
+						console.error('Error executing JavaScript:', e)
+					} finally {
+						capture.stop();
+					}
 				} else if (event.data.action === 'reset') {
 					if (inspectorEnabled) {
 						window.theRoom.stop()
@@ -564,6 +650,7 @@
 					document.getElementById('loading-icon').classList.add('hidden')
 					let wrapper = document.getElementById('wrapper')
 					wrapper.innerHTML = event.data.html
+					currentHTML = event.data.html
 					wrapper.classList.remove('hidden')
 					// highlight any codeblocks
 					hljs.highlightAll()
@@ -589,13 +676,31 @@
 					// Only inject scripts if we're not rendering
 					if (!event.data.rendering) {
 						event.data.js.forEach(js => {
-							const script = document.createElement('script')
-							script.classList.add('user-script')
-							script.type = js.type
-							if (js.src) script.setAttribute('src', js.src)
-							// Close our JS to avoid conflicts
-							script.text = `(()=>{${js.text}})()`
-							document.body.append(script)
+							const capture = new DomMutationAndConsoleCapture(document.body);
+							try {
+								capture.start();
+								const script = document.createElement('script')
+								script.classList.add('user-script')
+								script.type = js.type
+								if (js.src) script.setAttribute('src', js.src)
+								// Close our JS to avoid conflicts
+								script.text = `(()=>{${js.text}})()`
+								document.body.append(script)
+							} catch (e) {
+								const { mutationCount, consoleOutput } = capture.getResults();
+								window.parent.parent.postMessage({
+									action: 'exec-script',
+									id,
+									success: false,
+									error: e.message,
+									stack: e.stack,
+									description: js.description || 'Script injection error',
+									mutationCount: 0,
+									consoleOutput: []
+								}, '*');
+							} finally {
+								capture.stop();
+							}
 						})
 					}
 					// Remove our selected elements
@@ -636,6 +741,90 @@
 						window.theRoom.start()
 					}
 					inspectorEnabled = !inspectorEnabled
+				} else if (event.data.action === 'edit') {
+					const { mode, selector, html, description, multiple, toolCallId } = event.data;
+					// 1. Create a detached DOM container
+					const container = document.createElement('div');
+					const capture = new DomMutationAndConsoleCapture(container);
+					capture.start();
+					const wrapper = document.getElementById('wrapper')
+					container.innerHTML = currentHTML;
+					let changed = false;
+					let targets = multiple ? container.querySelectorAll(selector) : [container.querySelector(selector)];
+					let liveTargets = multiple ? wrapper.querySelectorAll(selector) : [wrapper.querySelector(selector)];
+					targets = Array.from(targets).filter(Boolean);
+					liveTargets = Array.from(liveTargets).filter(Boolean);
+					if (targets.length === 0) {
+						window.parent.parent.postMessage({
+							action: 'edit',
+							id,
+							toolCallId,
+							success: false,
+							error: 'No elements matched selector',
+							description,
+							html: currentHTML
+						}, '*');
+						return;
+					}
+					targets = targets.concat(liveTargets);
+					switch (mode) {
+						case 'innerHTML':
+							targets.forEach(el => { el.innerHTML = html; changed = true; });
+							break;
+						case 'outerHTML':
+							targets.forEach(el => { el.outerHTML = html; changed = true; });
+							break;
+						case 'appendHTML':
+							targets.forEach(el => { el.insertAdjacentHTML('beforeend', html); changed = true; });
+							break;
+						case 'prependHTML':
+							targets.forEach(el => { el.insertAdjacentHTML('afterbegin', html); changed = true; });
+							break;
+						case 'removeHTML':
+							targets.forEach(el => { el.remove(); changed = true; });
+							break;
+						case 'classAdd':
+							targets.forEach(el => { el.classList.add(...html.split(/\s+/)); changed = true; });
+							break;
+						case 'classRemove':
+							targets.forEach(el => { el.classList.remove(...html.split(/\s+/)); changed = true; });
+							break;
+						case 'classReplace': {
+							const [oldClass, newClass] = html.split(/\s*,\s*/);
+							targets.forEach(el => {
+								if (el.classList.contains(oldClass)) {
+									el.classList.replace(oldClass, newClass);
+									changed = true;
+								}
+							});
+							break;
+						}
+						default:
+							window.parent.parent.postMessage({
+								action: 'edit',
+								id,
+								toolCallId,
+								success: false,
+								error: 'Unknown mode',
+								description,
+								html: currentHTML
+							}, '*');
+							return;
+					}
+					const newHTML = container.innerHTML;
+					const { mutationCount, consoleOutput } = capture.getResults();
+					window.parent.parent.postMessage({
+						action: 'edit',
+						id,
+						toolCallId,
+						success: changed,
+						description,
+						html: newHTML,
+						mutationCount,
+						consoleOutput
+					}, '*');
+				} else if (event.data.action) {
+					console.warn('Received unknown action:', event.data.action)
 				}
 			},
 			false

@@ -32,12 +32,22 @@ import {
 	modelSupportsImagesAtom,
 	screenshotAtom,
 	temperatureAtom,
+	openAIContextAtom,
 	uiStateAtom,
 	useSaveHistory
 } from 'state'
 import CurrentUIContext from './CurrentUiContext'
 import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
+
+// Add fallback uuid generator
+function uuidv4() {
+	if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+		return crypto.randomUUID()
+	}
+	// fallback: not RFC4122, but unique enough for session
+	return Math.random().toString(36).substring(2, 10) + Date.now().toString(36)
+}
 
 export default function Prompt({
 	isEditing,
@@ -47,6 +57,7 @@ export default function Prompt({
 	imageUploadRef: React.RefObject<HTMLInputElement>
 }) {
 	const currentUI = useContext(CurrentUIContext)
+	const setOpenAIContext = useSetAtom(openAIContextAtom)
 	const params = useParams()
 	const [searchParams, setSearchParams] = useSearchParams()
 
@@ -115,9 +126,85 @@ export default function Prompt({
 		},
 		[saveHistory, setItem]
 	)
+
+	// Continue tool calls when they finish
+	useEffect(() => {
+		function continueToolCalls(finishedToolCalls: unknown) {
+			console.log('Tool calls finished in Prompt.tsx', finishedToolCalls)
+		}
+		currentUI.on('tool-calls-finished', continueToolCalls)
+		return () => {
+			currentUI.off('tool-calls-finished', continueToolCalls)
+		}
+	}, [currentUI])
+
+	// UUID state and session logic
+	const [sessionUuid, setSessionUuid] = useState<string>('')
+	const inactivityTimeout = useRef<NodeJS.Timeout | null>(null)
+
+	// Helper to get/set uuid in sessionStorage
+	const getOrCreateUuid = useCallback((id: string) => {
+		const key = `uuid-for-${id}`
+		let uuid = sessionStorage.getItem(key) || ''
+		if (!uuid) {
+			uuid = uuidv4()
+			sessionStorage.setItem(key, uuid)
+		}
+		return uuid
+	}, [])
+
+	const setNewUuid = useCallback((id: string) => {
+		const key = `uuid-for-${id}`
+		const uuid = uuidv4()
+		sessionStorage.setItem(key, uuid)
+		setSessionUuid(uuid)
+	}, [])
+
+	// Reset inactivity timer
+	const resetInactivityTimer = useCallback(() => {
+		if (inactivityTimeout.current) {
+			clearTimeout(inactivityTimeout.current)
+		}
+		inactivityTimeout.current = setTimeout(
+			() => {
+				setNewUuid(id)
+			},
+			30 * 60 * 1000
+		) // 30 minutes
+	}, [id, setNewUuid])
+
+	// Setup listeners for activity and id changes
+	useEffect(() => {
+		// On mount or id change, get or create uuid
+		const uuid = getOrCreateUuid(id)
+		setSessionUuid(uuid || '')
+		resetInactivityTimer()
+
+		const activityEvents = ['mousemove', 'keydown', 'mousedown', 'touchstart']
+		const handleActivity = () => {
+			resetInactivityTimer()
+		}
+		activityEvents.forEach(event => {
+			window.addEventListener(event, handleActivity)
+		})
+
+		return () => {
+			if (inactivityTimeout.current) {
+				clearTimeout(inactivityTimeout.current)
+			}
+			activityEvents.forEach(event => {
+				window.removeEventListener(event, handleActivity)
+			})
+		}
+	}, [id, getOrCreateUuid, resetInactivityTimer])
+
 	const streamResponse = useCallback(
 		(query: string, existingHTML?: string, clearSession = false) => {
 			console.log('STREAMING RESPONSE:', query)
+			if (query === '') {
+				console.warn('No query, skipping, something is very wrong')
+				return
+			}
 			// Reset our search params to ensure we're at a new version
 			setSearchParams(new URLSearchParams(), {
 				preventScrollReset: true,
@@ -125,11 +212,12 @@ export default function Prompt({
 			})
 			updateVersion(-1)
 			currentUI.emit('ui-state', {
-				...cleanUiState,
+				...(existingHTML ? {} : cleanUiState),
 				rendering: true,
 				prompt: query
 			})
-			currentUI.emit('iframe-reset', {})
+			// Removing for now to show our new tool based updates
+			// currentUI.emit('iframe-reset', {})
 			let imageToUse: string | undefined = screenshot
 			if (!modelSupportsImages) {
 				imageToUse = undefined
@@ -144,19 +232,25 @@ export default function Prompt({
 					systemPrompt,
 					html: clearSession ? undefined : existingHTML,
 					image: clearSession ? undefined : imageToUse,
-					temperature
+					temperature,
+					iframeId: id,
+					sessionId: sessionUuid
 				},
 				md => {
 					setLiveMarkdown(prevMD => (prevMD || '') + md)
-				}
+				},
+				setOpenAIContext
 			)
-				.then(final => {
+				.then(response => {
 					setScreenshot('')
-					setLiveMarkdown(final)
-					currentUI.emit('ui-state', { rendering: false })
+					setLiveMarkdown(response.body)
+					currentUI.emit('ui-state', {
+						rendering: false,
+						toolCalls: response.toolCalls
+					})
 					// TODO: make sure unsplash runs here
 					console.log('Rendering complete, saving markdown')
-					saveMarkdown(final)
+					saveMarkdown(response.body)
 					if (queryRef.current) {
 						queryRef.current.value = ''
 					}
@@ -191,7 +285,10 @@ export default function Prompt({
 			action,
 			temperature,
 			setScreenshot,
-			saveMarkdown
+			saveMarkdown,
+			setOpenAIContext,
+			id,
+			sessionUuid
 		]
 	)
 
@@ -548,7 +645,7 @@ export default function Prompt({
 					}}
 				/>
 				<div className='flex items-center'>
-					{isEditing ? (
+					{isEditing && (
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button
@@ -586,7 +683,8 @@ export default function Prompt({
 							</TooltipTrigger>
 							<TooltipContent>Select elements in the HTML</TooltipContent>
 						</Tooltip>
-					) : modelSupportsImages ? (
+					)}
+					{modelSupportsImages && (
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button
@@ -603,7 +701,7 @@ export default function Prompt({
 								Upload a screenshot of a web page you want to replicate
 							</TooltipContent>
 						</Tooltip>
-					) : undefined}
+					)}
 					{rendering ? (
 						<div className='rendering h-8 w-8 flex-none animate-spin rounded-full bg-linear-to-r from-purple-500 via-pink-500 to-red-500' />
 					) : (
