@@ -32,7 +32,6 @@ export function useThrottle(value: unknown, interval = defaultInterval) {
 	return throttledValue
 }
 
-// eslint-disable-next-line import/prefer-default-export
 export function useMediaQuery(query: string): boolean {
 	const [matches, setMatches] = useState(() => matchMedia(query).matches)
 

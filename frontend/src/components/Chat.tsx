@@ -84,7 +84,7 @@ export default function Chat({ isShared = false }: { isShared: boolean }) {
 				if (!historyIds.includes(id)) {
 					setHistoryIds([id, ...historyIds])
 				}
-				// setItem(sharedItem)
+				// SetItem(sharedItem)
 			})().catch((error: unknown) => {
 				console.error(error)
 				setUiState(ui => ({
@@ -207,11 +207,11 @@ export default function Chat({ isShared = false }: { isShared: boolean }) {
 								className='mx-auto mb-4 max-h-72 max-w-72'
 							/>
 						) : undefined}
-						<h1 className='mb-1 flex-row text-center text-2xl font-medium text-zinc-800 dark:text-zinc-300 md:text-3xl'>
+						<h1 className='mb-1 flex-row text-center text-2xl font-medium text-zinc-800 md:text-3xl dark:text-zinc-300'>
 							{t('Chat Header')}
 						</h1>
 						{modelSupportsImages ? (
-							<h2 className='mb-4 text-center text-lg font-normal text-muted-foreground md:text-xl'>
+							<h2 className='text-muted-foreground mb-4 text-center text-lg font-normal md:text-xl'>
 								{t('Pro Tip')}
 							</h2>
 						) : undefined}
@@ -224,10 +224,10 @@ export default function Chat({ isShared = false }: { isShared: boolean }) {
 								<CircleUser strokeWidth={1} className='flex w-4' />
 								<HoverCard>
 									<HoverCardTrigger className='flex'>
-										<div className='flex cursor-help items-center justify-start gap-2.5 rounded-full bg-muted p-2 brightness-[.95]'>
+										<div className='bg-muted flex cursor-help items-center justify-start gap-2.5 rounded-full p-2 brightness-[.95]'>
 											<span
 												className={cn(
-													'text-md max-w-[calc(100vw-200px)] truncate px-4 text-left font-sans font-normal leading-[20px] md:max-w-[calc(100vw-450px)]',
+													'text-md max-w-[calc(100vw-200px)] truncate px-4 text-left font-sans leading-[20px] font-normal md:max-w-[calc(100vw-450px)]',
 													sidebarState !== 'closed' &&
 														'md:max-w-[calc(100vw-750px)]'
 												)}
@@ -246,14 +246,14 @@ export default function Chat({ isShared = false }: { isShared: boolean }) {
 												)}
 											</span>
 										</div>
-										<span className='my-auto ml-2 hidden h-4 shrink-0 rounded-sm bg-muted px-2 text-xs text-zinc-500 brightness-[.95] md:block'>
+										<span className='bg-muted my-auto ml-2 hidden h-4 shrink-0 rounded-sm px-2 text-xs text-zinc-500 brightness-[.95] md:block'>
 											Version {item.version(versionIdx)}
 										</span>
 									</HoverCardTrigger>
 									<HoverCardContent className='ml-36 w-[1000px] max-w-[calc(70vw)] rounded-[20px]'>
 										<div className='flex'>
-											{image ?? lastRender ? (
-												<div className='mr-2 shrink-0'>
+											{(image ?? lastRender) ? (
+												<div className='mr-2 flex-shrink-0'>
 													<img
 														src={image?.url ?? lastRender?.url}
 														alt='Screenshot'

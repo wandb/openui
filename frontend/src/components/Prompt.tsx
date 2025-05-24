@@ -104,7 +104,7 @@ export default function Prompt({
 	const saveMarkdown = useCallback(
 		(final: string) => {
 			// The empty markdown check is rather important, without it we get into an
-			// infinite re-render
+			// Infinite re-render
 			if (final.trim() !== '') {
 				setItem(it => ({
 					...it,
@@ -160,7 +160,7 @@ export default function Prompt({
 					if (queryRef.current) {
 						queryRef.current.value = ''
 					}
-					// setLLMHidden(true)
+					// SetLLMHidden(true)
 				})
 				.catch((error: unknown) => {
 					setScreenshot('')
@@ -206,7 +206,7 @@ export default function Prompt({
 
 	// This effect is called when rendering a new component.
 	// CAUTION: mucking with the deps here is a recipe for disaster,
-	// we don't want this getting called twice in fast succession
+	// We don't want this getting called twice in fast succession
 	useEffect(() => {
 		// TODO: not sure if we want this searchParam trash
 		const clear = searchParams.get('clear') === 'true'
@@ -277,7 +277,7 @@ export default function Prompt({
 			})
 			console.error(error)
 		}
-		// we only key off throttledMD while referencing markdown
+		// We only key off throttledMD while referencing markdown
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [throttledMD])
 
@@ -299,11 +299,11 @@ export default function Prompt({
 
 			if (action === 'create') {
 				// Keep the screenshot
-				// saveMarkdown('')
+				// SaveMarkdown('')
 				newComponent(query, screenshot === '')
 				return
 			}
-			// setMarkdown('')
+			// SetMarkdown('')
 			// TODO: save screenshots
 			setItem(it => ({
 				...it,
@@ -327,7 +327,7 @@ export default function Prompt({
 		]
 	)
 
-	// convert HTML to a framework
+	// Convert HTML to a framework
 	useEffect(() => {
 		if (!convertFramework) {
 			return
@@ -443,11 +443,10 @@ export default function Prompt({
 		<div
 			id='llm-input'
 			className={cn(
-				`z-0 mx-auto my-4 flex w-full max-w-full justify-center rounded-full bg-muted px-4 py-3 align-middle transition-all md:w-full lg:w-10/12`,
-				isFocused ? 'border-2 border-primary bg-white dark:bg-muted' : ''
+				`bg-muted z-0 mx-auto my-4 flex w-full max-w-full justify-center rounded-full px-4 py-3 align-middle transition-all md:w-full lg:w-10/12`,
+				isFocused ? 'border-primary dark:bg-muted border-2 bg-white' : ''
 			)}
 		>
-			{/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
 			<Form
 				onSubmit={onSubmit}
 				className={cn(
@@ -505,7 +504,7 @@ export default function Prompt({
 						/* TODO: make this width calculation dynamic */
 						cn(
 							'my-auto max-h-[130px] flex-1 resize-none items-center justify-center overflow-y-hidden rounded-none align-middle text-lg placeholder:text-lg',
-							'border-none bg-muted outline-hidden ring-0 transition-all focus-visible:bg-white focus-visible:ring-0 focus-visible:ring-offset-0 dark:focus-visible:bg-muted'
+							'bg-muted dark:focus-visible:bg-muted border-none ring-0 outline-hidden transition-all focus-visible:bg-white focus-visible:ring-0 focus-visible:ring-offset-0'
 						)
 					}
 					style={{
@@ -536,13 +535,11 @@ export default function Prompt({
 					placeholder={
 						isEditing
 							? 'Ask for changes to the current UI'
-							: // eslint-disable-next-line unicorn/no-nested-ternary
-								screenshot
+							: screenshot
 								? 'Describe the screenshot you uploaded (Optional)'
 								: bufferedExample
 					}
 					ref={queryRef}
-					// eslint-disable-next-line react/jsx-handler-names
 					onKeyDown={(e: React.KeyboardEvent) => {
 						if (e.key === 'Enter') {
 							onSubmit(e)
@@ -565,7 +562,7 @@ export default function Prompt({
 									className={cn(
 										'h-8 w-8 flex-none bg-transparent',
 										inspectorEnabled
-											? 'border-1 rounded-full border-primary text-white'
+											? 'border-primary rounded-full border-1 text-white'
 											: ''
 									)}
 								>
@@ -589,8 +586,7 @@ export default function Prompt({
 							</TooltipTrigger>
 							<TooltipContent>Select elements in the HTML</TooltipContent>
 						</Tooltip>
-					) : // eslint-disable-next-line unicorn/no-nested-ternary
-					modelSupportsImages ? (
+					) : modelSupportsImages ? (
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Button
@@ -613,9 +609,9 @@ export default function Prompt({
 					) : (
 						<Button
 							className={cn(
-								'mr-4 h-8 w-8 flex-none rounded-full border-none bg-muted hover:bg-primary hover:text-white',
+								'bg-muted hover:bg-primary mr-4 h-8 w-8 flex-none rounded-full border-none hover:text-white',
 								isFocused
-									? 'border-1 border-primary bg-primary/20 text-primary'
+									? 'border-primary bg-primary/20 text-primary border-1'
 									: ''
 							)}
 							variant='outline'

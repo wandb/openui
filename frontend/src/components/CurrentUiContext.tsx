@@ -60,20 +60,20 @@ export const CurrentUIProvider = ({
 			parseHTML(htmlToParse as string, !uiState.rendering)
 				.then((html): void => {
 					setUiState(state => ({ ...state, renderedHTML: html }))
-					// push our state out
+					// Push our state out
 					eventEmitter.emit(`html-updated:${id}`, html)
 				})
 				.catch((error: unknown) => {
 					console.error('HTML Parse error', error)
 				})
 		}
-		// we don't include `id` because it causes us to reset state on a new page
+		// We don't include `id` because it causes us to reset state on a new page
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [htmlToParse, uiState.rendering, setUiState])
 
 	// To simplify modifying state and propagating changes to the UI
-	// we do it all with this the event emitter.  One day we could switch
-	// to an actual reducer...
+	// We do it all with this the event emitter.  One day we could switch
+	// To an actual reducer...
 	useEffect(() => {
 		const uiStateHandler = (ev: unknown) => {
 			const event = ev as {

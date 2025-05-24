@@ -30,10 +30,10 @@ export default function HistoryItem({
 	const navigate = useNavigate()
 	const setHistoryIds = useSetAtom(historyIdsAtom)
 	const setSidebarState = useSetAtom(historySidebarStateAtom)
-	// border-[1px] border-b-zinc-500
+	// Border-[1px] border-b-zinc-500
 	return (
 		<>
-			{!!label && (
+			{Boolean(label) && (
 				<div className='mb-2 w-full text-xs'>
 					<h3>{label}</h3>
 				</div>
@@ -41,7 +41,7 @@ export default function HistoryItem({
 			<div
 				className={`${
 					isActive && 'bg-secondary'
-				} group relative mb-2 w-full rounded-md p-2 text-sm hover:bg-secondary`}
+				} group hover:bg-secondary relative mb-2 w-full rounded-md p-2 text-sm`}
 			>
 				<Link
 					to={`/ai/${id}`}
@@ -54,7 +54,7 @@ export default function HistoryItem({
 						{/* TODO: the right group-hover translation is finicky */}
 						<div
 							className={cn(
-								'absolute bottom-0 right-0 top-0 w-8 bg-linear-to-l from-background from-0% to-transparent group-hover:right-5 group-hover:from-secondary dark:from-zinc-900',
+								'from-background group-hover:from-secondary absolute top-0 right-0 bottom-0 w-8 bg-linear-to-l from-0% to-transparent group-hover:right-5 dark:from-zinc-900',
 								{
 									'from-secondary': isActive,
 									'dark:from-secondary': isActive
@@ -63,7 +63,7 @@ export default function HistoryItem({
 						/>
 					</div>
 				</Link>
-				<div className='absolute bottom-0 right-0 top-0 flex items-center bg-secondary pr-2 opacity-0 group-hover:opacity-100'>
+				<div className='bg-secondary absolute top-0 right-0 bottom-0 flex items-center pr-2 opacity-0 group-hover:opacity-100'>
 					<DropdownMenu modal={false}>
 						<DropdownMenuTrigger asChild>
 							<Button
@@ -96,7 +96,7 @@ export default function HistoryItem({
 						navigate(`/ai/${id}`)
 					}}
 					className={cn(
-						'absolute -right-[65px] top-0 z-50 ml-auto inline-flex h-8 w-8 p-2 hover:scale-110 hover:bg-inherit',
+						'absolute top-0 -right-[65px] z-50 ml-auto inline-flex h-8 w-8 p-2 hover:scale-110 hover:bg-inherit',
 						isCollapsed && 'ml-10',
 						isActive && 'bg-zinc-900'
 					)}

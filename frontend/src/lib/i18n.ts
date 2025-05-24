@@ -32,7 +32,7 @@ i18n
 			escapeValue: false
 		}
 	})
-	// eslint-disable-next-line unicorn/prefer-top-level-await
+
 	.then(
 		() => {
 			const userLang = navigator.language

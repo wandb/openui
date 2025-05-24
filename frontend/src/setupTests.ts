@@ -57,7 +57,6 @@ beforeAll(() => {
 				removeEventListener: (_: 'change', listener: () => void): void => {
 					const index = listeners.indexOf(listener)
 					if (index >= 0) {
-						// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 						listeners.splice(index, 1)
 					}
 				}

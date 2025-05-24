@@ -17,7 +17,6 @@ import { ItemWrapper, historyAtomFamily } from 'state'
 import { share } from '../api/openui'
 import { Button } from './ui/button'
 
-// eslint-disable-next-line import/prefer-default-export
 export default function ShareDialog() {
 	const params = useParams()
 	const id = params.id ?? 'new'

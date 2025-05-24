@@ -18,7 +18,7 @@ import { useAtomValue } from 'jotai'
 import { DevTools } from 'jotai-devtools'
 import 'jotai-devtools/styles.css'
 
-// const Index = lazy(async () => import('pages/Index'))
+// Const Index = lazy(async () => import('pages/Index'))
 const AI = lazy(async () => import('pages/AI'))
 
 const router = createBrowserRouter(

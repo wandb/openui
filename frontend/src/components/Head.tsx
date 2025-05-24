@@ -8,6 +8,5 @@ export default function Head({ title }: Properties): null {
 		document.title = title
 	}, [title])
 
-	// eslint-disable-next-line unicorn/no-null
 	return null
 }

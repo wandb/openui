@@ -67,7 +67,7 @@ function slugToNiceName(slug?: string, float = true) {
 			</>
 		)
 	}
-	// eslint-disable-next-line unicorn/no-useless-undefined
+
 	return undefined
 }
 
@@ -255,7 +255,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							}}
 							onCheckedChange={checked => setModelSupportsImages(checked)}
 						/>
-						<div className='-ml-15 col-span-5 text-xs'>
+						<div className='col-span-5 -ml-15 text-xs'>
 							We attempt to detect if the model has vision capabilities. You can
 							override this if you&apos;re sure it does.
 							{model === 'gpt-3.5-turbo' && (

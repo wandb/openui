@@ -70,7 +70,6 @@ function formatHTML(html: string) {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 	return result.slice(1, -2)
 }
 
@@ -93,7 +92,7 @@ export interface IFrameEvent {
 export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 	const currentUI = useContext(CurrentUIContext)
 
-	// only point to our local annotator in development / running locally otherwise use github pages
+	// Only point to our local annotator in development / running locally otherwise use github pages
 	const iframeSrc = /127\.0\.0\.1|localhost/.test(document.location.hostname)
 		? `http://${document.location.hostname}:${document.location.port === '5173' ? '7878' : document.location.port}`
 		: 'https://wandb.github.io'
@@ -123,7 +122,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 	)
 	const isRendering = uiState.rendering // && `${html}`.length < 10
 
-	// local state
+	// Local state
 	const [isReady, setIsReady] = useState<boolean>(false)
 	const [popoverOpen, setPopoverOpen] = useState<boolean>(false)
 	const [themePopoverOpen, setThemePopoverOpen] = useState<boolean>(false)
@@ -237,7 +236,6 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 			return () => {}
 		}
 		return () => {}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [autoMedia, media])
 
 	useEffect(() => {
@@ -252,7 +250,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 		}
 	}, [inspectorEnabled, inspectorToggled])
 
-	// iframe content
+	// Iframe content
 	useEffect(() => {
 		if (!uiState.renderedHTML) {
 			return
@@ -277,7 +275,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 		}
 	}, [uiState.renderedHTML, previewDarkMode, isReady, isRendering])
 
-	// iframe listeners and dark mode
+	// Iframe listeners and dark mode
 	useEffect(() => {
 		const listener = (event: MessageEvent<IFrameEvent>) => {
 			// Only listen to events from our iframe
@@ -302,7 +300,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 				})
 				setInspectorEnabled(false)
 			}
-			/* Got rid of this in favor of using the iframe for state display 
+			/* Got rid of this in favor of using the iframe for state display
 				else if (event.data.action === 'loaded' && uiState.renderedHTML) {
 				setPreview(event.data.preview)
 			} */
@@ -354,9 +352,8 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 						isCodeVisible && 'hidden w-1/2 lg:block'
 					)}
 				>
-					<div className='code-responsive-wrapper relative h-[calc(100vh-315px)] w-full flex-none overflow-auto rounded-lg bg-background'>
-						{/* we allow-same-origin so the iframe can keep state */}
-						{/* eslint-disable-next-line react/iframe-missing-sandbox */}
+					<div className='code-responsive-wrapper bg-background relative h-[calc(100vh-315px)] w-full flex-none overflow-auto rounded-lg'>
+						{/* We allow-same-origin so the iframe can keep state */}
 						<iframe
 							title='HTML preview'
 							id={`version-${versionIdx}`}
@@ -367,7 +364,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 								width: scale < 1 ? '768px' : undefined
 							}}
 							className={cn(
-								'iframe-code left-0 top-0 mx-auto h-full w-full origin-top-left',
+								'iframe-code top-0 left-0 mx-auto h-full w-full origin-top-left',
 								media === 'tablet' && 'max-w-3xl',
 								media === 'mobile' && 'max-w-sm',
 								media === 'desktop' && 'absolute',
@@ -423,7 +420,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 						<Popover open={popoverOpen}>
 							<PopoverTrigger asChild>
 								<Button
-									className='-mr-2 border-none text-muted-foreground hover:animate-wiggle-zoom hover:bg-transparent'
+									className='text-muted-foreground hover:animate-wiggle-zoom -mr-2 border-none hover:bg-transparent'
 									variant='ghost'
 									size='icon'
 									type='button'
@@ -449,10 +446,10 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 							>
 								<div className='grid gap-4'>
 									<div className='space-y-2'>
-										<h4 className='font-medium leading-none'>
+										<h4 className='leading-none font-medium'>
 											Iterate on this UI
 										</h4>
-										<p className='text-sm text-muted-foreground'>
+										<p className='text-muted-foreground text-sm'>
 											Select one or more dimensions to guide the LLM.
 										</p>
 									</div>
@@ -602,7 +599,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 									size='icon'
 									variant='ghost'
 									className={cn(
-										'ml-2 rounded-full text-primary-foreground hover:bg-transparent hover:text-primary-foreground'
+										'text-primary-foreground hover:text-primary-foreground ml-2 rounded-full hover:bg-transparent'
 									)}
 								>
 									<span
@@ -664,7 +661,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 													}}
 													className={cn(
 														'justify-start',
-														isActive && 'border-2 border-primary'
+														isActive && 'border-primary border-2'
 													)}
 													// TODO: handle system dark mode
 													style={

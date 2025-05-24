@@ -64,10 +64,10 @@ export default function Examples({
 			<button
 				onClick={() => callback(examples[ids[0]])}
 				type='button'
-				className='w-xs min-w-xs max-w-xs cursor-pointer truncate rounded-full bg-linear-to-r from-teal-400 to-blue-500 px-4 py-2 text-white transition-all hover:from-teal-500 hover:to-blue-600'
+				className='w-xs max-w-xs min-w-xs cursor-pointer truncate rounded-full bg-linear-to-r from-teal-400 to-blue-500 px-4 py-2 text-white transition-all hover:from-teal-500 hover:to-blue-600'
 			>
 				<span
-					className='transition-all hover:-ml-96 hover:mr-36'
+					className='transition-all hover:mr-36 hover:-ml-96'
 					style={{ transitionDuration: '3000ms' }}
 				>
 					{examples[ids[0]]}
@@ -76,10 +76,10 @@ export default function Examples({
 			<button
 				onClick={() => callback(examples[ids[1]])}
 				type='button'
-				className='w-xs min-w-xs max-w-xs cursor-pointer truncate rounded-full bg-linear-to-r from-purple-400 to-pink-500 px-4 py-2 text-white transition-all hover:from-purple-500 hover:to-pink-600'
+				className='w-xs max-w-xs min-w-xs cursor-pointer truncate rounded-full bg-linear-to-r from-purple-400 to-pink-500 px-4 py-2 text-white transition-all hover:from-purple-500 hover:to-pink-600'
 			>
 				<span
-					className='transition-all hover:-ml-96 hover:mr-36'
+					className='transition-all hover:mr-36 hover:-ml-96'
 					style={{ transitionDuration: '3000ms' }}
 				>
 					{examples[ids[1]]}
@@ -88,10 +88,10 @@ export default function Examples({
 			<button
 				onClick={() => callback(examples[ids[2]])}
 				type='button'
-				className='w-xs min-w-xs max-w-xs cursor-pointer truncate rounded-full bg-linear-to-r from-yellow-400 to-orange-500 px-4 py-2 text-white transition-all hover:from-yellow-500 hover:to-orange-600'
+				className='w-xs max-w-xs min-w-xs cursor-pointer truncate rounded-full bg-linear-to-r from-yellow-400 to-orange-500 px-4 py-2 text-white transition-all hover:from-yellow-500 hover:to-orange-600'
 			>
 				<span
-					className='transition-all hover:-ml-96 hover:mr-36'
+					className='transition-all hover:mr-36 hover:-ml-96'
 					style={{ transitionDuration: '3000ms' }}
 				>
 					{examples[ids[2]]}

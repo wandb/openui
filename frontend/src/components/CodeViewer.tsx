@@ -79,7 +79,7 @@ export default function CodeViewer({ id, code }: ViewerProps) {
 	const [framework, setFramework] = useAtom(selectedFrameworkAtom)
 	const [convertFramework, setConvertFramework] = useAtom(convertFrameworkAtom)
 
-	// local state
+	// Local state
 	const [currentCode, setCurrentCode] = useState<string>(code)
 
 	// TODO: likely throttle / debounce
@@ -113,15 +113,14 @@ export default function CodeViewer({ id, code }: ViewerProps) {
 		<div className='code-syntax-wrapper'>
 			<div className='code-syntax relative rounded-lg border'>
 				<div className='grid w-full grid-cols-4 rounded-t-md border-b'>
-					<ul className='z-10 col-span-3 flex max-h-9 w-full overflow-y-hidden overflow-x-auto rounded-tl-lg bg-background text-center text-sm font-medium text-gray-500 dark:text-gray-400'>
+					<ul className='bg-background z-10 col-span-3 flex max-h-9 w-full overflow-x-auto overflow-y-hidden rounded-tl-lg text-center text-sm font-medium text-gray-500 dark:text-gray-400'>
 						{frameworks.map((f, i) => (
 							<li key={f}>
 								<button
 									type='button'
-									// eslint-disable-next-line react/jsx-handler-names
 									onClick={() => setFramework(f)}
 									className={cn(
-										'inline-block w-full whitespace-nowrap border-r p-2 px-3 text-secondary-foreground',
+										'text-secondary-foreground inline-block w-full border-r p-2 px-3 whitespace-nowrap',
 										f === framework
 											? 'bg-background'
 											: 'bg-secondary hover:bg-background',
@@ -138,7 +137,7 @@ export default function CodeViewer({ id, code }: ViewerProps) {
 									<button
 										type='button'
 										aria-label='Convert HTML to a framework'
-										className='inline-block w-full border-r bg-secondary p-[10px] text-secondary-foreground hover:bg-background'
+										className='bg-secondary text-secondary-foreground hover:bg-background inline-block w-full border-r p-[10px]'
 									>
 										<Tooltip>
 											<TooltipTrigger asChild>
@@ -171,13 +170,12 @@ export default function CodeViewer({ id, code }: ViewerProps) {
 					<div className='flex justify-end'>
 						<button
 							type='button'
-							// eslint-disable-next-line react/jsx-handler-names
 							onClick={() =>
 								copyTextToClipboard(
 									wrappedCode(currentCode, framework, theme ?? themes[0])
 								)
 							}
-							className='flex items-center border-l px-3 text-sm text-secondary-foreground hover:bg-background'
+							className='text-secondary-foreground hover:bg-background flex items-center border-l px-3 text-sm'
 						>
 							<svg
 								className='mr-2 h-3.5 w-3.5'

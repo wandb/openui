@@ -111,17 +111,17 @@ export default function VersionPreview({
 		<a
 			id={`v${versionIdx}`}
 			className={cn(
-				'flex h-[163px] justify-start whitespace-normal text-left',
+				'flex h-[163px] justify-start text-left whitespace-normal',
 				currentVersionIdx === versionIdx && 'bg-zinc-200 dark:bg-zinc-800'
 			)}
 			href={`#v${versionIdx}`}
 		>
 			<div className='group relative grid h-[163px] cursor-pointer grid-cols-2 overflow-hidden border-b py-2'>
 				<div className='flex h-[143px] w-[210px] flex-col gap-2'>
-					<div className='text-md m-2 max-h-[105px] overflow-hidden rounded-lg bg-muted p-2 text-sm text-zinc-700 dark:text-zinc-400'>
+					<div className='text-md bg-muted m-2 max-h-[105px] overflow-hidden rounded-lg p-2 text-sm text-zinc-700 dark:text-zinc-400'>
 						{item.prompt(versionIdx)}
 						{image ? (
-							<img src={image.url} alt='Screenshot' className='max-w-42 flex' />
+							<img src={image.url} alt='Screenshot' className='flex max-w-42' />
 						) : undefined}
 					</div>
 					<div className='align-left mt-auto px-4 text-xs font-thin text-zinc-400'>
@@ -129,11 +129,11 @@ export default function VersionPreview({
 					</div>
 				</div>
 				<div className={`relative w-full max-w-[${DW}px] overflow-hidden`}>
-					{/* eslint-disable-next-line react/iframe-missing-sandbox */}
+					{}
 					<iframe
 						src={`${iframeSrc}/openui/index.html?preview=1&id=${id}`}
 						className={cn(
-							'pointer-events-none absolute left-0 top-2 origin-top-left rounded-[32px] border'
+							'pointer-events-none absolute top-2 left-0 origin-top-left rounded-[32px] border'
 						)}
 						style={{
 							width: `${W}px`,
@@ -147,7 +147,7 @@ export default function VersionPreview({
 				</div>
 				<Button
 					variant='ghost'
-					className='absolute right-2 top-2 hidden rounded-full hover:bg-red-500/30 group-hover:block'
+					className='absolute top-2 right-2 hidden rounded-full group-hover:block hover:bg-red-500/30'
 					onClick={() => {
 						item.deleteChapter(versionIdx)
 						saveHistory()

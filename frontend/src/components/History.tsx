@@ -21,18 +21,18 @@ export default function History() {
 	const store = useStore()
 
 	const now = new Date()
-	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+
 	const today = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+
 	const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 	let lastLabel = 'Today'
 
 	useEffect(() => {
-		// setIsCollapsed(!bigEnough)
+		// SetIsCollapsed(!bigEnough)
 	}, [bigEnough, setIsCollapsed])
 
 	return (
-		<div className='relative flex h-screen max-h-[calc(100vh-4em)] flex-none flex-col overflow-y-auto border-r border-input transition-all duration-500 ease-in-out dark:bg-zinc-900'>
+		<div className='border-input relative flex h-screen max-h-[calc(100vh-4em)] flex-none flex-col overflow-y-auto border-r transition-all duration-500 ease-in-out dark:bg-zinc-900'>
 			<div className='flex h-screen max-h-full flex-col items-start justify-start overflow-x-hidden py-2 pl-2'>
 				{history.map((id, i) => {
 					let label: string | undefined

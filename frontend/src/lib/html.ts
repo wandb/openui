@@ -26,7 +26,6 @@ export function removeCommentNodes(element: HTMLElement) {
 		// Get all child nodes of the current element
 		const { childNodes } = element
 
-		// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 		for (let i = childNodes.length - 1; i >= 0; i -= 1) {
 			const child = childNodes[i]
 

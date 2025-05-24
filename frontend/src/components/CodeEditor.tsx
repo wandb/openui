@@ -33,7 +33,7 @@ import 'monaco-editor/esm/vs/language/html/monaco.contribution'
 import 'monaco-editor/esm/vs/language/json/monaco.contribution'
 import 'monaco-editor/esm/vs/language/typescript/monaco.contribution'
 // We only pull in the languages we use to avoid bloating the bundle
-// import * as monaco from 'monaco-editor'
+// Import * as monaco from 'monaco-editor'
 
 // The worker loading logic is hooked up in vite.config.js
 // TODO: consider adding a custom copilot like:
@@ -91,7 +91,6 @@ configureMonacoTailwindcss(monaco, {
 })
 loader.config({ monaco })
 
-// eslint-disable-next-line unicorn/prefer-top-level-await
 loader.init().catch((error: unknown) => {
 	console.error('Unable to initialize monaco', error)
 })
@@ -153,19 +152,18 @@ export default function CodeEditor({
 		m.editor.setTheme('openui')
 		editor.current = e
 		// This ensures we create a new version and maintain cursor position when
-		// editing a non-point version
+		// Editing a non-point version
 		let position: Position | undefined
 		let fixPosition = false
 		e.onDidChangeModelContent(() => {
 			if (position) {
-				// e.setPosition(position)
+				// E.setPosition(position)
 				position = undefined
 			}
 		})
 		e.onDidChangeCursorPosition(pos => {
 			// TODO: rescroll the editor as well
 			if (fixPosition) {
-				// eslint-disable-next-line @typescript-eslint/prefer-destructuring
 				position = pos.position
 				fixPosition = false
 				setCheckResumePos(position)
@@ -253,7 +251,7 @@ export default function CodeEditor({
 				},
 				overviewRulerLanes: 0,
 				scrollBeyondLastLine: false
-				// fixedOverflowWidgets: true,  // Made editing / selecting text shitty, but fixes the overflow issue
+				// FixedOverflowWidgets: true,  // Made editing / selecting text shitty, but fixes the overflow issue
 			}}
 			className='h-[calc(100vh-364px)] pt-2'
 			beforeMount={handleEditorBeforeMount}

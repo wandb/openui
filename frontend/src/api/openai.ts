@@ -7,7 +7,7 @@ function host() {
 }
 /* I patched OpenAI here so that users can use basic auth behind a proxy if they want */
 class MyOpenAI extends OpenAI {
-	// eslint-disable-next-line class-methods-use-this, @typescript-eslint/class-methods-use-this, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
 	protected override authHeaders(_opts: any) {
 		return {}
 	}
@@ -182,7 +182,7 @@ emoji: 🎉
 	}
 
 	const response = await openai.chat.completions.create({
-		model, // can change to "gpt-4" if you fancy
+		model, // Can change to "gpt-4" if you fancy
 		messages,
 		temperature,
 		stream: true,
@@ -226,19 +226,19 @@ export async function convert(
 		}
 	]
 	/*
-  let inputTok = ''
+  Let inputTok = ''
   const encoder = encoding_for_model('gpt-3.5-turbo')
   inputTok += systemPromptCompiled + '\n'
   */
 	const userPrompt = `Please turn this into a ${framework} component.`
 	const instructions = `Given the following HTML:\n\n${html}\n\n${userPrompt}`
-	// inputTok += instructions + '\n'
+	// InputTok += instructions + '\n'
 	messages.push({
 		role: 'user',
 		content: instructions
 	})
 	/*
-  const tokens = encoder.encode(inputTok)
+  Const tokens = encoder.encode(inputTok)
   encoder.free()
   // TODO: use a bigger model if we're length limited
   */
