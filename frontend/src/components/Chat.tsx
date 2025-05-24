@@ -84,7 +84,7 @@ export default function Chat({ isShared = false }: { isShared: boolean }) {
 				if (!historyIds.includes(id)) {
 					setHistoryIds([id, ...historyIds])
 				}
-				// setItem(sharedItem)
+				// SetItem(sharedItem)
 			})().catch((error: unknown) => {
 				console.error(error)
 				setUiState(ui => ({
@@ -252,7 +252,7 @@ export default function Chat({ isShared = false }: { isShared: boolean }) {
 									</HoverCardTrigger>
 									<HoverCardContent className='ml-36 w-[1000px] max-w-[calc(70vw)] rounded-[20px]'>
 										<div className='flex'>
-											{image ?? lastRender ? (
+											{(image ?? lastRender) ? (
 												<div className='mr-2 flex-shrink-0'>
 													<img
 														src={image?.url ?? lastRender?.url}

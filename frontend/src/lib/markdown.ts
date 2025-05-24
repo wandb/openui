@@ -14,29 +14,28 @@ export function newChapter(prompt: string) {
 }
 
 export function fixHTML(html: string) {
-	// replace any gray styles with zinc, fix placeholder images
+	// Replace any gray styles with zinc, fix placeholder images
 	// TODO: this is kinda LAME
 	let fixed = html.replaceAll('-gray-', '-zinc-')
-	// use placehold.co for images
+	// Use placehold.co for images
 	fixed = fixed.replaceAll('via.placeholder.com', 'placehold.co')
 	fixed = fixed.replaceAll('via.placeholder.co', 'placehold.co')
 	fixed = fixed.replaceAll('placehold.it', 'placehold.co')
-	// point to our own backend for mp3's / wav files
+	// Point to our own backend for mp3's / wav files
 	fixed = fixed.replaceAll(
 		/"[^"]*\.(mp3|wav)|'[^']*\.(mp3|wav)'/g,
 		`"${document.location.origin}/openui/funky.mp3"`
 	)
-	// point svg's to our own backend
+	// Point svg's to our own backend
 	fixed = fixed.replaceAll(
 		/"[^"?]+\/([^/]+)\.svg(["?])/g,
 		`"${document.location.origin}/openui/$1.svg$2`
 	)
-	// remove any comments in the HTML
+	// Remove any comments in the HTML
 	fixed = fixed.replaceAll(/<!--[\S\s]*?-->/g, '')
 	return fixed
 }
 
-// eslint-disable-next-line import/prefer-default-export
 export function parseMarkdown(
 	markdown: string,
 	version?: string,
@@ -53,11 +52,11 @@ export function parseMarkdown(
 	const header = markdown.slice(0, 1000)
 	const name = header.split('\n').find(l => l.trim().startsWith('name: '))
 	const emoji = header.split('\n').find(l => l.trim().startsWith('emoji: '))
-	// mixtral sometimes started itself with ```yaml
+	// Mixtral sometimes started itself with ```yaml
 	// We remove double newlines to ensure html is captured as a single block
 	let cleanMarkdown = markdown.replace('```yaml\n', '').replaceAll('\n\n', '\n')
 	// TODO: this seems brittle, but seems to work, we need to do this to remove
-	// any comments added after the closing the HTML
+	// Any comments added after the closing the HTML
 	cleanMarkdown = cleanMarkdown.replace(/^(<\/div>|<\/script>)\n/m, '$1\n\n')
 	if (name) {
 		result.name = name.replace(/\s*name: /, '')

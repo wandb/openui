@@ -33,8 +33,8 @@ export default function Versions() {
 			<div className='h-screen max-h-screen overflow-y-scroll'>
 				{item.chapters.map((version, i) => (
 					<VersionPreview
-						// html ? html.html : ''
-						// eslint-disable-next-line react/no-array-index-key
+						// Html ? html.html : ''
+
 						key={`version-${id}-${i}`}
 						versionIdx={i}
 						item={item}

@@ -13,7 +13,6 @@ import Cookies from 'js-cookie'
 import { useEffect, useState } from 'react'
 import { sessionAtom } from 'state'
 
-// eslint-disable-next-line import/prefer-default-export
 export default function Register() {
 	const [error, setError] = useState<string | undefined>()
 	const [open, setOpen] = useState(false)
@@ -22,7 +21,7 @@ export default function Register() {
 	useEffect(() => {
 		const restoreSession = async () => {
 			const session = await getSession()
-			// check if the response was a 404
+			// Check if the response was a 404
 			if (session === undefined) {
 				setSessionData(undefined)
 				setOpen(true)

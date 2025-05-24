@@ -4,7 +4,7 @@ import jsx from 'react-syntax-highlighter/dist/cjs/languages/prism/jsx'
 import { vsDark } from 'react-syntax-highlighter/dist/cjs/styles/prism'
 import vsLight from 'react-syntax-highlighter/dist/cjs/styles/prism/material-light'
 import { darkModeAtom } from '../state'
-// import themeDark from 'react-syntax-highlighter/dist/cjs/styles/prism/vsc-dark-plus'
+// Import themeDark from 'react-syntax-highlighter/dist/cjs/styles/prism/vsc-dark-plus'
 
 PrismLight.registerLanguage('jsx', jsx)
 
@@ -19,10 +19,9 @@ interface SyntaxHighlighterProps {
 export default function SyntaxHighlighter(props: SyntaxHighlighterProps) {
 	const darkMode = useAtomValue(darkModeAtom)
 	const defaultProps = { language: 'jsx', ...props }
-	// eslint-disable-next-line react/jsx-props-no-spreading
+
 	return (
 		<PrismLight
-			// eslint-disable-next-line react/jsx-props-no-spreading
 			{...defaultProps}
 			style={darkMode === 'dark' ? vsDark : vsLight}
 		/>

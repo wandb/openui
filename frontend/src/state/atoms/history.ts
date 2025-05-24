@@ -126,7 +126,7 @@ export class ItemWrapper {
 						prompt = newPrompt.replace(/\s*prompt: /, '')
 					}
 				} else if (chapter.trim() !== '') {
-					/* console.log(
+					/* Console.log(
 						'Pushing version',
 						idx,
 						versionOffset,
@@ -149,7 +149,7 @@ export class ItemWrapper {
 					markdown: markdown.split('---').at(-1) ?? ''
 				})
 			}
-			// eslint-disable-next-line no-underscore-dangle
+
 			window._chapters = chapters
 			return chapters
 		}
@@ -266,7 +266,6 @@ export class ItemWrapper {
 		return markdown
 	}
 
-	// eslint-disable-next-line class-methods-use-this, @typescript-eslint/class-methods-use-this
 	private withFrontmatter(
 		html: string,
 		prompt: string,
@@ -347,7 +346,7 @@ type Callback = (value: HistoryItem) => HistoryItem
 const savedHist: SavedHistory = savedHistValue
 	? (JSON.parse(savedHistValue) as SavedHistory)
 	: { history: [], historyMap: {} }
-// cast createdAt load markdown and html
+// Cast createdAt load markdown and html
 for (const k of Object.keys(savedHist.historyMap)) {
 	const item = savedHist.historyMap[k] as HistoryItem
 	if (item.createdAt) {
@@ -456,7 +455,7 @@ export const serializeHistoryAtom = atom(
 			for (const id of obj.history) {
 				const item = obj.historyMap[id]
 				if (item) {
-					/* hmmmm
+					/* Hmmmm
 					for (const framework of Object.keys(item.components ?? {})) {
 						if (item.components) {
 							item.components[framework as Framework] = atom(item.components[framework as Framework])
@@ -491,7 +490,6 @@ export const useSaveHistory = () => {
 						}
 					}
 					if (parsed.historyMap[largestKey]) {
-						// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
 						delete parsed.historyMap[largestKey]
 						parsed.history = parsed.history.filter(h => h !== largestKey)
 					}

@@ -8,7 +8,6 @@ export interface Models {
 	litellm: Model[]
 }
 
-// eslint-disable-next-line import/prefer-default-export
 export async function getModels(): Promise<Models> {
 	try {
 		const response = await fetch('/v1/models')

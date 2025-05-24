@@ -17,7 +17,7 @@ test('test good flow', async ({ page }) => {
 		.click()
 	await page.getByRole('button', { name: 'Change theme', exact: true }).click()
 	await page.getByRole('button', { name: 'Orange' }).click()
-	let iframe = await page.frameLocator('#version-0')
+	const iframe = await page.frameLocator('#version-0')
 	await expect(iframe.locator('h1')).toHaveText('Hello, world!')
 	// TODO: once we figure out how to get unsplash to work consistently...
 	await expect(iframe.locator('img')).toHaveAttribute(
@@ -29,7 +29,7 @@ test('test good flow', async ({ page }) => {
 		path: './screenshots/annotator-screenshot.png'
 	})
 	await page.getByRole('button', { name: 'Edit HTML', exact: true }).click()
-	let monacoEditor = page.locator('.monaco-editor').nth(0)
+	const monacoEditor = page.locator('.monaco-editor').nth(0)
 	await monacoEditor.click({
 		position: {
 			x: 300,
