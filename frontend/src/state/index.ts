@@ -19,6 +19,7 @@ export const historySidebarStateAtom = atom<'closed' | 'history' | 'versions'>(
 	'closed'
 )
 export const screenshotAtom = atom('')
+export const iframeResetAtom = atom(0)
 export const facetsAtom = atomWithStorage<string[]>('facets', [])
 export const commentsAtom = atom<string[]>([])
 const theme = undefined

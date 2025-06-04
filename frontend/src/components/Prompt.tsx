@@ -1,20 +1,13 @@
-import { convert, createOrRefine, systemPrompt, type Action } from 'api/openai'
+import { convert, type Action } from 'api/openai'
 import { Tooltip, TooltipContent, TooltipTrigger } from 'components/ui/tooltip'
-import { useThrottle, useVersion } from 'hooks'
+import { useThrottle, useVersion, useLLM, useUIActions } from 'hooks'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { EXAMPLES } from 'lib/constants'
 import { newChapter, parseMarkdown } from 'lib/markdown'
 import { cn, resizeImage } from 'lib/utils'
 import { ArrowUpIcon, ImageIcon, RefreshCwIcon } from 'lucide-react'
 import { nanoid } from 'nanoid'
-import {
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useRef,
-	useState
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Form, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
 	ItemWrapper,
@@ -26,7 +19,6 @@ import {
 	historyAtomFamily,
 	historyIdsAtom,
 	historySidebarStateAtom,
-	imageDB,
 	inspectorEnabledAtom,
 	modelAtom,
 	modelSupportsImagesAtom,
@@ -35,7 +27,6 @@ import {
 	uiStateAtom,
 	useSaveHistory
 } from 'state'
-import CurrentUIContext from './CurrentUiContext'
 import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
 
@@ -46,7 +37,7 @@ export default function Prompt({
 	isEditing: boolean
 	imageUploadRef: React.RefObject<HTMLInputElement>
 }) {
-	const currentUI = useContext(CurrentUIContext)
+	const { updateState, resetIframe } = useUIActions()
 	const params = useParams()
 	const [searchParams, setSearchParams] = useSearchParams()
 
@@ -68,10 +59,8 @@ export default function Prompt({
 	const [sidebarState, setSidebarState] = useAtom(historySidebarStateAtom)
 	const modelSupportsImages = useAtomValue(modelSupportsImagesAtom)
 	const [comments, setComments] = useAtom(commentsAtom)
-	const currentRender = useAtomValue(
-		imageDB.item(`screenshot-${id}-${versionIdx}`)
-	)
-	const setImage = useSetAtom(imageDB.item(`image-${id}-${versionIdx}`))
+	const action: Action = isEditing ? 'refine' : 'create'
+	const { streamResponse, setImage } = useLLM(id, versionIdx, action)
 	const uiState = useAtomValue(uiStateAtom)
 	const dragging = useAtomValue(draggingAtom)
 	const { rendering, annotatedHTML } = uiState
@@ -99,7 +88,6 @@ export default function Prompt({
 	const [animate, setAnimate] = useState(false)
 	const [textareaHeight, setTextareaHeight] = useState<number | undefined>()
 
-	const action: Action = isEditing ? 'refine' : 'create'
 	// Save our streamed markdown
 	const saveMarkdown = useCallback(
 		(final: string) => {
@@ -115,82 +103,42 @@ export default function Prompt({
 		},
 		[saveHistory, setItem]
 	)
-	const streamResponse = useCallback(
+	const runStream = useCallback(
 		(query: string, existingHTML?: string, clearSession = false) => {
 			console.log('STREAMING RESPONSE:', query)
-			// Reset our search params to ensure we're at a new version
 			setSearchParams(new URLSearchParams(), {
 				preventScrollReset: true,
 				replace: true
 			})
 			updateVersion(-1)
-			currentUI.emit('ui-state', {
-				...cleanUiState,
-				rendering: true,
-				prompt: query
+			updateState({ ...cleanUiState, rendering: true, prompt: query })
+			resetIframe()
+			streamResponse(query, existingHTML, clearSession, md => {
+				setLiveMarkdown(prev => (prev || '') + md)
 			})
-			currentUI.emit('iframe-reset', {})
-			let imageToUse: string | undefined = screenshot
-			if (!modelSupportsImages) {
-				imageToUse = undefined
-			} else if (currentRender) {
-				imageToUse = currentRender.url
-			}
-			createOrRefine(
-				{
-					query,
-					model,
-					action,
-					systemPrompt,
-					html: clearSession ? undefined : existingHTML,
-					image: clearSession ? undefined : imageToUse,
-					temperature
-				},
-				md => {
-					setLiveMarkdown(prevMD => (prevMD || '') + md)
-				}
-			)
 				.then(final => {
-					setScreenshot('')
 					setLiveMarkdown(final)
-					currentUI.emit('ui-state', { rendering: false })
-					// TODO: make sure unsplash runs here
-					console.log('Rendering complete, saving markdown')
 					saveMarkdown(final)
-					if (queryRef.current) {
-						queryRef.current.value = ''
-					}
-					// SetLLMHidden(true)
+					if (queryRef.current) queryRef.current.value = ''
 				})
 				.catch((error: unknown) => {
-					setScreenshot('')
-					setLiveMarkdown('')
 					console.error(error)
-					let { message } = error as Error
-					// Ollama vision error
+					let message = (error as Error).message
 					if (
 						message.includes('Object of type bytes is not JSON serializable')
 					) {
 						message =
 							'OpenUI currently only supports llava or moondream vision models from Ollama'
 					}
-					currentUI.emit('ui-state', {
-						rendering: false,
-						error: message
-					})
+					updateState({ rendering: false, error: message })
 				})
 		},
 		[
 			setSearchParams,
 			updateVersion,
-			currentUI,
-			screenshot,
-			modelSupportsImages,
-			currentRender,
-			model,
-			action,
-			temperature,
-			setScreenshot,
+			updateState,
+			resetIframe,
+			streamResponse,
 			saveMarkdown
 		]
 	)
@@ -212,7 +160,7 @@ export default function Prompt({
 		const clear = searchParams.get('clear') === 'true'
 		const gen = searchParams.get('gen') === '1'
 		if (id !== 'new' && gen && !rendering) {
-			streamResponse(item.prompt, undefined, clear)
+			runStream(item.prompt, undefined, clear)
 		} else if (id === 'new') {
 			// Reset our examples
 			randomExample(example)
@@ -232,7 +180,7 @@ export default function Prompt({
 				markdown: it.markdown + newChapter(prompt)
 			}))
 			saveHistory()
-			streamResponse(prompt, wrappedItem.pureHTML(versionIdx))
+			runStream(prompt, wrappedItem.pureHTML(versionIdx))
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [searchParams.get('regen')])
@@ -258,20 +206,20 @@ export default function Prompt({
 			if (result.html) {
 				// TODO: this is getting called three times on render, refactor
 				setItem(it => ({ ...it, ...result }))
-				currentUI.emit('ui-state', {
+				updateState({
 					pureHTML: result.html,
 					rendering,
 					error: undefined
 				})
 			} else if (!rendering) {
-				currentUI.emit('ui-state', {
+				updateState({
 					rendering: false,
 					error: `No HTML in LLM response, received: \n${liveMarkdown}`
 				})
 			}
 		} catch (error) {
 			setItem(it => ({ ...it, name: 'Error' }))
-			currentUI.emit('ui-state', {
+			updateState({
 				rendering: false,
 				error: 'Error parsing response, see console.'
 			})
@@ -311,7 +259,7 @@ export default function Prompt({
 				prompts: [...(it.prompts ?? [it.prompt]), query]
 			}))
 			saveHistory()
-			streamResponse(query, html)
+			runStream(query, html)
 		},
 		[
 			action,
@@ -321,7 +269,7 @@ export default function Prompt({
 			screenshot,
 			setItem,
 			saveHistory,
-			streamResponse,
+			runStream,
 			setSidebarState,
 			sidebarState
 		]
@@ -334,7 +282,7 @@ export default function Prompt({
 		}
 		const toFramework = convertFramework
 		setConvertFramework(undefined)
-		currentUI.emit('ui-state', { rendering: true, error: undefined })
+		updateState({ rendering: true, error: undefined })
 		const curComponents = item.components ?? {}
 		convert(
 			{
@@ -355,11 +303,11 @@ export default function Prompt({
 		)
 			.then(() => {
 				saveHistory()
-				currentUI.emit('ui-state', { rendering: false })
+				updateState({ rendering: false })
 			})
 			.catch((error: unknown) => {
 				console.error(error)
-				currentUI.emit('ui-state', {
+				updateState({
 					rendering: false,
 					error: (error as Error).message
 				})
@@ -373,7 +321,7 @@ export default function Prompt({
 		html,
 		model,
 		temperature,
-		currentUI
+		updateState
 	])
 
 	// Auto submit for annotations
@@ -386,9 +334,9 @@ export default function Prompt({
 					it.markdown + newChapter(comments.at(-1) ?? 'Edit from comment')
 			}))
 			setComments([])
-			streamResponse('', annotatedHTML)
+			runStream('', annotatedHTML)
 		}
-	}, [annotatedHTML, comments, setComments, setItem, streamResponse])
+	}, [annotatedHTML, comments, setComments, setItem, runStream])
 
 	// Random example on mount
 	useEffect(() => {
