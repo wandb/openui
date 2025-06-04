@@ -1,11 +1,10 @@
 import { Button } from 'components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from 'components/ui/tooltip'
-import { useVersion } from 'hooks'
+import { useVersion, useUIActions } from 'hooks'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import type React from 'react'
 import {
 	useCallback,
-	useContext,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -19,6 +18,7 @@ import {
 	facetsAtom,
 	historyAtomFamily,
 	historySidebarStateAtom,
+	iframeResetAtom,
 	imageDB,
 	inspectorEnabledAtom,
 	modelSupportsImagesAtom,
@@ -50,7 +50,6 @@ import {
 import { nanoid } from 'nanoid'
 import { useNavigate } from 'react-router-dom'
 import CodeViewer from './CodeViewer'
-import CurrentUIContext from './CurrentUiContext'
 import { Checkbox } from './ui/checkbox'
 import { Label } from './ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -90,7 +89,7 @@ export interface IFrameEvent {
 }
 
 export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
-	const currentUI = useContext(CurrentUIContext)
+	const { updateState } = useUIActions()
 
 	// Only point to our local annotator in development / running locally otherwise use github pages
 	const iframeSrc = /127\.0\.0\.1|localhost/.test(document.location.hostname)
@@ -115,6 +114,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 	const [inspectorEnabled, setInspectorEnabled] = useAtom(inspectorEnabledAtom)
 	const setSidebarState = useSetAtom(historySidebarStateAtom)
 	const uiState = useAtomValue(uiStateAtom)
+	const resetCount = useAtomValue(iframeResetAtom)
 	const [uiTheme, setUiTheme] = useAtom(uiThemeAtom)
 	const modelSupportsImages = useAtomValue(modelSupportsImagesAtom)
 	const [image, setImage] = useAtom(
@@ -175,14 +175,8 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 	)
 
 	useEffect(() => {
-		function reset() {
-			iframeRef.current?.contentWindow?.postMessage({ action: 'reset' }, '*')
-		}
-		currentUI.on('iframe-reset', reset)
-		return () => {
-			currentUI.off('iframe-reset', reset)
-		}
-	}, [currentUI])
+		iframeRef.current?.contentWindow?.postMessage({ action: 'reset' }, '*')
+	}, [resetCount])
 
 	// Reset iframe on UI change
 	useEffect(() => {
@@ -295,7 +289,7 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 					)
 			} else if (event.data.comment) {
 				setComments([...comments, event.data.comment])
-				currentUI.emit('ui-state', {
+				updateState({
 					annotatedHTML: formatHTML(event.data.html.trim())
 				})
 				setInspectorEnabled(false)
@@ -316,9 +310,9 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 		iframeSrc,
 		iframeId,
 		setInspectorEnabled,
-		currentUI,
 		setImage,
-		image
+		image,
+		updateState
 	])
 
 	const createVote = useCallback(
