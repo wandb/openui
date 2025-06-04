@@ -16,13 +16,9 @@ import {
 import type { ToolEvent, ToolFinishEvent } from 'state'
 export type { IFrameEvent } from 'state'
 
-const CurrentUIContext = createContext<EventTarget>(eventEmitter)
+export const CurrentUIContext = createContext<EventTarget>(eventEmitter)
 
-export const CurrentUIProvider = ({
-	children
-}: {
-	children: React.ReactNode
-}) => {
+const CurrentUIProvider = ({ children }: { children: React.ReactNode }) => {
 	const { id } = useParams()
 	const [finishedToolCalls, setFinishedToolCalls] = useAtom(
 		finishedToolCallsAtom
@@ -50,6 +46,7 @@ export const CurrentUIProvider = ({
 				prompt: item.prompt(versionIdx) ?? ''
 			}
 			if (update.pureHTML === '') {
+				console.log('No pureHTML', item.markdown)
 				update.error = `No HTML in LLM response, received: \n${item.markdown}`
 			}
 			setUiState({ ...cleanUiState, ...update })
@@ -105,16 +102,22 @@ export const CurrentUIProvider = ({
 	}, [id, uiState.toolCalls, setFinishedToolCalls])
 
 	useEffect(() => {
-		const toolCallIds = Object.values(uiState.toolCalls).map(
-			toolCall => toolCall.id
+		const toolCallIds = Object.values(uiState.toolCalls).map(toolCall =>
+			String(toolCall.id)
 		)
 		const finishedToolCallIds = Object.keys(finishedToolCalls)
 		const missingToolCallIds = toolCallIds.filter(
 			id => !finishedToolCallIds.includes(id)
 		)
+		console.log('toolCallIds:', toolCallIds)
+		console.log('finishedToolCallIds:', finishedToolCallIds)
+		console.log('missingToolCallIds:', missingToolCallIds)
 		if (missingToolCallIds.length > 0) {
 			console.warn('Missing tool call ids', missingToolCallIds)
-		} else if (Object.keys(finishedToolCalls).length > 0) {
+		} else if (
+			toolCallIds.length > 0 &&
+			finishedToolCallIds.length === toolCallIds.length
+		) {
 			eventEmitter.emit(`tool-calls-finished`, finishedToolCalls)
 		}
 	}, [finishedToolCalls, uiState.toolCalls])
@@ -165,4 +168,4 @@ export const CurrentUIProvider = ({
 	)
 }
 
-export default CurrentUIContext
+export default CurrentUIProvider

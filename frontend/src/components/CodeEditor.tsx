@@ -17,7 +17,7 @@ import {
 	useSaveHistory,
 	type Framework
 } from 'state'
-import CurrentUiContext from './CurrentUiContext'
+import { CurrentUIContext } from './CurrentUiContext'
 
 import 'monaco-editor/esm/vs/basic-languages/css/css.contribution'
 import 'monaco-editor/esm/vs/basic-languages/html/html.contribution'
@@ -112,7 +112,7 @@ export default function CodeEditor({
 	const printWidth = 200
 	const params = useParams()
 	const id = params.id ?? 'new'
-	const uiContext = useContext(CurrentUiContext)
+	const uiContext = useContext(CurrentUIContext)
 	const [readOnly, setReadOnly] = useState(framework !== 'html')
 	const editor = useRef<editor.IStandaloneCodeEditor>()
 
