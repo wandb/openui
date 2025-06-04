@@ -31,25 +31,25 @@ def generate_config():
                 {
                     "model_name": "claude-sonnet-4-0",
                     "litellm_params": {
-                        "model": "claude-sonnet-4-0",
+                        "model": "anthropic/claude-sonnet-4-0",
                     },
                 },
                 {
                     "model_name": "claude-opus-4-0",
                     "litellm_params": {
-                        "model": "claude-opus-4-0",
+                        "model": "anthropic/claude-opus-4-0",
                     },
                 },
                 {
                     "model_name": "claude-3-7-sonnet",
                     "litellm_params": {
-                        "model": "claude-3-7-sonnet-latest",
+                        "model": "anthropic/claude-3-7-sonnet-latest",
                     },
                 },
                 {
                     "model_name": "claude-3-5-haiku",
                     "litellm_params": {
-                        "model": "claude-3-5-haiku-latest",
+                        "model": "anthropic/claude-3-5-haiku-latest",
                     },
                 },
             ]

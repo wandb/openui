@@ -35,7 +35,7 @@ import {
 	uiStateAtom,
 	uiThemeAtom
 } from 'state'
-import { CurrentUIProvider } from './CurrentUiContext'
+import CurrentUIProvider from './CurrentUiContext'
 import ShareDialog from './ShareDialog'
 import { Button } from './ui/button'
 

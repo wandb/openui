@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { OpenAI } from 'openai'
 import type { ToolFinishEvent } from '../state'
 
@@ -8,7 +9,7 @@ function host() {
 }
 /* I patched OpenAI here so that users can use basic auth behind a proxy if they want */
 class MyOpenAI extends OpenAI {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	protected override authHeaders(_opts: any) {
 		return {}
 	}
@@ -223,6 +224,57 @@ function processToolCalls(
 	return toolCallAccumulator
 }
 
+function postToolCallsToIframe(
+	iframeId: string,
+	toolCalls: Record<
+		number,
+		OpenAI.Chat.Completions.ChatCompletionMessageToolCall
+	>
+) {
+	const iframe = document.getElementById(
+		`iframe-${iframeId}`
+	) as HTMLIFrameElement
+	const iframeWindow = iframe?.contentWindow
+	if (!iframeWindow) {
+		console.error('No iframe found', iframeId)
+		return
+	}
+	for (const toolCall of Object.values(toolCalls)) {
+		if (toolCall.function.name === 'exec-script') {
+			const { javascript, description } = JSON.parse(
+				toolCall.function.arguments
+			)
+			iframeWindow.postMessage(
+				{
+					action: 'exec-script',
+					id: iframeId,
+					toolCallId: toolCall.id,
+					javascript,
+					description
+				},
+				'*'
+			)
+		} else if (toolCall.function.name === 'edit') {
+			const { mode, selector, html, description, multiple } = JSON.parse(
+				toolCall.function.arguments
+			)
+			iframeWindow.postMessage(
+				{
+					action: 'edit',
+					id: iframeId,
+					toolCallId: toolCall.id,
+					mode,
+					selector,
+					html,
+					description,
+					multiple
+				},
+				'*'
+			)
+		}
+	}
+}
+
 type Response = {
 	body: string
 	toolCalls: Record<
@@ -231,17 +283,150 @@ type Response = {
 	>
 }
 
+// Helper functions to identify Anthropic tool_use and tool_result messages
+function isAnthropicToolUse(msg: any) {
+	return (
+		msg.role === 'assistant' &&
+		Array.isArray(msg.content) &&
+		msg.content.some((c: any) => c.type === 'tool_use')
+	)
+}
+function isAnthropicToolResult(msg: any) {
+	return (
+		msg.role === 'user' &&
+		Array.isArray(msg.content) &&
+		msg.content.some((c: any) => c.type === 'tool_result')
+	)
+}
+
 export async function respondToToolCalls(
-	ctx: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming,
+	ctx: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming & {
+		iframeId?: string
+	},
 	toolCalls: ToolFinishEvent[],
-	sessionId: string
-) {
-	//ctx.messages.push({})
-	await openai.chat.completions.create(ctx, {
+	sessionId: string,
+	callback: (response: string) => void
+): Promise<Response> {
+	const isAnthropic =
+		ctx.model &&
+		(ctx.model.includes('claude') || ctx.model.includes('anthropic'))
+
+	// Remove only the most recent contiguous block of assistant/tool_call and tool messages
+	while (ctx.messages.length > 0) {
+		const last = ctx.messages[ctx.messages.length - 1]
+		if (
+			last.role === 'assistant' &&
+			('tool_calls' in last || isAnthropicToolUse(last))
+		) {
+			ctx.messages.pop()
+			// Also pop any immediately following tool messages
+			while (
+				ctx.messages.length > 0 &&
+				ctx.messages[ctx.messages.length - 1].role === 'tool'
+			) {
+				ctx.messages.pop()
+			}
+			break // Only remove the most recent block
+		} else if (last.role === 'tool' || isAnthropicToolResult(last)) {
+			ctx.messages.pop()
+		} else {
+			break
+		}
+	}
+
+	if (isAnthropic) {
+		// Anthropic: use tool_use and tool_result blocks
+		const toolUseBlocks = toolCalls
+			.filter(tc => tc.call)
+			.map(tc => ({
+				type: 'tool_use',
+				id: tc.call!.id,
+				name: tc.call!.function.name,
+				input: JSON.parse(tc.call!.function.arguments)
+			}))
+		if (toolUseBlocks.length > 0) {
+			ctx.messages.push({
+				role: 'assistant',
+				content: toolUseBlocks as any
+			})
+			const toolResultBlocks = toolCalls
+				.filter(tc => tc.call && tc.result)
+				.map(tc => ({
+					type: 'tool_result',
+					tool_use_id: tc.call!.id,
+					content:
+						typeof tc.result === 'string'
+							? tc.result
+							: JSON.stringify(tc.result)
+				}))
+			if (toolResultBlocks.length > 0) {
+				ctx.messages.push({
+					role: 'user',
+					content: toolResultBlocks as any
+				})
+			}
+		}
+	} else {
+		// OpenAI: always follow tool_calls with tool messages for each call
+		const assistantToolCalls = toolCalls
+			.map(tc => tc.call)
+			.filter(
+				(c): c is OpenAI.Chat.Completions.ChatCompletionMessageToolCall => !!c
+			)
+		if (assistantToolCalls.length > 0) {
+			ctx.messages.push({
+				role: 'assistant',
+				content: '',
+				tool_calls: assistantToolCalls
+			})
+			const totalToolCalls = assistantToolCalls.length
+			let calledTools = 0
+			// For each tool_call, add a tool message with the correct tool_call_id
+			for (const tc of toolCalls) {
+				if (tc.call && tc.result !== undefined) {
+					ctx.messages.push({
+						role: 'tool',
+						tool_call_id: tc.call.id,
+						content:
+							typeof tc.result === 'string'
+								? tc.result
+								: JSON.stringify(tc.result)
+					})
+					calledTools++
+				}
+			}
+			if (calledTools !== totalToolCalls) {
+				console.error('Called tools mismatch', calledTools, totalToolCalls)
+				return { body: '', toolCalls: {} }
+			}
+		}
+	}
+
+	// DEBUG: Output the full message array before making the API call
+	console.log(
+		'DEBUG: ctx.messages before OpenAI API call:',
+		JSON.stringify(ctx.messages, null, 2)
+	)
+
+	ctx.stream = true
+	const response = await openai.chat.completions.create(ctx, {
 		headers: {
 			'X-Wandb-Trace-Id': sessionId
 		}
 	})
+	let markdown = ''
+	const finalToolCalls = processToolCalls(undefined, {})
+	for await (const chunk of response) {
+		const part = chunk.choices[0]?.delta?.content ?? ''
+		markdown += part
+		callback(part)
+		processToolCalls(chunk.choices[0]?.delta?.tool_calls, finalToolCalls)
+	}
+	const iframeId = ctx.iframeId
+	if (iframeId) {
+		postToolCallsToIframe(iframeId, finalToolCalls)
+	}
+	return { body: markdown, toolCalls: finalToolCalls }
 }
 
 export async function createOrRefine(
@@ -360,20 +545,25 @@ emoji: 🎉
 	// TODO: use sessionId instead, modify the DOM of jotai dev tools
 	// jotai-devtools-root to include a link to weave
 	console.log('Session ID:', sessionId)
-	const context: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
+	const context: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming & {
+		iframeId: string
+		sessionId: string
+	} = {
 		model,
 		messages,
 		temperature,
 		stream: true,
 		max_tokens: GPT4_MAX_TOKENS,
-		tools
+		tools,
+		iframeId,
+		sessionId: sessionId ?? ''
 	}
 	if (storeContext) {
 		storeContext(context)
 	}
 	const response = await openai.chat.completions.create(context, {
 		headers: {
-			'X-Wandb-Trace-Id': iframeId
+			'X-Wandb-Trace-Id': sessionId
 		}
 	})
 	let markdown = ''
@@ -393,66 +583,9 @@ emoji: 🎉
 		})
 	}
 	console.table(toolTable, ['id', 'name', 'args'])
-	const iframe = document.getElementById(
-		`iframe-${iframeId}`
-	) as HTMLIFrameElement
-	let iframeWindow
-	if (iframe) {
-		iframeWindow = iframe.contentWindow
-	}
-	if (!iframeWindow) {
-		console.error('No iframe found', iframeId)
-		return { body: markdown, toolCalls: finalToolCalls }
-	}
-	// TODO: move these into UI context
-	for (const toolCall of Object.values(finalToolCalls)) {
-		if (toolCall.function.name === 'exec-script') {
-			const { javascript, description } = JSON.parse(
-				toolCall.function.arguments
-			)
-			iframeWindow.postMessage(
-				{
-					action: 'exec-script',
-					id: iframeId,
-					toolCallId: toolCall.id,
-					javascript,
-					description
-				},
-				'*'
-			)
-			console.log(
-				'Sent exec-script to iframe:',
-				javascript,
-				description,
-				iframeId
-			)
-		} else if (toolCall.function.name === 'edit') {
-			const { mode, selector, html, description, multiple } = JSON.parse(
-				toolCall.function.arguments
-			)
-			iframeWindow.postMessage(
-				{
-					action: 'edit',
-					id: iframeId,
-					toolCallId: toolCall.id,
-					mode,
-					selector,
-					html,
-					description,
-					multiple
-				},
-				'*'
-			)
-			console.log(
-				'Sent edit DOM to iframe:',
-				mode,
-				selector,
-				html,
-				description,
-				multiple,
-				iframeId
-			)
-		}
+	console.log('frame', iframeId, finalToolCalls)
+	if (iframeId) {
+		postToolCallsToIframe(iframeId, finalToolCalls)
 	}
 	return {
 		body: markdown,

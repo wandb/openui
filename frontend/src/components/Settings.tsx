@@ -265,7 +265,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							}}
 							onCheckedChange={checked => setModelSupportsImages(checked)}
 						/>
-						<div className='col-span-5 -ml-15 text-xs'>
+						<div className='col-span-5 -ml-1 text-xs'>
 							We attempt to detect if the model has vision capabilities. You can
 							override this if you&apos;re sure it does.
 							{model === 'gpt-3.5-turbo' && (
@@ -282,7 +282,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							System Prompt
 						</Label>
 						<Textarea
-							className='col-span-6 whitespace-nowrap'
+							className='col-span-6 max-h-16 whitespace-nowrap'
 							rows={5}
 							id='prompt'
 							onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>

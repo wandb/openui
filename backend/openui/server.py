@@ -233,6 +233,11 @@ async def chat_completions(
         data["max_tokens"] = 4096 - input_tokens - 20
         logger.info("Starting trace %s", request.headers.get("X-Wandb-Trace-Id"))
         with Trace(request.headers.get("X-Wandb-Trace-Id"), user_id):
+            # TODO: make the frontend remove this?
+            if "iframeId" in data:
+                del data["iframeId"]
+            if "sessionId" in data:
+                del data["sessionId"]
             return await model_router.stream_chat_completion(data, input_tokens, user_id)
     except (ResponseError, APIStatusError) as e:
         traceback.print_exc()

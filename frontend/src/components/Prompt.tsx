@@ -1,4 +1,10 @@
-import { convert, createOrRefine, systemPrompt, type Action } from 'api/openai'
+import {
+	convert,
+	createOrRefine,
+	respondToToolCalls,
+	systemPrompt,
+	type Action
+} from 'api/openai'
 import { Tooltip, TooltipContent, TooltipTrigger } from 'components/ui/tooltip'
 import { useThrottle, useVersion } from 'hooks'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
@@ -34,9 +40,10 @@ import {
 	temperatureAtom,
 	openAIContextAtom,
 	uiStateAtom,
-	useSaveHistory
+	useSaveHistory,
+	type ToolFinishEvent
 } from 'state'
-import CurrentUIContext from './CurrentUiContext'
+import { CurrentUIContext } from './CurrentUiContext'
 import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
 
@@ -57,6 +64,7 @@ export default function Prompt({
 	imageUploadRef: React.RefObject<HTMLInputElement>
 }) {
 	const currentUI = useContext(CurrentUIContext)
+	const openAIContext = useAtomValue(openAIContextAtom)
 	const setOpenAIContext = useSetAtom(openAIContextAtom)
 	const params = useParams()
 	const [searchParams, setSearchParams] = useSearchParams()
@@ -110,6 +118,8 @@ export default function Prompt({
 	const [animate, setAnimate] = useState(false)
 	const [textareaHeight, setTextareaHeight] = useState<number | undefined>()
 
+	const [sessionUuid, setSessionUuid] = useState<string>('')
+
 	const action: Action = isEditing ? 'refine' : 'create'
 	// Save our streamed markdown
 	const saveMarkdown = useCallback(
@@ -129,17 +139,42 @@ export default function Prompt({
 
 	// Continue tool calls when they finish
 	useEffect(() => {
-		function continueToolCalls(finishedToolCalls: unknown) {
-			console.log('Tool calls finished in Prompt.tsx', finishedToolCalls)
+		async function continueToolCalls(finishedToolCalls: unknown) {
+			if (!openAIContext) return
+			const calls = Object.values(
+				finishedToolCalls as Record<string, ToolFinishEvent>
+			)
+			console.log('Continuing tool calls', calls)
+			currentUI.emit('ui-state', { rendering: true })
+			try {
+				const response = await respondToToolCalls(
+					openAIContext,
+					calls,
+					sessionUuid,
+					md => setLiveMarkdown(prev => (prev || '') + md)
+				)
+				setOpenAIContext(openAIContext)
+				setLiveMarkdown(response.body)
+				currentUI.emit('ui-state', {
+					rendering: false,
+					toolCalls: response.toolCalls
+				})
+				saveMarkdown(response.body)
+			} catch (error) {
+				console.error(error)
+				currentUI.emit('ui-state', {
+					rendering: false,
+					error: (error as Error).message
+				})
+			}
 		}
 		currentUI.on('tool-calls-finished', continueToolCalls)
 		return () => {
 			currentUI.off('tool-calls-finished', continueToolCalls)
 		}
-	}, [currentUI])
+	}, [currentUI, openAIContext, sessionUuid, setOpenAIContext, saveMarkdown])
 
 	// UUID state and session logic
-	const [sessionUuid, setSessionUuid] = useState<string>('')
 	const inactivityTimeout = useRef<NodeJS.Timeout | null>(null)
 
 	// Helper to get/set uuid in sessionStorage
@@ -361,6 +396,7 @@ export default function Prompt({
 					error: undefined
 				})
 			} else if (!rendering) {
+				console.log('No HTML state emitted')
 				currentUI.emit('ui-state', {
 					rendering: false,
 					error: `No HTML in LLM response, received: \n${liveMarkdown}`
@@ -600,7 +636,7 @@ export default function Prompt({
 					className={
 						/* TODO: make this width calculation dynamic */
 						cn(
-							'my-auto max-h-[130px] flex-1 resize-none items-center justify-center overflow-y-hidden rounded-none align-middle text-lg placeholder:text-lg',
+							'my-auto max-h-[130px] flex-1 resize-none items-center justify-center overflow-y-hidden rounded-none align-middle !text-lg placeholder:text-lg',
 							'bg-muted dark:focus-visible:bg-muted border-none ring-0 outline-hidden transition-all focus-visible:bg-white focus-visible:ring-0 focus-visible:ring-offset-0'
 						)
 					}

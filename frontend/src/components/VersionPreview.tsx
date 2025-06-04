@@ -119,7 +119,7 @@ export default function VersionPreview({
 			<div className='group relative grid h-[163px] cursor-pointer grid-cols-2 overflow-hidden border-b py-2'>
 				<div className='flex h-[143px] w-[210px] flex-col gap-2'>
 					<div className='text-md bg-muted m-2 max-h-[105px] overflow-hidden rounded-lg p-2 text-sm text-zinc-700 dark:text-zinc-400'>
-						{item.prompt(versionIdx)}
+						<span className='select-text'>{item.prompt(versionIdx)}</span>
 						{image ? (
 							<img src={image.url} alt='Screenshot' className='flex max-w-42' />
 						) : undefined}

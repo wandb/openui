@@ -68,10 +68,7 @@ export function parseMarkdown(
 		}
 		}
 	*/
-	if (!rendering) {
-		// TODO maybe change logic?
-		console.log('rendered', cleanMarkdown)
-	}
+
 	let indexHtml = ''
 	let commentary = ''
 	const startTag = '<index_html>'
@@ -112,6 +109,11 @@ export function parseMarkdown(
 		} else if (cleanMarkdown.length > 1000) {
 			console.warn('Malformed llm response:', cleanMarkdown)
 		}
+	}
+
+	// Lame code to make my linter shutup
+	if (!rendering) {
+		cleanMarkdown = indexHtml
 	}
 
 	// const parsed = unified().use(remarkParse).parse(commentary)
