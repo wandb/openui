@@ -1,12 +1,8 @@
-import type { Code } from 'mdast'
-import remarkParse from 'remark-parse'
-import { unified } from 'unified'
-import { escapeHTML } from './html'
-
 interface ParsedMarkdown {
-	name?: string
-	emoji?: string
-	html?: string
+        name?: string
+        emoji?: string
+        html?: string
+        commentary?: string
 }
 
 export function newChapter(prompt: string) {
@@ -37,9 +33,9 @@ export function fixHTML(html: string) {
 }
 
 export function parseMarkdown(
-	markdown: string,
-	version?: string,
-	rendering?: boolean
+        markdown: string,
+        version?: string,
+        rendering?: boolean
 ): ParsedMarkdown {
 	// TODO: this is getting called ALOT
 	// TODO: this already a little tricky, refactor me
@@ -79,47 +75,55 @@ export function parseMarkdown(
 	}
 	*/
 
-	const parsed = unified().use(remarkParse).parse(cleanMarkdown)
+        // First, prefer <index_html> tags if present
+        const indexMatch = cleanMarkdown.match(/<index_html>([\s\S]*?)<\/index_html>/i)
+        const jsRegex = /```javascript\n([\s\S]*?)```/gi
+        let jsBlocks: string[] = []
 
-	let htmlBlocks = parsed.children.filter(
-		c =>
-			(c.type === 'code' && ['html', ''].includes(c.lang ?? '')) ||
-			c.type === 'html'
-	) as Code[]
-	// TODO: maybe do this first and only if the first paragraph is chill
-	for (const c of parsed.children) {
-		if (c.type === 'paragraph') {
-			let html = ''
-			if (c.children[0].type === 'html') {
-				for (const c2 of c.children) {
-					html = html + (c2 as unknown as Code).value || ''
-				}
-			}
-			htmlBlocks.push({ type: 'code', lang: 'html', value: html })
-		}
-	}
-	// TODO: not convinced this is the best way to handle this
-	if (
-		!rendering &&
-		htmlBlocks.filter(h => h.value.trim() !== '').length === 0
-	) {
-		console.warn('No HTML found, parse results:', parsed.children)
-		htmlBlocks = [
-			{
-				type: 'code',
-				lang: 'html',
-				value: `<div class="p-8 prose dark:prose-invert"><h1 class=text-xl font-bold ${cleanMarkdown === '' ? 'text-red-700' : ''}">Couldn't find any HTML, LLM Response:</h1>${cleanMarkdown === '' ? `<pre class="text-xs"><code class="language-html">${escapeHTML(markdown)}</code></pre>` : cleanMarkdown}</div>`
-			}
-		]
-	}
-	const jsBlocks = parsed.children.filter(
-		c => c.type === 'code' && c.lang === 'javascript'
-	) as Code[]
-	result.html = fixHTML(
-		[
-			...htmlBlocks.map(h => h.value),
-			...jsBlocks.map(j => `<script type="text/javascript">${j.value}</script>`)
-		].join('\n')
-	)
-	return result
+        let commentary = cleanMarkdown
+
+        if (indexMatch) {
+                commentary = commentary.replace(indexMatch[0], '')
+                let match
+                while ((match = jsRegex.exec(commentary))) {
+                        jsBlocks.push(match[1])
+                }
+                commentary = commentary.replace(jsRegex, '').trim()
+                result.commentary = commentary
+                result.html = fixHTML(
+                        [
+                                indexMatch[1].trim(),
+                                ...jsBlocks.map(j => `<script type="text/javascript">${j}</script>`)
+                        ].join('\n')
+                )
+                return result
+        }
+
+        // Fall back to parsing markdown for code fences
+        const htmlFence = cleanMarkdown.match(/```html\n([\s\S]*?)```/i)
+        if (htmlFence) {
+                commentary = commentary.replace(htmlFence[0], '')
+        }
+
+        let match
+        while ((match = jsRegex.exec(commentary))) {
+                jsBlocks.push(match[1])
+        }
+        commentary = commentary.replace(jsRegex, '').trim()
+
+        result.commentary = commentary
+        const htmlContent = htmlFence ? htmlFence[1].trim() : ''
+
+        if (!htmlContent && !rendering) {
+                console.warn('No HTML found in markdown')
+        }
+
+        result.html = fixHTML(
+                [
+                        htmlContent,
+                        ...jsBlocks.map(j => `<script type="text/javascript">${j}</script>`)
+                ].join('\n')
+        )
+
+        return result
 }
