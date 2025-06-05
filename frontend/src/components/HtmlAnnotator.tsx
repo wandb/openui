@@ -366,10 +366,18 @@ export default function HTMLAnnotator({ error, id }: HTMLAnnotatorProps) {
 							)}
 							src={`${iframeSrc}/openui/index.html?id=${iframeId}`}
 						/>
-						{/* TODO: redo the scaffold */}
-						{error ? <Scaffold isLoading error={error} /> : undefined}
-					</div>
-				</div>
+                                                {/* TODO: redo the scaffold */}
+                                                {error ? <Scaffold isLoading error={error} /> : undefined}
+                                                {rawItem.commentary && (
+                                                        <div className='pointer-events-none absolute right-2 top-2 flex h-full w-1/3 flex-col items-end'>
+                                                                <div className='pointer-events-auto mb-16 max-h-full overflow-auto whitespace-pre-wrap border border-gray-500 bg-gray-100 p-2 text-xs text-black shadow-lg'>
+                                                                        {rawItem.commentary}
+                                                                </div>
+                                                                <div className='absolute bottom-2 right-2 text-4xl animate-bounce'>📎</div>
+                                                        </div>
+                                                )}
+                                        </div>
+                                </div>
 				<div
 					className={`flex-shrink-0 py-0 pl-4 transition-all duration-500 ease-in-out ${
 						isCodeVisible ? 'sm:w-full md:w-full lg:w-1/2' : 'hidden w-0'

@@ -39,8 +39,9 @@ export interface HistoryItem {
 	// TODO: Deprecate
 	react?: string
 	components?: FrameworkMap
-	html?: string
-	comments?: string[]
+        html?: string
+        comments?: string[]
+        commentary?: string
 }
 
 interface Chapter {
