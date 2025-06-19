@@ -3,11 +3,13 @@ import contextlib
 import getpass
 import html
 import os
+import sys
 import threading
 import time
 import traceback
 import uuid
 from contextlib import asynccontextmanager
+from contextvars import copy_context
 from datetime import datetime, timedelta
 from multiprocessing import Queue
 from pathlib import Path
@@ -44,10 +46,57 @@ from .session import DBSessionStore, SessionData
 from .util import get_git_user_email, storage
 
 
+# Check wandb authentication
+base_url = "https://api.wandb.ai"
+def check_wandb_auth():
+    global base_url
+    try:
+        from wandb.cli.cli import _get_cling_api
+        api = _get_cling_api()
+        base_url = api.settings("base_url")
+    except:
+        base_url = "https://api.wandb.ai"
+    auth = requests.utils.get_netrc_auth(base_url)
+    key = None
+    if auth:
+        key = auth[-1]
+    if os.getenv("WANDB_API_KEY"):
+        key = os.environ["WANDB_API_KEY"]
+    return key is not None
+
+wandb_enabled = check_wandb_auth()
+if wandb_enabled:
+    logger.info(f"WANDB_API_KEY found, enabling wandb for {base_url}")
+
+
+# Context middleware to propagate Weave context
+class WeaveContextMiddleware:
+    def __init__(self, app):
+        self.app = app
+        
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            # Ensure Weave context is available in request scope
+            context = copy_context()
+            return await context.run(self._handle_request, scope, receive, send)
+        return await self.app(scope, receive, send)
+    
+    async def _handle_request(self, scope, receive, send):
+        return await self.app(scope, receive, send)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.setLevel("DEBUG")
     logger.debug("Starting up server in %d...", os.getpid())
+    
+    # Initialize Weave once at startup
+    if wandb_enabled:
+        import weave
+        os.environ["WEAVE_PRINT_CALL_LINK"] = "true"
+        weave.init(os.getenv("WANDB_PROJECT", "openui-dev"))
+        print(f"Weave initialized for project: {os.getenv('WANDB_PROJECT', 'openui-dev')}", file=sys.stderr)
+    
     yield
     # any more cleanup here?
 
@@ -95,6 +144,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add the Weave context middleware
+app.add_middleware(WeaveContextMiddleware)
+
 # Ensure Weave prints call links to console
 import os
 if os.getenv("WEAVE_PRINT_CALL_LINK") is None:
@@ -104,7 +156,7 @@ if os.getenv("WEAVE_PRINT_CALL_LINK") is None:
 async def generate_ui_completion(data: dict, user_id: str, input_tokens: int):
     """Generate UI completion using various LLM providers - traced by Weave"""
     # Ensure Weave tracing is active in this context
-    weave.init(os.getenv('WANDB_PROJECT', 'test-openui'))
+    # weave.init(os.getenv('WANDB_PROJECT', 'test-openui'))
     # TODO: refactor all these blocks into one once Ollama supports vision
     # OpenAI Models
     if data.get("model").startswith("gpt"):
@@ -607,27 +659,6 @@ def spa(full_path: str):
     return HTMLResponse((dist_dir / "index.html").read_bytes())
 
 
-base_url = "https://api.wandb.ai"
-def check_wandb_auth():
-    global base_url
-    try:
-        from wandb.cli.cli import _get_cling_api
-        api = _get_cling_api()
-        base_url = api.settings("base_url")
-    except:
-        base_url = "https://api.wandb.ai"
-    auth = requests.utils.get_netrc_auth(base_url)
-    key = None
-    if auth:
-        key = auth[-1]
-    if os.getenv("WANDB_API_KEY"):
-        key = os.environ["WANDB_API_KEY"]
-    return key is not None
-
-
-wandb_enabled = check_wandb_auth()
-if wandb_enabled:
-    logger.info(f"WANDB_API_KEY found, enabling wandb for {base_url}")
 
 class Server(uvicorn.Server):
     # TODO: this still isn't working for some reason, can't ctrl-c when not in dev mode
