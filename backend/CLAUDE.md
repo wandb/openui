@@ -166,6 +166,79 @@ To test UI generation and Weave tracing:
 - **Wait between actions** if needed: `sleep 2 && tail server.log`
 - **Always close browser** when done: `mcp__playwright__playwright_close()`
 
+## Testing Weave Middleware Solution
+
+### Verifying the FastAPI Middleware Works
+
+To confirm that the WeaveContextMiddleware is properly propagating context and generating traces:
+
+#### Quick Test Procedure
+
+1. **Start server and clear logs**:
+   ```bash
+   python -m openui --dev > server.log 2>&1 &
+   ```
+
+2. **Verify Weave initialization** (should see this once at startup):
+   ```bash
+   tail -5 server.log
+   # Look for: "weave: View Weave data at https://wandb.ai/..."
+   # Look for: "Weave initialized for project: test-openui"
+   ```
+
+3. **Trigger UI generation** (using Playwright or browser):
+   ```python
+   # Via Playwright
+   mcp__playwright__playwright_navigate(url="http://127.0.0.1:8080", headless=False)
+   mcp__playwright__playwright_fill(selector="textarea", value="Create a button component")
+   mcp__playwright__playwright_click(selector="button[type=\"submit\"]")
+   ```
+
+4. **Check for successful trace generation**:
+   ```bash
+   tail -5 server.log
+   ```
+
+#### Success Indicators
+
+You should see **exactly this pattern** in server.log:
+
+```bash
+# ✅ Single initialization at startup
+weave: View Weave data at https://wandb.ai/[entity]/[project]/weave
+Weave initialized for project: test-openui
+
+# ✅ Successful trace generation per request (with 🍩 emoji)
+weave: 🍩 https://wandb.ai/[entity]/[project]/r/call/[call-id]
+INFO: 127.0.0.1:xxxxx - "POST /v1/chat/completions HTTP/1.1" 200 OK
+```
+
+#### Failure Indicators
+
+If middleware is **NOT working**, you would see:
+
+```bash
+# ❌ Missing trace URLs - only sees requests without traces
+INFO: 127.0.0.1:xxxxx - "POST /v1/chat/completions HTTP/1.1" 200 OK
+# (no 🍩 weave trace URL)
+```
+
+#### What This Confirms
+
+- **✅ Single Initialization**: Weave only initializes once at server startup
+- **✅ Context Propagation**: Middleware successfully propagates async context
+- **✅ No Performance Overhead**: No repeated `weave.init()` calls per request
+- **✅ Full Tracing**: All `@weave.op()` decorated functions generate trace URLs
+
+#### Debugging Issues
+
+If traces aren't appearing:
+
+1. **Check WANDB_API_KEY is set**: `echo $WANDB_API_KEY`
+2. **Verify middleware is loaded**: Look for WeaveContextMiddleware in server startup
+3. **Check function decoration**: Ensure `@weave.op()` decorator is present on `generate_ui_completion`
+4. **Review logs for errors**: `grep -i error server.log`
+
 ## Weave Tracing Technical Notes
 
 ### FastAPI Async Context Solution
