@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rg:*)",
+      "Bash(source .env)",
+      "Bash(export WANDB_API_KEY WANDB_ENTITY WANDB_PROJECT)",
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(echo:*)",
+      "Bash(unset PORT)",
+      "Bash(pgrep:*)",
+      "mcp__playwright__playwright_navigate",
+      "mcp__playwright__playwright_console_logs",
+      "mcp__playwright__playwright_screenshot",
+      "mcp__playwright__playwright_get_visible_html",
+      "mcp__playwright__playwright_fill",
+      "mcp__playwright__playwright_click",
+      "Bash(kill:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(pkill:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(lsof:*)",
+      "mcp__playwright__playwright_get_visible_text",
+      "mcp__playwright__playwright_close",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(git fetch:*)"
+    ],
+    "deny": []
+  }
+}
