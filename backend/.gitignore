@@ -12,3 +12,4 @@ build
 eval/components
 eval/datasets
 !eval/datasets/eval.csv
+.env

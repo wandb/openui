@@ -2,13 +2,14 @@
   "folders": [
     {
       "path": "backend"
-    },
-    {
-      "path": "frontend"
-    },
-    {
-      "path": "."
     }
+    // },
+    // {
+    //   "path": "frontend"
+    // },
+    // {
+    //   "path": "."
+    // }
   ],
   "settings": {
     "editor.formatOnSave": true
