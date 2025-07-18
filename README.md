@@ -4,88 +4,163 @@
   <img src="./assets/openui.png" width="150" alt="OpenUI" />
 </p>
 
-Building UI components can be a slog.  OpenUI aims to make the process fun, fast, and flexible.  It's also a tool we're using at [W&B](https://wandb.com) to test and prototype our next generation tooling for building powerful applications on top of LLM's.
+<p align="center">
+  <strong>AI-powered UI component generation - describe it, see it rendered, iterate in real-time</strong>
+</p>
 
-## Overview
+Building UI components can be a slog. OpenUI aims to make the process fun, fast, and flexible. It's also a tool we're using at [W&B](https://wandb.com) to test and prototype our next generation tooling for building powerful applications on top of LLMs.
+
+## Table of Contents
+
+- [Features](#features)
+- [Demo](#demo)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+  - [Docker (Recommended)](#docker-recommended)
+  - [From Source](#from-source--python)
+- [Supported Models](#supported-models)
+- [Configuration](#configuration)
+- [Development](#development)
+- [Contributing](#contributing)
+- [Troubleshooting](#troubleshooting)
+
+## Features
+
+- **Natural Language UI Generation**: Describe components in plain English and see them rendered instantly
+- **Multiple Framework Support**: Convert between HTML, React, Svelte, Web Components, and more
+- **Real-time Iteration**: Ask for changes and refinements with live preview
+- **Multi-Model Support**: Works with OpenAI, Anthropic, Groq, Gemini, and any LiteLLM-compatible model
+- **Local Model Support**: Run completely offline with Ollama
+- **Live Demo Available**: Try it immediately at [openui.fly.dev](https://openui.fly.dev)
+
+## Demo
 
 ![Demo](./assets/demo.gif)
 
-OpenUI let's you describe UI using your imagination, then see it rendered live.  You can ask for changes and convert HTML to React, Svelte, Web Components, etc.  It's like [v0](https://v0.dev) but open source and not as polished :stuck_out_tongue_closed_eyes:.
+OpenUI lets you describe UI using your imagination, then see it rendered live. You can ask for changes and convert HTML to React, Svelte, Web Components, etc. It's like [v0](https://v0.dev) but open source and not as polished :stuck_out_tongue_closed_eyes:.
 
-## Live Demo
+## Quick Start
 
-[Try the demo](https://openui.fly.dev)
+🚀 **Try it now**: [Live Demo](https://openui.fly.dev)
 
-## Running Locally
-
-OpenUI supports [OpenAI](https://platform.openai.com/api-keys), [Groq](https://console.groq.com/keys), and any model [LiteLLM](https://docs.litellm.ai/docs/) supports such as [Gemini](https://aistudio.google.com/app/apikey) or [Anthropic (Claude)](https://console.anthropic.com/settings/keys).  The following environment variables are optional, but need to be set in your environment for alternative models to work:
-
-- **OpenAI** `OPENAI_API_KEY`
-- **Groq** `GROQ_API_KEY`
-- **Gemini** `GEMINI_API_KEY`
-- **Anthropic** `ANTHROPIC_API_KEY`
-- **Cohere** `COHERE_API_KEY`
-- **Mistral** `MISTRAL_API_KEY`
-- **OpenAI Compatible** `OPENAI_COMPATIBLE_ENDPOINT` and `OPENAI_COMPATIBLE_API_KEY`
-
-For example, if you're running a tool like [localai](https://localai.io/) you can set `OPENAI_COMPATIBLE_ENDPOINT` and optionally `OPENAI_COMPATIBLE_API_KEY` to have the models available listed in the UI's model selector under LiteLLM.
-
-### Ollama
-
-You can also use models available to [Ollama](https://ollama.com).  [Install Ollama](https://ollama.com/download) and pull a model like [Llava](https://ollama.com/library/llava).  If Ollama is not running on http://127.0.0.1:11434, you can set the `OLLAMA_HOST` environment variable to the host and port of your Ollama instance.  For example when running in docker you'll need to point to http://host.docker.internal:11434 as shown below.
-
-### Docker (preferred)
-
-The following command would forward the specified API keys from your shell environment and tell Docker to use the Ollama instance running on your machine.
-
+🐳 **Run locally with Docker**:
 ```bash
-export ANTHROPIC_API_KEY=xxx
-export OPENAI_API_KEY=xxx
-docker run --rm --name openui -p 7878:7878 -e OPENAI_API_KEY -e ANTHROPIC_API_KEY -e OLLAMA_HOST=http://host.docker.internal:11434 ghcr.io/wandb/openui
+docker run --rm -p 7878:7878 -e OPENAI_API_KEY=your_key_here ghcr.io/wandb/openui
 ```
 
-Now you can goto [http://localhost:7878](http://localhost:7878) and generate new UI's!
+Then visit [http://localhost:7878](http://localhost:7878)
+
+## Installation
+
+### Prerequisites
+
+- **For Docker**: Docker installed on your system
+- **For Source**: Python 3.8+, git, and [uv](https://github.com/astral-sh/uv)
+- **API Keys**: At least one LLM provider API key (OpenAI, Anthropic, etc.) or Ollama for local models
+
+## Supported Models
+
+OpenUI supports multiple LLM providers through direct APIs and [LiteLLM](https://docs.litellm.ai/docs/). Set the appropriate environment variables for your chosen provider:
+
+| Provider | Environment Variable | Get API Key |
+|----------|---------------------|-------------|
+| **OpenAI** | `OPENAI_API_KEY` | [platform.openai.com](https://platform.openai.com/api-keys) |
+| **Anthropic** | `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
+| **Groq** | `GROQ_API_KEY` | [console.groq.com](https://console.groq.com/keys) |
+| **Gemini** | `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+| **Cohere** | `COHERE_API_KEY` | [cohere.com](https://cohere.com) |
+| **Mistral** | `MISTRAL_API_KEY` | [mistral.ai](https://mistral.ai) |
+| **OpenAI Compatible** | `OPENAI_COMPATIBLE_ENDPOINT`<br>`OPENAI_COMPATIBLE_API_KEY` | For tools like [LocalAI](https://localai.io/) |
+
+### Local Models with Ollama
+
+For completely offline usage, install [Ollama](https://ollama.com/download) and pull a model:
+
+```bash
+# Install and start Ollama
+ollama serve
+
+# Pull a vision-capable model
+ollama pull llava
+```
+
+**Docker configuration**: Set `OLLAMA_HOST=http://host.docker.internal:11434` when running OpenUI in Docker.
+
+### Docker (Recommended)
+
+**Basic usage**:
+```bash
+docker run --rm -p 7878:7878 -e OPENAI_API_KEY=your_key_here ghcr.io/wandb/openui
+```
+
+**With multiple providers and Ollama**:
+```bash
+export ANTHROPIC_API_KEY=your_anthropic_key
+export OPENAI_API_KEY=your_openai_key
+docker run --rm --name openui -p 7878:7878 \
+  -e OPENAI_API_KEY \
+  -e ANTHROPIC_API_KEY \
+  -e OLLAMA_HOST=http://host.docker.internal:11434 \
+  ghcr.io/wandb/openui
+```
+
+Open [http://localhost:7878](http://localhost:7878) and start generating UIs!
 
 ### From Source / Python
 
-Assuming you have git and [uv](https://github.com/astral-sh/uv) installed:
+**Requirements**: Python 3.8+, git, and [uv](https://github.com/astral-sh/uv)
 
 ```bash
+# Clone the repository
 git clone https://github.com/wandb/openui
 cd openui/backend
+
+# Install dependencies
 uv sync --frozen --extra litellm
 source .venv/bin/activate
-# Set API keys for any LLM's you want to use
-export OPENAI_API_KEY=xxx
+
+# Set API keys for your chosen LLM providers
+export OPENAI_API_KEY=your_openai_key
+export ANTHROPIC_API_KEY=your_anthropic_key
+
+# Start the server
 python -m openui
 ```
 
-## LiteLLM
+Visit [http://localhost:7878](http://localhost:7878) to use OpenUI.
 
-[LiteLLM](https://docs.litellm.ai/docs/) can be used to connect to basically any LLM service available.  We generate a config automatically based on your environment variables.  You can create your own [proxy config](https://litellm.vercel.app/docs/proxy/configs) to override this behavior.  We look for a custom config in the following locations:
+## Configuration
 
+### Custom LiteLLM Configuration
+
+OpenUI automatically generates a LiteLLM config from your environment variables. For advanced configurations, you can provide a custom [proxy config](https://litellm.vercel.app/docs/proxy/configs).
+
+**Config file locations** (in order of preference):
 1. `litellm-config.yaml` in the current directory
-2. `/app/litellm-config.yaml` when running in a docker container
-3. An arbitrary path specified by the `OPENUI_LITELLM_CONFIG` environment variable
+2. `/app/litellm-config.yaml` (when running in Docker)
+3. Path specified by `OPENUI_LITELLM_CONFIG` environment variable
 
-For example to use a custom config in docker you can run:
-
+**Docker example**:
 ```bash
-docker run -n openui -p 7878:7878 -v $(pwd)/litellm-config.yaml:/app/litellm-config.yaml ghcr.io/wandb/openui
+docker run -p 7878:7878 \
+  -v $(pwd)/litellm-config.yaml:/app/litellm-config.yaml \
+  ghcr.io/wandb/openui
 ```
 
-To use litellm from source you can run:
-
+**Source example**:
 ```bash
 pip install .[litellm]
-export ANTHROPIC_API_KEY=xxx
+export ANTHROPIC_API_KEY=your_key
 export OPENAI_COMPATIBLE_ENDPOINT=http://localhost:8080/v1
 python -m openui --litellm
 ```
 
-## Groq
+### Model Selection
 
-To use the super fast [Groq](https://groq.com) models, set `GROQ_API_KEY` to your Groq api key which you can [find here](https://console.groq.com/keys).  To use one of the Groq models, click the settings icon in the nav bar.
+Once running, click the settings icon (⚙️) in the navigation bar to:
+- Switch between available models
+- Configure model-specific settings
+- View usage statistics
 
 ### Docker Compose
 
