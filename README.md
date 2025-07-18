@@ -217,6 +217,85 @@ Before you can use Gitpod:
 
 > NOTE: Other (local) models might also be used with a bigger Gitpod instance type. Required models are not preconfigured in Gitpod but can easily be added as documented above.
 
-### Resources
+### Development Resources
 
-See the readmes in the [frontend](./frontend/README.md) and [backend](./backend/README.md) directories.
+For detailed development information, see the component-specific documentation:
+- [Frontend README](./frontend/README.md) - React/TypeScript frontend
+- [Backend README](./backend/README.md) - Python FastAPI backend
+
+## Contributing
+
+We welcome contributions! Here's how to get started:
+
+### Development Setup
+
+1. **Fork and clone** the repository
+2. **Choose your development environment**:
+   - [Dev Container](.devcontainer/devcontainer.json) (recommended)
+   - [GitHub Codespaces](https://github.com/wandb/openui)
+   - [Gitpod](https://gitpod.io/#https://github.com/wandb/openui)
+   - Local development
+
+### Making Changes
+
+1. **Backend development**:
+   ```bash
+   cd backend
+   uv sync --frozen --extra litellm
+   source .venv/bin/activate
+   python -m openui --dev
+   ```
+
+2. **Frontend development** (in a new terminal):
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+3. **Access the development server** at [http://localhost:5173](http://localhost:5173)
+
+### Pull Request Process
+
+1. Create a feature branch from `main`
+2. Make your changes with clear, focused commits
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Update documentation as needed
+6. Submit a pull request with a clear description
+
+## Troubleshooting
+
+### Common Issues
+
+**🔑 API Key Issues**
+- Verify your API key is correctly set: `echo $OPENAI_API_KEY`
+- Check that the key has sufficient credits/permissions
+- Ensure the key is for the correct service (OpenAI vs Anthropic, etc.)
+
+**🐳 Docker Issues**
+- **Port conflicts**: Change the port mapping `-p 8080:7878`
+- **Permission errors**: Add `--user $(id -u):$(id -g)` to docker run
+- **Ollama connection**: Use `host.docker.internal:11434` not `localhost:11434`
+
+**🔧 Installation Issues**
+- **uv not found**: Install with `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **Python version**: Requires Python 3.8+, check with `python --version`
+- **Git LFS**: Some assets require Git LFS: `git lfs pull`
+
+**🖥️ Local Development**
+- **Hot reload not working**: Check that both frontend (port 5173) and backend (port 7878) are running
+- **Model not available**: Verify API keys and check the settings gear icon
+- **Slow generation**: Try switching to a faster model like Groq
+
+### Getting Help
+
+- **Documentation**: Check the [frontend](./frontend/README.md) and [backend](./backend/README.md) READMEs
+- **Issues**: Report bugs on [GitHub Issues](https://github.com/wandb/openui/issues)
+- **Discussions**: Join the conversation in [GitHub Discussions](https://github.com/wandb/openui/discussions)
+
+---
+
+<p align="center">
+  Made with ❤️ by the <a href="https://wandb.com">Weights & Biases</a> team
+</p>
