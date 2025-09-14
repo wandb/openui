@@ -12,7 +12,8 @@
     "ghcr.io/devcontainers/features/rust:1": {
       "version": "latest",
       "profile": "minimal"
-    }
+    },
+    "ghcr.io/wandb/catnip/feature:1": {}
   },
 
   "mounts": [
