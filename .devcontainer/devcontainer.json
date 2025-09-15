@@ -34,7 +34,7 @@
       ]
     }
   },
-
+  "forwardPorts": [6369],
   "portsAttributes": {
     "5173": {
       "label": "OpenUI UI Dev Server",
