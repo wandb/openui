@@ -9,6 +9,7 @@ from uvicorn import Config
 import sys
 import subprocess
 import time
+import socket
 
 
 def is_running_in_docker():
@@ -29,6 +30,28 @@ def is_running_in_docker():
         return True
 
     return False
+
+
+def find_available_port(start_port, max_attempts=10):
+    """
+    Find an available port starting from start_port.
+    Tries up to max_attempts consecutive ports.
+    """
+    for port_offset in range(max_attempts):
+        port = start_port + port_offset
+        try:
+            # Create a socket to test if the port is available
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                # Setting SO_REUSEADDR allows the socket to be bound even if it's in TIME_WAIT state
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                # Try to bind to the port
+                s.bind(("0.0.0.0", port))
+                return port
+        except socket.error:
+            # Port is already in use, try the next one
+            continue
+    # If we get here, we couldn't find an available port
+    return None
 
 
 if __name__ == "__main__":
@@ -63,12 +86,25 @@ if __name__ == "__main__":
         ui = False
 
     config_file = Path(__file__).parent / "log_config.yaml"
+
+    # Find an available port starting from the configured port
+    port = config.PORT
+    if is_running_in_docker():
+        # In Docker, we need to try to bind to 0.0.0.0
+        available_port = find_available_port(port)
+        if available_port is None:
+            logger.error(f"Could not find an available port after trying {port} through {port+9}")
+            sys.exit(1)
+        elif available_port != port:
+            logger.warning(f"Port {port} is already in use, using port {available_port} instead")
+            port = available_port
+
     api_server = server.Server(
         Config(
             "openui.server:app",
             host="0.0.0.0" if is_running_in_docker() else "127.0.0.1",
             log_config=str(config_file) if ui else None,
-            port=config.PORT,
+            port=port,
             reload=reload,
         )
     )
@@ -108,11 +144,29 @@ if __name__ == "__main__":
         if reload:
             # TODO: hot reload wasn't working with the server approach, and ctrl-C doesn't
             # work with the uvicorn.run approach, so here we are
-            uvicorn.run(
-                "openui.server:app",
-                host="0.0.0.0" if is_running_in_docker() else "127.0.0.1",
-                port=config.PORT,
-                reload=reload,
-            )
+            try:
+                uvicorn.run(
+                    "openui.server:app",
+                    host="0.0.0.0" if is_running_in_docker() else "127.0.0.1",
+                    port=port,
+                    reload=reload,
+                )
+            except OSError as e:
+                if "address already in use" in str(e).lower():
+                    # Try to find an available port
+                    available_port = find_available_port(port)
+                    if available_port is None:
+                        logger.error(f"Could not find an available port after trying {port} through {port+9}")
+                        sys.exit(1)
+                    logger.warning(f"Port {port} is already in use, using port {available_port} instead")
+                    uvicorn.run(
+                        "openui.server:app",
+                        host="0.0.0.0" if is_running_in_docker() else "127.0.0.1",
+                        port=available_port,
+                        reload=reload,
+                    )
+                else:
+                    # Re-raise if it's not a port binding issue
+                    raise
         else:
             api_server.run_with_wandb()

@@ -46,6 +46,8 @@ docker run --rm --name openui -p 7878:7878 -e OPENAI_API_KEY -e ANTHROPIC_API_KE
 
 Now you can goto [http://localhost:7878](http://localhost:7878) and generate new UI's!
 
+> **Note:** If port 7878 is already in use, OpenUI will automatically try to find an available port. You can also specify a different port using the `PORT` environment variable: `export PORT=8080`
+
 ### From Source / Python
 
 Assuming you have git and [uv](https://github.com/astral-sh/uv) installed:
