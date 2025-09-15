@@ -1,4 +1,24 @@
+# Load environment variables from .env file BEFORE any other imports
+import sys
 from pathlib import Path
+
+from weave.trace import weave_client
+
+try:
+    from dotenv import load_dotenv
+    # Look for .env in current directory and parent directories
+    env_path = Path(__file__).parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+        print(f"Loaded .env from {env_path}", file=sys.stderr)
+    else:
+        # Try current working directory
+        load_dotenv()
+        print("Loaded .env from current directory", file=sys.stderr)
+except ImportError:
+    print("python-dotenv not available, using system environment variables only", file=sys.stderr)
+
+# Now import modules that depend on environment variables
 from .logs import setup_logger
 from . import server
 from . import config
@@ -6,7 +26,6 @@ from .litellm import generate_config
 import os
 import uvicorn
 from uvicorn import Config
-import sys
 import subprocess
 import time
 
@@ -106,6 +125,14 @@ if __name__ == "__main__":
         mkcert_dir = Path.home() / ".vite-plugin-mkcert"
 
         if reload:
+            # Initialize Weave for dev mode since we bypass run_with_wandb()
+            if server.wandb_enabled:
+                import weave
+                # Ensure Weave prints call links to console
+                os.environ["WEAVE_PRINT_CALL_LINK"] = "true"
+                weave.init(os.getenv("WANDB_PROJECT", "openui-dev"))
+                print(f"Weave initialized for project: {os.getenv('WANDB_PROJECT', 'openui-dev')}", file=sys.stderr)
+            
             # TODO: hot reload wasn't working with the server approach, and ctrl-C doesn't
             # work with the uvicorn.run approach, so here we are
             uvicorn.run(

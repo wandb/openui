@@ -1,61 +1,102 @@
 import asyncio
-from contextlib import asynccontextmanager
-from fastapi.responses import (
-    StreamingResponse,
-    JSONResponse,
-    HTMLResponse,
-    FileResponse,
-    RedirectResponse,
-    Response,
-)
-from botocore.exceptions import ClientError
-from fastapi.routing import APIRouter
-from fastapi import FastAPI, Request, HTTPException, status
-from fastapi.staticfiles import StaticFiles
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
-from fastapi_sso.sso.github import GithubSSO
-from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime, timedelta
-import html
-import uuid
-import uvicorn
 import contextlib
-import requests
+import getpass
+import html
+import os
+import sys
 import threading
 import time
-import getpass
-from peewee import IntegrityError
-
-import weave
-from starlette.middleware.sessions import SessionMiddleware
-from .session import DBSessionStore, SessionData
-from .logs import logger
-from .models import count_tokens, ShareRequest, VoteRequest
-from .ollama import ollama_stream_generator, openai_to_ollama
-from .openai import openai_stream_generator
-from .dummy import DummyStreamGenerator
-from .db.models import User, Usage, Vote, Component
-from .util import storage
-from .util import get_git_user_email
-from . import config
-from pydantic import ValidationError
+import traceback
+import uuid
+from contextlib import asynccontextmanager
+from contextvars import copy_context
+from datetime import datetime, timedelta
 from multiprocessing import Queue
-from openai import AsyncOpenAI, APIStatusError, AsyncStream
-from openai.types.chat import (
-    ChatCompletionChunk,
-)
-from ollama import AsyncClient, ResponseError
 from pathlib import Path
 from typing import Optional
-import traceback
-import os
+
+import requests
+import uvicorn
+import weave
+from botocore.exceptions import ClientError
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
+                               RedirectResponse, Response, StreamingResponse)
+from fastapi.routing import APIRouter
+from fastapi.staticfiles import StaticFiles
+from fastapi_sso.sso.github import GithubSSO
+from ollama import AsyncClient, ResponseError
+from openai import APIStatusError, AsyncOpenAI, AsyncStream
+from openai.types.chat import ChatCompletionChunk
+from peewee import IntegrityError
+from pydantic import ValidationError
+from starlette.middleware.sessions import SessionMiddleware
+
+from . import config
+from .db.models import Component, Usage, User, Vote
+from .dummy import DummyStreamGenerator
+from .logs import logger
+from .models import ShareRequest, VoteRequest, count_tokens
+from .ollama import ollama_stream_generator, openai_to_ollama
+from .openai import openai_stream_generator
+from .session import DBSessionStore, SessionData
+from .util import get_git_user_email, storage
+
+
+# Check wandb authentication
+base_url = "https://api.wandb.ai"
+def check_wandb_auth():
+    global base_url
+    try:
+        from wandb.cli.cli import _get_cling_api
+        api = _get_cling_api()
+        base_url = api.settings("base_url")
+    except:
+        base_url = "https://api.wandb.ai"
+    auth = requests.utils.get_netrc_auth(base_url)
+    key = None
+    if auth:
+        key = auth[-1]
+    if os.getenv("WANDB_API_KEY"):
+        key = os.environ["WANDB_API_KEY"]
+    return key is not None
+
+wandb_enabled = check_wandb_auth()
+if wandb_enabled:
+    logger.info(f"WANDB_API_KEY found, enabling wandb for {base_url}")
+
+
+# Context middleware to propagate Weave context
+class WeaveContextMiddleware:
+    def __init__(self, app):
+        self.app = app
+        
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            # Ensure Weave context is available in request scope
+            context = copy_context()
+            return await context.run(self._handle_request, scope, receive, send)
+        return await self.app(scope, receive, send)
+    
+    async def _handle_request(self, scope, receive, send):
+        return await self.app(scope, receive, send)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.setLevel("DEBUG")
     logger.debug("Starting up server in %d...", os.getpid())
+    
+    # Initialize Weave once at startup
+    if wandb_enabled:
+        import weave
+        os.environ["WEAVE_PRINT_CALL_LINK"] = "true"
+        weave.init(os.getenv("WANDB_PROJECT", "openui-dev"))
+        print(f"Weave initialized for project: {os.getenv('WANDB_PROJECT', 'openui-dev')}", file=sys.stderr)
+    
     yield
     # any more cleanup here?
 
@@ -103,6 +144,112 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add the Weave context middleware
+app.add_middleware(WeaveContextMiddleware)
+
+# Ensure Weave prints call links to console
+import os
+if os.getenv("WEAVE_PRINT_CALL_LINK") is None:
+    os.environ["WEAVE_PRINT_CALL_LINK"] = "true"
+
+@weave.op()
+async def generate_ui_completion(data: dict, user_id: str, input_tokens: int):
+    """Generate UI completion using various LLM providers - traced by Weave"""
+    # Ensure Weave tracing is active in this context
+    # weave.init(os.getenv('WANDB_PROJECT', 'test-openui'))
+    # TODO: refactor all these blocks into one once Ollama supports vision
+    # OpenAI Models
+    if data.get("model").startswith("gpt"):
+        if data["model"] == "gpt-4" or data["model"] == "gpt-4-32k":
+            raise HTTPException(status=400, data="Model not supported")
+        response: AsyncStream[
+            ChatCompletionChunk
+        ] = await openai.chat.completions.create(
+            **data,
+        )
+        # gpt-4 tokens are 20x more expensive
+        multiplier = 20 if "gpt-4" in data["model"] else 1
+        return {
+            "response": response,
+            "generator": openai_stream_generator(response, input_tokens, user_id, multiplier),
+            "media_type": "text/event-stream"
+        }
+    # Groq Models
+    elif data.get("model").startswith("groq/"):
+        data["model"] = data["model"].replace("groq/", "")
+        if groq is None:
+            raise HTTPException(status=500, detail="Groq API key is not set.")
+        response: AsyncStream[
+            ChatCompletionChunk
+        ] = await groq.chat.completions.create(
+            **data,
+        )
+        return {
+            "response": response,
+            "generator": openai_stream_generator(response, input_tokens, user_id, 1),
+            "media_type": "text/event-stream"
+        }
+    # Litellm Models
+    elif data.get("model").startswith("litellm/"):
+        data["model"] = data["model"].replace("litellm/", "")
+        if litellm is None:
+            raise HTTPException(status=500, detail="LiteLLM API key is not set.")
+        response: AsyncStream[
+            ChatCompletionChunk
+        ] = await litellm.chat.completions.create(
+            **data,
+        )
+        return {
+            "response": response,
+            "generator": openai_stream_generator(response, input_tokens, user_id, 1),
+            "media_type": "text/event-stream"
+        }
+    # Ollama Time
+    elif data.get("model").startswith("ollama/"):
+        data["model"] = data["model"].replace("ollama/", "")
+        data.pop("max_tokens")
+        data["messages"] = openai_to_ollama(data)
+        ollama_vision_models = ["llava", "moondream"]
+        if any([data["model"].startswith(m) for m in ollama_vision_models]):
+            # The Ollama OpenAPI compatibility layer doesn't support images
+            # see: https://github.com/ollama/ollama/issues/3690
+            # TODO: remove this when it does or make it configurable
+            data["options"] = {
+                "temperature": data.pop("temperature", 0.7),
+            }
+            response = await ollama.chat(
+                **data,
+            )
+            gen = await ollama_stream_generator(response, data)
+            return {
+                "response": response,
+                "generator": gen,
+                "media_type": "text/event-stream"
+            }
+        else:
+            response: AsyncStream[
+                ChatCompletionChunk
+            ] = await ollama_openai.chat.completions.create(
+                **data,
+            )
+
+            def gen():
+                return openai_stream_generator(response, input_tokens, user_id, 0)
+
+            return {
+                "response": response,
+                "generator": gen(),
+                "media_type": "text/event-stream"
+            }
+    elif data.get("model").startswith("dummy"):
+        return {
+            "response": None,
+            "generator": DummyStreamGenerator(data),
+            "media_type": "text/event-stream"
+        }
+    
+    raise HTTPException(status=404, detail="Invalid model")
+
 
 @router.post("/v1/chat/completions", tags=["openui/chat"])
 @router.post(
@@ -129,83 +276,13 @@ async def chat_completions(
         input_tokens = count_tokens(data["messages"])
         # TODO: we always assume 4096 max tokens (random fudge factor here)
         data["max_tokens"] = 4096 - input_tokens - 20
-        # TODO: refactor all these blocks into one once Ollama supports vision
-        # OpenAI Models
-        if data.get("model").startswith("gpt"):
-            if data["model"] == "gpt-4" or data["model"] == "gpt-4-32k":
-                raise HTTPException(status=400, data="Model not supported")
-            response: AsyncStream[
-                ChatCompletionChunk
-            ] = await openai.chat.completions.create(
-                **data,
-            )
-            # gpt-4 tokens are 20x more expensive
-            multiplier = 20 if "gpt-4" in data["model"] else 1
-            return StreamingResponse(
-                openai_stream_generator(response, input_tokens, user_id, multiplier),
-                media_type="text/event-stream",
-            )
-        # Groq Models
-        elif data.get("model").startswith("groq/"):
-            data["model"] = data["model"].replace("groq/", "")
-            if groq is None:
-                raise HTTPException(status=500, detail="Groq API key is not set.")
-            response: AsyncStream[
-                ChatCompletionChunk
-            ] = await groq.chat.completions.create(
-                **data,
-            )
-            return StreamingResponse(
-                openai_stream_generator(response, input_tokens, user_id, 1),
-                media_type="text/event-stream",
-            )
-        # Litellm Models
-        elif data.get("model").startswith("litellm/"):
-            data["model"] = data["model"].replace("litellm/", "")
-            if litellm is None:
-                raise HTTPException(status=500, detail="LiteLLM API key is not set.")
-            response: AsyncStream[
-                ChatCompletionChunk
-            ] = await litellm.chat.completions.create(
-                **data,
-            )
-            return StreamingResponse(
-                openai_stream_generator(response, input_tokens, user_id, 1),
-                media_type="text/event-stream",
-            )
-        # Ollama Time
-        elif data.get("model").startswith("ollama/"):
-            data["model"] = data["model"].replace("ollama/", "")
-            data.pop("max_tokens")
-            data["messages"] = openai_to_ollama(data)
-            ollama_vision_models = ["llava", "moondream"]
-            if any([data["model"].startswith(m) for m in ollama_vision_models]):
-                # The Ollama OpenAPI compatibility layer doesn't support images
-                # see: https://github.com/ollama/ollama/issues/3690
-                # TODO: remove this when it does or make it configurable
-                data["options"] = {
-                    "temperature": data.pop("temperature", 0.7),
-                }
-                response = await ollama.chat(
-                    **data,
-                )
-                gen = await ollama_stream_generator(response, data)
-            else:
-                response: AsyncStream[
-                    ChatCompletionChunk
-                ] = await ollama_openai.chat.completions.create(
-                    **data,
-                )
-
-                def gen():
-                    return openai_stream_generator(response, input_tokens, user_id, 0)
-
-            return StreamingResponse(gen(), media_type="text/event-stream")
-        elif data.get("model").startswith("dummy"):
-            return StreamingResponse(
-                DummyStreamGenerator(data), media_type="text/event-stream"
-            )
-        raise HTTPException(status=404, detail="Invalid model")
+        
+        # Call the traced function
+        result = await generate_ui_completion(data, user_id, input_tokens)
+        return StreamingResponse(
+            result["generator"],
+            media_type=result["media_type"],
+        )
     except (ResponseError, APIStatusError) as e:
         traceback.print_exc()
         logger.exception("Known Error: %s", str(e))
@@ -582,27 +659,6 @@ def spa(full_path: str):
     return HTMLResponse((dist_dir / "index.html").read_bytes())
 
 
-base_url = "https://api.wandb.ai"
-def check_wandb_auth():
-    global base_url
-    try:
-        from wandb.cli.cli import _get_cling_api
-        api = _get_cling_api()
-        base_url = api.settings("base_url")
-    except:
-        base_url = "https://api.wandb.ai"
-    auth = requests.utils.get_netrc_auth(base_url)
-    key = None
-    if auth:
-        key = auth[-1]
-    if os.getenv("WANDB_API_KEY"):
-        key = os.environ["WANDB_API_KEY"]
-    return key is not None
-
-
-wandb_enabled = check_wandb_auth()
-if wandb_enabled:
-    logger.info(f"WANDB_API_KEY found, enabling wandb for {base_url}")
 
 class Server(uvicorn.Server):
     # TODO: this still isn't working for some reason, can't ctrl-c when not in dev mode
