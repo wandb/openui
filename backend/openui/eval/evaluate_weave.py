@@ -114,19 +114,21 @@ class OpenUIModel(PromptModel):
     @property
     def client(self):
         if self.model_name.startswith("ollama/"):
-            return AsyncOpenAI(base_url="http://localhost:11434/v1")
+            return AsyncOpenAI(base_url="http://localhost:11434/v1", timeout=60.0)
         if self.model_name.startswith("litellm/"):
             return AsyncOpenAI(
                 api_key=os.getenv("LITELLM_API_KEY", "xxx"),
                 base_url=os.getenv("LITELLM_BASE_URL", "http://0.0.0.0:4000"),
+                timeout=60.0,
             )
         if self.model_name.startswith("fireworks/"):
             return AsyncOpenAI(
                 api_key=os.getenv("FIREWORKS_API_KEY"),
                 base_url="https://api.fireworks.ai/inference/v1",
+                timeout=60.0,
             )
         else:
-            return AsyncOpenAI()
+            return AsyncOpenAI(timeout=60.0)
 
     @property
     def model(self):
@@ -284,7 +286,7 @@ class OpenUIScoringModel(Model):
 
     @weave.op()
     async def predict(self, prompt: str, prediction: dict) -> dict:
-        client = AsyncOpenAI()
+        client = AsyncOpenAI(timeout=60.0)
 
         user_message = f"""{prompt}
 ---

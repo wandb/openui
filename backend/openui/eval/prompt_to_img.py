@@ -118,8 +118,8 @@ if __name__ == "__main__":
         model = "gpt-3.5-turbo"
     if model.startswith("ollama/"):
         model = model.replace("ollama/", "")
-        openai = AsyncOpenAI(base_url="http://localhost:11434/v1")
+        openai = AsyncOpenAI(base_url="http://localhost:11434/v1", timeout=60.0)
     else:
-        openai = AsyncOpenAI()
+        openai = AsyncOpenAI(timeout=60.0)
 
     asyncio.run(main(model))

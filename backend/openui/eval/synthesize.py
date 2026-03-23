@@ -4,7 +4,7 @@ import asyncio
 
 from openai import AsyncOpenAI
 
-openai = AsyncOpenAI()
+openai = AsyncOpenAI(timeout=60.0)
 
 SYSTEM_PROMPT = """You're a fun and creative web developer. Given a description and name of a component, I want a list of json that contain "emoji", "name", and "prompt" properties.  At least 3-5 but upto 10.  The "emoji" should represent the idea of the component and the question should be what a user would ask for, i.e.
 

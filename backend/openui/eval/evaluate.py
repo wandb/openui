@@ -48,7 +48,7 @@ class EvaluateQualityModel(Model):
 
         pt("Actually predicting", input["emoji"], input["name"] + ":", input["prompt"])
         pt("Desktop:", input["desktop_img"], "Mobile:", input["mobile_img"])
-        client = OpenAI()
+        client = OpenAI(timeout=60.0)
         user_message = f"""{input['prompt']}
 ---
 name: {input['name']}

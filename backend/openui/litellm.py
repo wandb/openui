@@ -101,6 +101,7 @@ def generate_config():
         client = openai.OpenAI(
             api_key=os.getenv("OPENAI_COMPATIBLE_API_KEY"),
             base_url=os.getenv("OPENAI_COMPATIBLE_ENDPOINT"),
+            timeout=60.0,
         )
         try:
             for model in client.models.list().data:
