@@ -69,7 +69,7 @@ app = FastAPI(
     description="API for proxying LLM requests to different services",
 )
 
-openai = AsyncOpenAI(base_url=config.OPENAI_BASE_URL, api_key=config.OPENAI_API_KEY, timeout=60.0)
+openai = AsyncOpenAI(base_url=config.OPENAI_BASE_URL, api_key=config.OPENAI_API_KEY, timeout=60.0, max_retries=3)
 
 litellm = AsyncOpenAI(
     api_key=config.LITELLM_API_KEY,
@@ -78,12 +78,12 @@ litellm = AsyncOpenAI(
 )
 
 if config.GROQ_API_KEY is not None:
-    groq = AsyncOpenAI(base_url=config.GROQ_BASE_URL, api_key=config.GROQ_API_KEY, timeout=60.0)
+    groq = AsyncOpenAI(base_url=config.GROQ_BASE_URL, api_key=config.GROQ_API_KEY, timeout=60.0, max_retries=3)
 else:
     groq = None
 
 ollama = AsyncClient()
-ollama_openai = AsyncOpenAI(base_url=config.OLLAMA_HOST + "/v1", api_key="xxx", timeout=60.0)
+ollama_openai = AsyncOpenAI(base_url=config.OLLAMA_HOST + "/v1", api_key="xxx", timeout=60.0, max_retries=3)
 router = APIRouter()
 session_store = DBSessionStore()
 github_sso = GithubSSO(

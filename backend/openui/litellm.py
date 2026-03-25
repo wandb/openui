@@ -102,6 +102,7 @@ def generate_config():
             api_key=os.getenv("OPENAI_COMPATIBLE_API_KEY"),
             base_url=os.getenv("OPENAI_COMPATIBLE_ENDPOINT"),
             timeout=60.0,
+        max_retries=3,
         )
         try:
             for model in client.models.list().data:
