@@ -28,7 +28,7 @@ class EvaluateQualityModel(Model):
     async def predict(self, input: dict) -> dict:
         from openai import OpenAI
 
-        client = OpenAI()
+        client = OpenAI(timeout=60.0, max_retries=3)
         user_message = f"""prompt: {input['prompt']}
 name: {input['name']}
 emoji: {input['emoji']}
