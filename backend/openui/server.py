@@ -25,6 +25,7 @@ import requests
 import threading
 import time
 import getpass
+import sys
 from peewee import IntegrityError
 
 import weave
@@ -619,7 +620,16 @@ class Server(uvicorn.Server):
     def run_with_wandb(self):
         if wandb_enabled:
             weave.init(os.getenv("WANDB_PROJECT", "openui-dev"))
-        self.run()
+        try:
+            self.run()
+        except OSError as e:
+            if "address already in use" in str(e).lower():
+                logger.error(f"Port {self.config.port} is already in use. Please try a different port or wait for the existing process to terminate.")
+                logger.error(f"You can set a different port using the PORT environment variable.")
+                sys.exit(1)
+            else:
+                # Re-raise if it's not a port binding issue
+                raise
 
     @contextlib.contextmanager
     def run_in_thread(self):
