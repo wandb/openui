@@ -1,6 +1,6 @@
 import type { Monaco } from '@monaco-editor/react'
 import Editor, { loader } from '@monaco-editor/react'
-import { useThrottle, useVersion } from 'hooks'
+import { useThrottle, useVersion, useUIActions } from 'hooks'
 import { useAtom, useAtomValue } from 'jotai'
 import anysphere from 'lib/anysphere'
 import { mimeTypeAndExtension } from 'lib/utils'
@@ -8,7 +8,7 @@ import type { Position, editor } from 'monaco-editor'
 import { configureMonacoTailwindcss, tailwindcssData } from 'monaco-tailwindcss'
 import type { Plugin } from 'prettier'
 import prettierPluginEstree from 'prettier/plugins/estree'
-import { useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
 	ItemWrapper,
@@ -17,7 +17,6 @@ import {
 	useSaveHistory,
 	type Framework
 } from 'state'
-import CurrentUiContext from './CurrentUiContext'
 
 import 'monaco-editor/esm/vs/basic-languages/css/css.contribution'
 import 'monaco-editor/esm/vs/basic-languages/html/html.contribution'
@@ -112,7 +111,7 @@ export default function CodeEditor({
 	const printWidth = 200
 	const params = useParams()
 	const id = params.id ?? 'new'
-	const uiContext = useContext(CurrentUiContext)
+	const { updateState } = useUIActions()
 	const [readOnly, setReadOnly] = useState(framework !== 'html')
 	const editor = useRef<editor.IStandaloneCodeEditor>()
 
@@ -193,7 +192,7 @@ export default function CodeEditor({
 		clearTimeout(bufferTimer.current)
 		if (bufferedCode !== '') {
 			bufferTimer.current = setTimeout(() => {
-				uiContext.emit('ui-state', { editedHTML: bufferedCode })
+				updateState({ editedHTML: bufferedCode })
 				item.editChapter(bufferedCode, versionIdx)
 			}, 2000)
 		}
