@@ -2,3 +2,6 @@
 nohup.out
 .cache/
 .env
+.husky
+.deactivated-husky
+backend/server.log
