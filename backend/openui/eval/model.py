@@ -18,7 +18,6 @@ def data_url(file_path):
 base_dir = Path(__file__).parent / "components"
 
 
-@weave.type()
 class EvaluateQualityModel(Model):
     system_message: str
     model_name: str = "gpt-4-vision-preview"
