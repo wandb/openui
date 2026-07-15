@@ -15,9 +15,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi_sso.sso.github import GithubSSO
+from fastapi_sso import SSOLoginError
+from oauthlib.oauth2 import OAuth2Error
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 import html
+import json
 import uuid
 import uvicorn
 import contextlib
@@ -25,7 +28,7 @@ import requests
 import threading
 import time
 import getpass
-from peewee import IntegrityError
+from peewee import IntegrityError, PeeweeException
 
 import weave
 from starlette.middleware.sessions import SessionMiddleware
@@ -35,7 +38,21 @@ from .models import count_tokens, ShareRequest, VoteRequest
 from .ollama import ollama_stream_generator, openai_to_ollama
 from .openai import openai_stream_generator
 from .dummy import DummyStreamGenerator
-from .db.models import User, Usage, Vote, Component
+from .db.models import User, Usage, Vote, Component, database
+from .github_auth import (
+    OAuthStateError,
+    begin_github_oauth,
+    complete_github_oauth,
+)
+from .copilot.token_store import InvalidGitHubUserToken
+from .copilot import (
+    CopilotClientRegistry,
+    CopilotProvider,
+    CopilotProviderError,
+    OAuthTokenStore,
+    TokenCipher,
+    openai_sse_stream,
+)
 from .util import storage
 from .util import get_git_user_email
 from . import config
@@ -56,8 +73,35 @@ import os
 async def lifespan(app: FastAPI):
     logger.setLevel("DEBUG")
     logger.debug("Starting up server in %d...", os.getpid())
-    yield
-    # any more cleanup here?
+    app.state.oauth_token_store = None
+    app.state.copilot_registry = None
+    app.state.copilot_provider = None
+
+    registry = None
+    try:
+        if config.COPILOT_ENABLED:
+            cipher = TokenCipher.from_config(
+                config.require_copilot_encryption_key()
+            )
+            token_store = OAuthTokenStore(cipher)
+            registry = CopilotClientRegistry(
+                idle_seconds=config.COPILOT_CLIENT_IDLE_SECONDS,
+                sweep_seconds=config.COPILOT_CLIENT_SWEEP_SECONDS,
+            )
+            provider = CopilotProvider(
+                registry,
+                token_store,
+                response_timeout_seconds=config.COPILOT_RESPONSE_TIMEOUT_SECONDS,
+            )
+            await registry.start()
+            app.state.oauth_token_store = token_store
+            app.state.copilot_registry = registry
+            app.state.copilot_provider = provider
+
+        yield
+    finally:
+        if registry is not None:
+            await registry.close()
 
 
 queue: Optional[Queue] = None
@@ -85,9 +129,22 @@ ollama = AsyncClient()
 ollama_openai = AsyncOpenAI(base_url=config.OLLAMA_HOST + "/v1", api_key="xxx")
 router = APIRouter()
 session_store = DBSessionStore()
-github_sso = GithubSSO(
-    config.GITHUB_CLIENT_ID, config.GITHUB_CLIENT_SECRET, f"{config.HOST}/v1/callback"
-)
+
+
+def github_callback_url() -> str:
+    return f"{config.HOST.rstrip('/')}/v1/callback"
+
+
+def github_sso_factory() -> GithubSSO:
+    return GithubSSO(
+        config.GITHUB_CLIENT_ID,
+        config.GITHUB_CLIENT_SECRET,
+        github_callback_url(),
+    )
+
+
+app.state.github_sso_factory = github_sso_factory
+app.state.oauth_token_store = None
 
 app.add_middleware(
     SessionMiddleware,
@@ -102,6 +159,49 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Upper bound on a chat-completion request body. The image parser's
+# encoded/decoded limits only run *after* the JSON (and any embedded image
+# data URL) has been materialized, so an unbounded ``request.json()`` would
+# buffer an attacker-sized payload first. This cap is enforced for every
+# provider because the model -- and therefore its per-image limits -- cannot
+# be known until the body is parsed. 20 MiB comfortably covers a legitimate
+# screenshot data URL while bounding memory use.
+MAX_CHAT_REQUEST_BODY_BYTES = 20 * 1024 * 1024
+
+
+async def read_bounded_body(request: Request, max_bytes: int) -> bytes:
+    """Read the full request body, rejecting anything larger than ``max_bytes``.
+
+    A valid, over-limit ``Content-Length`` is rejected up front as an
+    optimization, but enforcement never trusts the header alone: the actual
+    streamed ASGI bytes are counted so a chunked, missing, or lying
+    ``Content-Length`` cannot bypass the limit. At most ``max_bytes`` bytes are
+    ever held in memory -- a chunk that would cross the limit is refused before
+    it is appended.
+    """
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            declared = int(content_length)
+        except ValueError:
+            declared = None
+        if declared is not None and declared > max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail="Request body is too large.",
+            )
+
+    body = bytearray()
+    async for chunk in request.stream():
+        if len(body) + len(chunk) > max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail="Request body is too large.",
+            )
+        body.extend(chunk)
+    return bytes(body)
 
 
 @router.post("/v1/chat/completions", tags=["openui/chat"])
@@ -125,10 +225,34 @@ async def chat_completions(
             detail="You've exceeded our usage quota, come back tomorrow to generate more UI.",
         )
     try:
-        data = await request.json()  # chat_request.model_dump(exclude_unset=True)
+        raw_body = await read_bounded_body(request, MAX_CHAT_REQUEST_BODY_BYTES)
+        data = json.loads(raw_body)  # chat_request.model_dump(exclude_unset=True)
         input_tokens = count_tokens(data["messages"])
         # TODO: we always assume 4096 max tokens (random fudge factor here)
         data["max_tokens"] = 4096 - input_tokens - 20
+        # Copilot models route before every existing provider branch and must
+        # never silently fall back to another provider.
+        model = data.get("model")
+        if isinstance(model, str) and model.startswith("copilot/"):
+            provider = request.app.state.copilot_provider
+            if provider is None:
+                raise CopilotProviderError(
+                    503,
+                    "copilot_disabled",
+                    "GitHub Copilot is not enabled on this OpenUI server.",
+                )
+            generation = await provider.start_generation(user_id, data)
+            return StreamingResponse(
+                openai_sse_stream(
+                    generation,
+                    request.is_disconnected,
+                ),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                },
+            )
         # TODO: refactor all these blocks into one once Ollama supports vision
         # OpenAI Models
         if data.get("model").startswith("gpt"):
@@ -237,6 +361,22 @@ async def validation_exception_handler(
     )
 
 
+@app.exception_handler(CopilotProviderError)
+async def copilot_exception_handler(
+    request: Request,
+    exc: CopilotProviderError,
+):
+    logger.warning(
+        "Copilot request failed code=%s correlation_id=%s",
+        exc.code,
+        exc.correlation_id,
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.to_payload()},
+    )
+
+
 @app.exception_handler(ClientError)
 async def boto3_error_handler(request: Request, exc: ClientError):
     logger.exception("Boto3 Error: %s", exc)
@@ -302,60 +442,136 @@ class SessionUpdate(Message):
 async def login(
     request: Request,
 ):
-    with github_sso:
-        return await github_sso.get_login_redirect(
-            redirect_uri=f"{config.HOST}/v1/callback"
+    state = begin_github_oauth(
+        request.session,
+        request.query_params.get("redirect"),
+    )
+    redirect_uri = github_callback_url()
+    async with request.app.state.github_sso_factory() as sso:
+        return await sso.get_login_redirect(
+            redirect_uri=redirect_uri,
+            state=state,
         )
 
 
 @router.get("/v1/callback", tags="openui/oauth")
-async def callback(request: Request, error: str = "", error_description: str = ""):
+async def callback(request: Request):
     try:
-        # if we've been given an error
-        if error != "":
-            logger.error("Oauth Error (%s): %s", error, error_description)
-            message = "An error occurred when attempting to login with GitHub, please try again."
-            if error == "bad_verification_code":
-                message = "The code passed is incorrect or expired."
-            elif error == "unverified_user_email":
-                message = "You must verify your email address with GitHub to login."
-            elif error == "redirect_uri_mismatch":
-                message = "GitHub is not configured with the appropriate redirect url."
-            elif error == "incorrect_client_credentials":
-                message = "The application is not configured to login with GitHub, invalid client credentials"
-            elif error == "application_suspended":
-                message = "This application has been suspended by GitHub and can't accept new logins."
-            elif error == "access_denied":
-                message = "You've denied us access to verify your email with GitHub."
-            raise ValueError(message)
-        with github_sso:
-            id_token = await github_sso.verify_and_process(request)
-        # TODO: should probably key off email / update info
-        user = User.get_or_none(User.username == id_token.display_name)
-        if user is None:
-            user_id = uuid.uuid4()
-            user = User.create(
-                id=user_id.bytes,
-                username=id_token.display_name,
-                email=id_token.email,
-                created_at=datetime.now(),
-            )
-            user.id = user_id
-        elif not user.email:
-            user.email = id_token.email
-            user.save()
-        request.session["session_id"] = session_store.generate_session_id()
-        request.session["user_id"] = str(user.id)
-        session_store.write(
-            request.session["session_id"],
-            str(user.id),
-            SessionData(username=user.username, token_count=0),
+        redirect = complete_github_oauth(
+            request.session,
+            request.query_params.get("state"),
         )
-        return RedirectResponse(url="/ai/new")
-    except Exception as e:
-        response = RedirectResponse(url="/ai/new")
-        response.set_cookie("error", str(e))
+    except OAuthStateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    oauth_error = request.query_params.get("error")
+    if oauth_error is not None:
+        messages = {
+            "bad_verification_code": "The GitHub login code is incorrect or expired.",
+            "unverified_user_email": (
+                "Verify your GitHub email address before signing in."
+            ),
+            "redirect_uri_mismatch": (
+                "GitHub OAuth is not configured with this callback URL."
+            ),
+            "incorrect_client_credentials": (
+                "The GitHub OAuth client credentials are invalid."
+            ),
+            "application_suspended": (
+                "This GitHub OAuth application is suspended."
+            ),
+            "access_denied": "GitHub sign-in was cancelled.",
+        }
+        response = RedirectResponse(redirect, status_code=303)
+        response.set_cookie(
+            "error",
+            messages.get(
+                oauth_error,
+                "GitHub sign-in failed. Please try again.",
+            ),
+        )
         return response
+
+    redirect_uri = github_callback_url()
+    try:
+        async with request.app.state.github_sso_factory() as sso:
+            github_user = await sso.verify_and_process(
+                request,
+                redirect_uri=redirect_uri,
+            )
+            access_token = sso.access_token
+    except (SSOLoginError, OAuth2Error):
+        # fastapi-sso surfaces provider/oauthlib failures either as its own
+        # SSOLoginError or as a raw oauthlib OAuth2Error (whose str carries the
+        # provider-supplied description). Map both to the same safe message so
+        # no provider detail reaches the browser, logs, or the global handler.
+        logger.warning("GitHub OAuth token exchange failed")
+        response = RedirectResponse(redirect, status_code=303)
+        response.set_cookie(
+            "error",
+            "GitHub sign-in failed. Please try again.",
+        )
+        return response
+
+    if github_user is None or github_user.display_name is None:
+        raise HTTPException(status_code=401, detail="GitHub login failed")
+
+    token_store = request.app.state.oauth_token_store
+    if token_store is not None and access_token is None:
+        raise HTTPException(
+            status_code=401,
+            detail="GitHub did not return a user access token",
+        )
+
+    # Create/update the user and persist the encrypted token in a single
+    # transaction so a rejected token or a persistence consistency failure
+    # rolls back any user/email change rather than leaving partial account
+    # state behind.
+    try:
+        with database.atomic():
+            user = User.get_or_none(User.username == github_user.display_name)
+            if user is None:
+                user_id = uuid.uuid4()
+                user = User.create(
+                    id=user_id.bytes,
+                    username=github_user.display_name,
+                    email=github_user.email,
+                    created_at=datetime.now(),
+                )
+                user.id = user_id
+            elif github_user.email and user.email != github_user.email:
+                user.email = github_user.email
+                user.save()
+
+            if token_store is not None:
+                token_store.set(str(user.id), access_token)
+    except InvalidGitHubUserToken as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except LookupError:
+        # The user row expected by token persistence was missing after the
+        # write in the same transaction -- an internal consistency failure.
+        # Log a fixed message (no user id, DB detail, or exception text) and
+        # return a fixed safe error so nothing sensitive reaches the browser
+        # or the generic handler.
+        logger.error("GitHub OAuth token persistence consistency failure")
+        raise HTTPException(
+            status_code=500,
+            detail="GitHub sign-in could not be completed.",
+        )
+
+    request.session["session_id"] = session_store.generate_session_id()
+    request.session["user_id"] = str(user.id)
+    session_store.write(
+        request.session["session_id"],
+        str(user.id),
+        SessionData(
+            username=user.username,
+            email=user.email,
+            token_count=0,
+            max_tokens=config.MAX_TOKENS,
+        ),
+    )
+    return RedirectResponse(redirect, status_code=303)
 
 
 @router.post(
@@ -427,24 +643,59 @@ async def get_litellm_models():
         return []
 
 
+async def get_copilot_models(request: Request):
+    provider = request.app.state.copilot_provider
+    if provider is None:
+        return [], {"state": "disabled", "message": None}
+    user_id = request.session.get("user_id")
+    if user_id is None:
+        return [], {
+            "state": "signed_out",
+            "message": "Sign in with GitHub to use Copilot.",
+        }
+    try:
+        models = await provider.list_models(user_id)
+        return [model.to_api() for model in models], {
+            "state": "connected",
+            "message": None,
+        }
+    except CopilotProviderError as exc:
+        states = {
+            401: "reauthenticate",
+            403: "no_entitlement",
+            429: "rate_limited",
+        }
+        return [], {
+            "state": states.get(exc.status_code, "unavailable"),
+            "message": exc.detail,
+        }
+
+
 @router.get("/v1/models", tags="openui/models")
-async def models():
+async def models(request: Request):
     tasks = [
         get_openai_models(),
         get_groq_models(),
         get_ollama_models(),
         get_litellm_models(),
+        get_copilot_models(request),
     ]
-    openai_models, groq_models, ollama_models, litellm_models = await asyncio.gather(
-        *tasks
-    )
+    (
+        openai_models,
+        groq_models,
+        ollama_models,
+        litellm_models,
+        (copilot_models, copilot_status),
+    ) = await asyncio.gather(*tasks)
     return {
         "models": {
             "openai": openai_models,
             "groq": groq_models,
             "ollama": ollama_models,
             "litellm": litellm_models,
-        }
+            "copilot": copilot_models,
+        },
+        "copilot_status": copilot_status,
     }
 
 
@@ -508,8 +759,47 @@ async def delete_session(
     session_id = request.session.get("session_id")
     if session_id is None:
         raise HTTPException(status_code=404, detail="No session found")
-    request.session.pop("session_id")
-    request.session.pop("user_id")
+    user_id = request.session.get("user_id")
+    token_store = request.app.state.oauth_token_store
+    registry = request.app.state.copilot_registry
+    cleanup_failed = False
+    try:
+        if user_id is not None:
+            try:
+                if token_store is not None:
+                    token_store.delete(user_id)
+            except (ValueError, PeeweeException):
+                # A malformed user id or a database failure must not leak its
+                # raw message to the client or abort the sign-out. Record the
+                # event without the exception detail and still clear the
+                # browser session.
+                logger.error("Failed to clear stored OAuth token during logout")
+                cleanup_failed = True
+            try:
+                if registry is not None:
+                    await registry.invalidate(user_id)
+            except Exception:
+                # Runtime client teardown must never leak details or skip the
+                # remaining sign-out steps. Record it safely and still clear
+                # the browser session below.
+                logger.error(
+                    "Failed to invalidate Copilot client during logout"
+                )
+                cleanup_failed = True
+    finally:
+        request.session.clear()
+    if cleanup_failed:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "error": {
+                    "code": "logout_cleanup_failed",
+                    "message": (
+                        "Sign-out completed but clearing stored credentials failed."
+                    ),
+                }
+            },
+        )
     return JSONResponse(
         content={},
         status_code=200,

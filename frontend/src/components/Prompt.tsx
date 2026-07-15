@@ -1,4 +1,5 @@
 import { convert, createOrRefine, systemPrompt, type Action } from 'api/openai'
+import { formatGenerationError } from 'api/errors'
 import { Tooltip, TooltipContent, TooltipTrigger } from 'components/ui/tooltip'
 import { useThrottle, useVersion } from 'hooks'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
@@ -166,7 +167,7 @@ export default function Prompt({
 					setScreenshot('')
 					setLiveMarkdown('')
 					console.error(error)
-					let { message } = error as Error
+					let message = formatGenerationError(error)
 					// Ollama vision error
 					if (
 						message.includes('Object of type bytes is not JSON serializable')

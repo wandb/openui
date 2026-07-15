@@ -9,6 +9,7 @@ from peewee import (
     DateTimeField,
     ForeignKeyField,
     OperationalError,
+    TextField,
     fn,
 )
 import uuid
@@ -42,6 +43,7 @@ class User(BaseModel):
     username = CharField(unique=True)
     email = CharField(null=True)
     created_at = DateTimeField()
+    github_oauth_token = TextField(null=True)
 
 
 class Credential(BaseModel):
@@ -113,27 +115,36 @@ class Usage(BaseModel):
         )
 
 
-CURRENT_VERSION = "2024-05-14"
+CURRENT_VERSION = "2026-07-14"
 
 
-def alter(schema: SchemaMigration, ops: list[list], version: str) -> bool:
+class SchemaMigrationError(RuntimeError):
+    """Raised when the OpenUI database schema cannot be migrated safely.
+
+    Covers both a failed ``ALTER TABLE`` (propagated from the underlying
+    :class:`OperationalError`) and an unrecognized/unsupported schema
+    version that no migration branch handles. Either case must stop
+    startup rather than silently leaving the database on a stale schema.
+    """
+
+
+def alter(schema: SchemaMigration, ops: list[list], version: str) -> None:
     try:
         migrate(*ops)
-    except OperationalError as e:
-        print("Migration failed", e)
-        return False
+    except OperationalError as exc:
+        raise SchemaMigrationError(
+            f"Failed to migrate OpenUI database schema to version {version}"
+        ) from exc
     schema.version = version
     schema.save()
-    print(f"Migrated {version}")
-    return version != CURRENT_VERSION
 
 
-def perform_migration(schema: SchemaMigration) -> bool:
+def perform_migration(schema: SchemaMigration) -> None:
     if schema.version == "2024-03-08":
         version = "2024-03-12"
         aaguid = CharField(null=True)
         user_verified = BooleanField(default=False)
-        altered = alter(
+        alter(
             schema,
             [
                 migrator.add_column("credential", "aaguid", aaguid),
@@ -141,24 +152,55 @@ def perform_migration(schema: SchemaMigration) -> bool:
             ],
             version,
         )
-        if altered:
-            perform_migration(schema)
+        perform_migration(schema)
+        return
     if schema.version == "2024-03-12":
         version = "2024-05-14"
         database.create_tables([Vote])
         schema.version = version
         schema.save()
-        if version != CURRENT_VERSION:
-            perform_migration(schema)
+        perform_migration(schema)
+        return
+    if schema.version == "2024-05-14":
+        version = "2026-07-14"
+        alter(
+            schema,
+            [
+                migrator.add_column(
+                    "user",
+                    "github_oauth_token",
+                    TextField(null=True),
+                )
+            ],
+            version,
+        )
+        perform_migration(schema)
+        return
+    if schema.version != CURRENT_VERSION:
+        raise SchemaMigrationError(
+            f"OpenUI database schema version {schema.version!r} is not supported"
+        )
 
 
-def ensure_migrated():
-    if not config.DB.exists():
+def ensure_migrated() -> None:
+    if not SchemaMigration.table_exists():
         database.create_tables(
             [User, Credential, Session, Component, SchemaMigration, Usage, Vote]
         )
         SchemaMigration.create(version=CURRENT_VERSION)
-    else:
+        return
+
+    schema = SchemaMigration.select().first()
+    if schema is None:
+        raise RuntimeError("OpenUI database has no schema migration version")
+    if schema.version != CURRENT_VERSION:
+        perform_migration(schema)
+        # Defense in depth: perform_migration raises on any failure or
+        # unsupported version, but re-check here so ensure_migrated() can
+        # never return while the schema is still stale, even if a future
+        # migration branch is added that forgets to do so itself.
         schema = SchemaMigration.select().first()
-        if schema.version != CURRENT_VERSION:
-            perform_migration(schema)
+        if schema is None or schema.version != CURRENT_VERSION:
+            raise SchemaMigrationError(
+                "OpenUI database migration did not reach the current schema version"
+            )

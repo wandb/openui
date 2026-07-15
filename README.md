@@ -102,6 +102,22 @@ If you have your OPENAI_API_KEY set in the environment already, just remove `=xx
 
 *If you make changes to the frontend or backend, you'll need to run `docker-compose build` to have them reflected in the service.*
 
+### GitHub Copilot
+
+This fork can use GitHub Copilot as an additional provider for text-to-UI and
+screenshot-to-UI generation. It uses the official Copilot SDK and the signed-in
+user's GitHub OAuth token; it does not turn Copilot into a public
+OpenAI-compatible API.
+
+- Existing OpenAI, Groq, Ollama, and LiteLLM providers remain available.
+- Copilot sessions run in SDK `empty` mode with no tools, shell, filesystem,
+  MCP servers, skills, plugins, or persistent conversation.
+- GitHub tokens remain server-side and are encrypted at rest.
+- Every user needs their own Copilot entitlement.
+- A real-account smoke test is manual because it uses the account's allowance.
+
+See [`backend/README.md`](backend/README.md#github-copilot-provider) for setup.
+
 ## Development
 
 A [dev container](https://github.com/wandb/openui/blob/main/.devcontainer/devcontainer.json) is configured in this repository which is the quickest way to get started.

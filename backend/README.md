@@ -66,3 +66,47 @@ Create a service account with the appropriate permissions and authenticate with:
 ```
 gcloud auth application-default login --impersonate-service-account ${GCLOUD_SERVICE_ACCOUNT}@${GCLOUD_PROJECT}.iam.gserviceaccount.com
 ```
+
+## GitHub Copilot provider
+
+Copilot support is optional and disabled by default. Each OpenUI user signs in
+with GitHub and uses their own Copilot entitlement and allowance.
+
+1. Create a GitHub OAuth App with:
+   - Homepage URL: `http://localhost:7878`
+   - Authorization callback URL: `http://localhost:7878/v1/callback`
+2. Generate the token-encryption key once:
+
+   ```bash
+   python -c "import base64,secrets; print('v1:' + base64.urlsafe_b64encode(secrets.token_bytes(32)).decode().rstrip('='))"
+   ```
+
+3. Set the environment without committing these values:
+
+   ```bash
+   export OPENUI_COPILOT_ENABLED=1
+   export OPENUI_TOKEN_ENCRYPTION_KEY='v1:<generated-base64url-key>'
+   export GITHUB_CLIENT_ID='<oauth-app-client-id>'
+   export GITHUB_CLIENT_SECRET='<oauth-app-client-secret>'
+   export OPENUI_HOST='http://localhost:7878'
+   ```
+
+4. Install and provision the pinned runtime, then start OpenUI:
+
+   ```bash
+   uv sync --frozen --extra test
+   uv run python -m copilot download-runtime
+   uv run python -m openui
+   ```
+
+Open `http://localhost:7878`, sign in with GitHub, and choose a model under
+**GitHub Copilot**. No special OAuth scope named `copilot` is required. The
+GitHub account must have an active Copilot entitlement.
+
+`OPENUI_TOKEN_ENCRYPTION_KEY` encrypts OAuth tokens stored in SQLite. Back it up
+securely: changing or losing it makes existing stored tokens unusable and users
+must reconnect GitHub.
+
+The Copilot SDK currently controls model inference settings. OpenUI's
+temperature slider and `max_tokens` request field are not applied to Copilot
+SDK 1.0.6 sessions.

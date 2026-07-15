@@ -67,3 +67,34 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 LITELLM_API_KEY = os.getenv("LITELLM_API_KEY", os.getenv("LITELLM_MASTER_KEY"))
 LITELLM_BASE_URL = os.getenv("LITELLM_BASE_URL", "http://0.0.0.0:4000")
 PORT = int(os.getenv("PORT", 7878))
+
+
+def env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+COPILOT_ENABLED = env_bool("OPENUI_COPILOT_ENABLED")
+COPILOT_TOKEN_ENCRYPTION_KEY = os.getenv("OPENUI_TOKEN_ENCRYPTION_KEY")
+COPILOT_HOME = Path(
+    os.getenv("OPENUI_COPILOT_HOME", str(Path(DB).parent / "copilot"))
+)
+COPILOT_CLIENT_IDLE_SECONDS = float(
+    os.getenv("OPENUI_COPILOT_CLIENT_IDLE_SECONDS", "900")
+)
+COPILOT_CLIENT_SWEEP_SECONDS = float(
+    os.getenv("OPENUI_COPILOT_CLIENT_SWEEP_SECONDS", "60")
+)
+COPILOT_RESPONSE_TIMEOUT_SECONDS = float(
+    os.getenv("OPENUI_COPILOT_RESPONSE_TIMEOUT_SECONDS", "120")
+)
+
+
+def require_copilot_encryption_key() -> str:
+    if not COPILOT_TOKEN_ENCRYPTION_KEY:
+        raise RuntimeError(
+            "OPENUI_TOKEN_ENCRYPTION_KEY is required when Copilot is enabled"
+        )
+    return COPILOT_TOKEN_ENCRYPTION_KEY

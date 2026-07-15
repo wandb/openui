@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getModels } from 'api/models'
+import { findCopilotModel, getModels, supportsImages } from 'api/models'
 import { Button } from 'components/ui/button'
 import {
 	Dialog,
@@ -94,6 +94,10 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 		}
 	}, [error])
 
+	const selectedCopilotModel = data
+		? findCopilotModel(data, model)
+		: undefined
+
 	// Default to another model if no OpenAI models are available
 	useEffect(() => {
 		if (searchParams.get('dummy')) {
@@ -102,23 +106,30 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 				`dummy/${available.includes(searchParams.get('dummy') ?? '') ? searchParams.get('dummy') : 'good'}`
 			)
 		} else if (data && data.openai.length === 0 && model.startsWith('gpt')) {
-			if (data.groq.length > 0) {
-				// Defaulting to the 3rd model which is currently llama3-70b
-				setModel(`groq/${data.groq[2].id}`)
-			} else if (data.ollama.length > 0) {
-				setModel(`ollama/${data.ollama[0].model}`)
-			} else if (data.litellm.length > 0) {
-				setModel(`litellm/${data.litellm[0].id}`)
+			if (data.copilot.length > 0) {
+				setModel(data.copilot[0].id)
+			} else {
+				const preferredGroq = data.groq[2] ?? data.groq[0]
+				if (preferredGroq) {
+					setModel(`groq/${preferredGroq.id}`)
+				} else if (data.ollama.length > 0) {
+					setModel(`ollama/${data.ollama[0].model}`)
+				} else if (data.litellm.length > 0) {
+					setModel(`litellm/${data.litellm[0].id}`)
+				}
 			}
 		}
+
+		const copilotVision = data ? supportsImages(data, model) : undefined
 		const override = modelSupportsImagesOverrides[model]
-		if (override === undefined) {
+		if (copilotVision !== undefined) {
+			setModelSupportsImages(copilotVision)
+		} else if (override === undefined) {
 			setModelSupportsImages(
 				knownImageModels.some(regex => {
-					let cleanName = model
-					if (cleanName.includes('/')) {
-						cleanName = model.split('/').slice(1).join('/')
-					}
+					const cleanName = model.includes('/')
+						? model.split('/').slice(1).join('/')
+						: model
 					return regex.test(cleanName)
 				})
 			)
@@ -171,7 +182,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 								setModel(val)
 							}}
 						>
-							<SelectTrigger className='min-w-[200px]'>
+							<SelectTrigger id='model' className='min-w-[200px]'>
 								<SelectValue placeholder='Switch models' />
 							</SelectTrigger>
 							{isPending ? (
@@ -203,6 +214,19 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 														{slugToNiceName(m)}
 													</SelectItem>
 												))}
+										</SelectGroup>
+									)}
+									{data.copilot.length > 0 && (
+										<SelectGroup>
+											<SelectLabel>GitHub Copilot</SelectLabel>
+											{data.copilot.map(copilotModel => (
+												<SelectItem key={copilotModel.id} value={copilotModel.id}>
+													{copilotModel.capabilities.vision && (
+														<ImageIcon className='mx-1 mt-1 h-3 w-3 float-left ml-0' />
+													)}
+													{copilotModel.name}
+												</SelectItem>
+											))}
 										</SelectGroup>
 									)}
 									{data.groq.length > 0 && (
@@ -238,15 +262,35 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 								</SelectContent>
 							) : undefined}
 						</Select>
-					</div>
-					<div className='grid grid-cols-8 items-center gap-4'>
-						<Label className='col-span-2 text-right' htmlFor='vision'>
-							Supports Vision
-						</Label>
+					{data?.copilotStatus.state === 'reauthenticate' && (
+						<div className='col-start-3 col-span-6 text-sm text-amber-700 dark:text-amber-300'>
+							{data?.copilotStatus.message}{' '}
+							<a
+								className='underline'
+								href='/v1/login?redirect=%2Fai%2Fnew'
+							>
+								Reconnect GitHub
+							</a>
+						</div>
+					)}
+					{(data?.copilotStatus.state === 'no_entitlement' ||
+						data?.copilotStatus.state === 'rate_limited' ||
+						data?.copilotStatus.state === 'unavailable') && (
+						<div className='col-start-3 col-span-6 text-sm text-amber-700 dark:text-amber-300'>
+							{data?.copilotStatus.message}
+						</div>
+					)}
+				</div>
+				<div className='grid grid-cols-8 items-center gap-4'>
+					<Label className='col-span-2 text-right' htmlFor='vision'>
+						Supports Vision
+					</Label>
 						<Switch
+							id='vision'
 							className='-zoom-1 col-span-1'
 							name='vision'
 							checked={modelSupportsImages}
+							disabled={selectedCopilotModel !== undefined}
 							onClick={() => {
 								setModelSupportsImagesOverrides({
 									...modelSupportsImagesOverrides,
@@ -256,14 +300,20 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 							onCheckedChange={checked => setModelSupportsImages(checked)}
 						/>
 						<div className='-ml-15 col-span-5 text-xs'>
-							We attempt to detect if the model has vision capabilities. You can
-							override this if you&apos;re sure it does.
-							{model === 'gpt-3.5-turbo' && (
-								<span className='italic'>
-									{' '}
-									We&apos;ll automatically use gpt-4o for any requests with
-									images.
-								</span>
+							{selectedCopilotModel ? (
+								'Vision capability is reported by GitHub Copilot.'
+							) : (
+								<>
+									We attempt to detect if the model has vision capabilities. You can
+									override this if you&apos;re sure it does.
+									{model === 'gpt-3.5-turbo' && (
+										<span className='italic'>
+											{' '}
+											We&apos;ll automatically use gpt-4o for any requests with
+											images.
+										</span>
+									)}
+								</>
 							)}
 						</div>
 					</div>
