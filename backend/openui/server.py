@@ -22,6 +22,8 @@ from datetime import datetime, timedelta
 import html
 import json
 import uuid
+import ipaddress
+from urllib.parse import urlparse
 import uvicorn
 import contextlib
 import requests
@@ -47,11 +49,18 @@ from .github_auth import (
 from .copilot.token_store import InvalidGitHubUserToken
 from .copilot import (
     CopilotClientRegistry,
+    CopilotDeviceAuthManager,
     CopilotProvider,
     CopilotProviderError,
+    DeviceAuthState,
+    DeviceAuthStatus,
+    OAuthClientLeaseProvider,
     OAuthTokenStore,
+    SharedClientLeaseProvider,
     TokenCipher,
+    create_device_client,
     openai_sse_stream,
+    resolve_copilot_cli_path,
 )
 from .util import storage
 from .util import get_git_user_email
@@ -76,32 +85,64 @@ async def lifespan(app: FastAPI):
     app.state.oauth_token_store = None
     app.state.copilot_registry = None
     app.state.copilot_provider = None
+    app.state.copilot_auth_mode = None
+    app.state.copilot_device_auth = None
 
     registry = None
+    shared_pool = None
+    device_auth = None
     try:
         if config.COPILOT_ENABLED:
-            cipher = TokenCipher.from_config(
-                config.require_copilot_encryption_key()
-            )
-            token_store = OAuthTokenStore(cipher)
-            registry = CopilotClientRegistry(
-                idle_seconds=config.COPILOT_CLIENT_IDLE_SECONDS,
-                sweep_seconds=config.COPILOT_CLIENT_SWEEP_SECONDS,
-            )
-            provider = CopilotProvider(
-                registry,
-                token_store,
+            config.validate_copilot_configuration()
+            app.state.copilot_auth_mode = config.COPILOT_AUTH_MODE
+
+            if config.COPILOT_AUTH_MODE is config.CopilotAuthMode.OAUTH:
+                cipher = TokenCipher.from_config(
+                    config.require_copilot_encryption_key()
+                )
+                token_store = OAuthTokenStore(cipher)
+                registry = CopilotClientRegistry(
+                    idle_seconds=config.COPILOT_CLIENT_IDLE_SECONDS,
+                    sweep_seconds=config.COPILOT_CLIENT_SWEEP_SECONDS,
+                )
+                leases = OAuthClientLeaseProvider(token_store, registry)
+                await registry.start()
+                app.state.oauth_token_store = token_store
+                app.state.copilot_registry = registry
+            else:
+                shared_pool = SharedClientLeaseProvider(create_device_client)
+                device_auth = CopilotDeviceAuthManager(
+                    cli_path=resolve_copilot_cli_path(),
+                    leases=shared_pool,
+                    timeout_seconds=900,
+                )
+                await device_auth.initialize()
+                app.state.copilot_device_auth = device_auth
+                leases = shared_pool
+
+            app.state.copilot_provider = CopilotProvider(
+                leases,
                 response_timeout_seconds=config.COPILOT_RESPONSE_TIMEOUT_SECONDS,
             )
-            await registry.start()
-            app.state.oauth_token_store = token_store
-            app.state.copilot_registry = registry
-            app.state.copilot_provider = provider
 
         yield
     finally:
+        # Reverse-order cleanup, cancellation-safe, exactly once
+        if device_auth is not None:
+            try:
+                await device_auth.close()
+            except Exception:
+                logger.warning("Device auth manager close failed")
+        if shared_pool is not None:
+            try:
+                await shared_pool.close()
+            except Exception:
+                logger.warning("Shared pool close failed")
         if registry is not None:
-            await registry.close()
+            try:
+                await registry.close()
+            except Exception:
+                logger.warning("Copilot registry close failed")
 
 
 queue: Optional[Queue] = None
@@ -151,6 +192,7 @@ app.add_middleware(
     # TODO: replace with something random
     secret_key=config.SESSION_KEY,
     https_only=config.ENV == config.Env.PROD,
+    same_site="lax",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -645,19 +687,37 @@ async def get_litellm_models():
 
 async def get_copilot_models(request: Request):
     provider = request.app.state.copilot_provider
+    auth_mode = getattr(request.app.state, "copilot_auth_mode", None)
+    auth_mode_value = auth_mode.value if auth_mode is not None else None
+
     if provider is None:
-        return [], {"state": "disabled", "message": None}
+        return [], {"state": "disabled", "message": None, "auth_mode": auth_mode_value}
     user_id = request.session.get("user_id")
     if user_id is None:
         return [], {
             "state": "signed_out",
             "message": "Sign in with GitHub to use Copilot.",
+            "auth_mode": auth_mode_value,
         }
+
+    # In device mode, check if the device manager is authenticated first
+    if auth_mode is config.CopilotAuthMode.DEVICE:
+        device_auth = getattr(request.app.state, "copilot_device_auth", None)
+        if device_auth is not None:
+            status = device_auth.status()
+            if status.state is not DeviceAuthState.AUTHENTICATED:
+                return [], {
+                    "state": "signed_out",
+                    "message": "Connect GitHub Copilot to continue.",
+                    "auth_mode": auth_mode_value,
+                }
+
     try:
         models = await provider.list_models(user_id)
         return [model.to_api() for model in models], {
             "state": "connected",
             "message": None,
+            "auth_mode": auth_mode_value,
         }
     except CopilotProviderError as exc:
         states = {
@@ -668,6 +728,7 @@ async def get_copilot_models(request: Request):
         return [], {
             "state": states.get(exc.status_code, "unavailable"),
             "message": exc.detail,
+            "auth_mode": auth_mode_value,
         }
 
 
@@ -697,6 +758,169 @@ async def models(request: Request):
         },
         "copilot_status": copilot_status,
     }
+
+
+# --- Device-flow endpoints ---
+
+_NO_STORE = {"Cache-Control": "no-store"}
+
+
+def _is_loopback_client(host: str | None) -> bool:
+    """Return True only for an actual loopback IP address.
+
+    Uses ``ipaddress`` so IPv4, IPv6, and IPv4-mapped IPv6 loopback addresses
+    all resolve correctly. Non-IP host strings (e.g. ``"localhost"`` or a proxy
+    hostname) are treated as non-loopback — forwarded headers are never trusted.
+    """
+    if not host:
+        return False
+    try:
+        parsed = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    if parsed.is_loopback:
+        return True
+    # Unwrap IPv4-mapped IPv6 (e.g. ::ffff:127.0.0.1) and re-check.
+    mapped = getattr(parsed, "ipv4_mapped", None)
+    return bool(mapped is not None and mapped.is_loopback)
+
+
+def _device_error(status_code: int, code: str, message: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={"error": {"code": code, "message": message}},
+        headers=_NO_STORE,
+    )
+
+
+# Any of these headers imply a proxy / port-forwarder sits in front of the
+# service, which defeats the raw TCP loopback boundary. Device auth fails closed
+# when any is present, regardless of the (possibly spoofed) loopback peer.
+_PROXY_HEADERS = ("forwarded", "x-forwarded-for", "x-real-ip", "via")
+
+
+def _host_header_hostname(host_header: str | None) -> str | None:
+    """Extract the hostname from an HTTP ``Host`` header value.
+
+    Handles bracketed IPv6 (``[::1]:7878``) and ``host:port`` forms. An
+    unbracketed multi-colon value (bare IPv6 without brackets) is invalid per
+    RFC 7230 and returns ``None`` so it fails closed.
+    """
+    if not host_header:
+        return None
+    value = host_header.strip()
+    if value.startswith("["):
+        end = value.find("]")
+        if end == -1:
+            return None
+        return value[1:end]
+    colons = value.count(":")
+    if colons == 1:
+        return value.split(":", 1)[0]
+    if colons > 1:
+        return None
+    return value
+
+
+def _origin_is_local(origin: str) -> bool:
+    parsed = urlparse(origin)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    return config.is_local_hostname(parsed.hostname)
+
+
+def _require_device_context(request: Request):
+    """Validate device endpoint preconditions. Returns (manager, error_response)."""
+    user_id = request.session.get("user_id")
+    if user_id is None:
+        return None, _device_error(401, "auth_required", "Sign in required.")
+
+    auth_mode = getattr(request.app.state, "copilot_auth_mode", None)
+    if auth_mode is not config.CopilotAuthMode.DEVICE:
+        return None, _device_error(404, "not_found", "Not available.")
+
+    # Loopback enforcement: device auth is strictly local single-user. Private
+    # remote use must tunnel the loopback service (e.g. SSH port forwarding).
+    # Fail closed on any signal that a proxy / port-forwarder is in front of us:
+    #   * a non-loopback raw TCP peer,
+    #   * any forwarding/proxy header (a same-host proxy keeps a loopback peer),
+    #   * a non-loopback HTTP Host hostname, or
+    #   * a non-loopback Origin (when the browser sends one).
+    remote_error = _device_error(
+        403,
+        "remote_not_allowed",
+        "Device auth is only available from localhost.",
+    )
+
+    client_host = request.client.host if request.client else None
+    if not _is_loopback_client(client_host):
+        return None, remote_error
+
+    if any(header in request.headers for header in _PROXY_HEADERS):
+        return None, remote_error
+
+    if not config.is_local_hostname(_host_header_hostname(request.headers.get("host"))):
+        return None, remote_error
+
+    origin = request.headers.get("origin")
+    if origin is not None and not _origin_is_local(origin):
+        return None, remote_error
+
+    manager = getattr(request.app.state, "copilot_device_auth", None)
+    if manager is None:
+        return None, _device_error(503, "unavailable", "Device auth unavailable.")
+
+    return manager, None
+
+
+def _device_response(status: DeviceAuthStatus) -> JSONResponse:
+    """Return a no-store JSON response with safe status fields only."""
+    return JSONResponse(
+        content=status.to_api(),
+        headers=_NO_STORE,
+    )
+
+
+@router.post("/v1/copilot/device/start", tags=["openui/copilot/device"])
+async def device_start(request: Request):
+    manager, error = _require_device_context(request)
+    if error is not None:
+        return error
+    try:
+        result = await manager.start()
+        return _device_response(result)
+    except Exception:
+        logger.warning("Device auth start failed")
+        return _device_error(
+            500,
+            "device_auth_error",
+            "Failed to start device authentication.",
+        )
+
+
+@router.get("/v1/copilot/device/status", tags=["openui/copilot/device"])
+async def device_status(request: Request):
+    manager, error = _require_device_context(request)
+    if error is not None:
+        return error
+    return _device_response(manager.status())
+
+
+@router.post("/v1/copilot/device/cancel", tags=["openui/copilot/device"])
+async def device_cancel(request: Request):
+    manager, error = _require_device_context(request)
+    if error is not None:
+        return error
+    try:
+        await manager.cancel()
+        return _device_response(manager.status())
+    except Exception:
+        logger.warning("Device auth cancel failed")
+        return _device_error(
+            500,
+            "device_auth_error",
+            "Failed to cancel device authentication.",
+        )
 
 
 @router.get(

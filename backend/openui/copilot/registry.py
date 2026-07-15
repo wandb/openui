@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import os
 import time
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager, suppress
@@ -28,6 +29,91 @@ class CopilotClientProtocol(Protocol):
 
 ClientFactory = Callable[[str, str], CopilotClientProtocol]
 
+# Explicit cross-platform allowlist of environment variables that every Copilot
+# runtime process (device login subprocess, device SDK client, and OAuth
+# per-user SDK client) may inherit. Everything else — including application
+# secrets (GITHUB_CLIENT_SECRET, OPENUI_TOKEN_ENCRYPTION_KEY, OPENUI_SESSION_KEY,
+# provider API keys, AWS keys), arbitrary COPILOT_* auth variables, and
+# COPILOT_DISABLE_KEYTAR — is dropped. Only process/runtime essentials remain.
+COPILOT_ALLOWED_ENV_KEYS: frozenset[str] = frozenset({
+    # Home / per-user application data (needed for the OS keychain probe).
+    "HOME",
+    "USERPROFILE",
+    "APPDATA",
+    "LOCALAPPDATA",
+    # Executable lookup and OS roots.
+    "PATH",
+    "PATHEXT",
+    "SYSTEMROOT",
+    "WINDIR",
+    # Temp directories.
+    "TMPDIR",
+    "TMP",
+    "TEMP",
+    # Locale.
+    "LANG",
+    "LANGUAGE",
+    "LC_ALL",
+    "LC_CTYPE",
+    # XDG config/runtime dirs used by secure credential storage (libsecret).
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "XDG_CACHE_HOME",
+    "XDG_RUNTIME_DIR",
+    # D-Bus session address is required for the Linux keychain (libsecret).
+    "DBUS_SESSION_BUS_ADDRESS",
+    # Proxy configuration required for GitHub connectivity.
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "NO_PROXY",
+    "ALL_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy",
+    "all_proxy",
+    # Certificate authority bundles for TLS to GitHub.
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "REQUESTS_CA_BUNDLE",
+    "CURL_CA_BUNDLE",
+    "NODE_EXTRA_CA_CERTS",
+})
+
+
+def sanitized_copilot_environment() -> dict[str, str]:
+    """Build the minimal environment for every Copilot runtime process.
+
+    Applied to the device login subprocess, the device SDK client, and the
+    OAuth per-user SDK client. Starts from an explicit allowlist (never a
+    denylist) so newly introduced secrets can never leak by default, then sets
+    ``COPILOT_HOME`` (the SDK may subsequently override it with the per-user
+    ``base_directory``) and forces plugin isolation.
+    """
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key in COPILOT_ALLOWED_ENV_KEYS
+    }
+    env["COPILOT_HOME"] = str(config.COPILOT_HOME)
+    # Force the runtime to load only explicitly passed --plugin-dir directories
+    # (of which there are none), suppressing automatic discovery of ambient
+    # marketplace-installed plugins. This is the official runtime control; the
+    # Python SDK omits pluginDirectories when the list is empty, so it cannot be
+    # relied on to suppress ambient plugins.
+    env["COPILOT_PLUGIN_DIR_ONLY"] = "true"
+    return env
+
+
+def create_device_client() -> CopilotClient:
+    return CopilotClient(
+        use_logged_in_user=True,
+        mode="copilot-cli",
+        env=sanitized_copilot_environment(),
+        base_directory=str(config.COPILOT_HOME),
+        session_idle_timeout_seconds=int(config.COPILOT_CLIENT_IDLE_SECONDS),
+        enable_remote_sessions=False,
+    )
+
 
 def create_local_client(user_id: str, token: str) -> CopilotClient:
     user_home = Path(config.COPILOT_HOME) / user_id
@@ -36,6 +122,7 @@ def create_local_client(user_id: str, token: str) -> CopilotClient:
         github_token=token,
         use_logged_in_user=False,
         mode="empty",
+        env=sanitized_copilot_environment(),
         base_directory=str(user_home),
         session_idle_timeout_seconds=int(config.COPILOT_CLIENT_IDLE_SECONDS),
     )

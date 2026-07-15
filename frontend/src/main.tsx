@@ -1,9 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from 'App'
 import 'lib/i18n'
+import { installPreloadErrorRecovery } from 'lib/preloadRecovery'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+
+installPreloadErrorRecovery()
 
 const MAX_RETRIES = 1
 const queryClient = new QueryClient({

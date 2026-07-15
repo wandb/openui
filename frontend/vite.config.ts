@@ -32,12 +32,12 @@ export default defineConfig(({ mode }) => ({
 		css: false,
 		include: ['src/**/__tests__/*'],
 		globals: true,
-		environment: 'jsdom',
+		environment: './src/testEnvironment',
 		setupFiles: 'src/setupTests.ts',
 		clearMocks: true,
 		coverage: {
 			include: ['src/**/*'],
-			exclude: ['src/main.tsx'],
+			exclude: ['src/main.tsx', 'src/testEnvironment.ts'],
 			thresholds: {
 				'100': true
 			},

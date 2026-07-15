@@ -428,3 +428,172 @@ async def test_start_creates_sweeper_and_close_cancels_it():
     await registry.close()
     assert registry._sweeper is None
     assert sweeper.done()
+
+
+# ---------------------------------------------------------------------------
+# Device-client environment sanitisation
+# ---------------------------------------------------------------------------
+
+
+def test_copilot_allowlist_excludes_application_secrets():
+    from openui.copilot.registry import COPILOT_ALLOWED_ENV_KEYS
+
+    # The allowlist must never contain application secrets or credential keys.
+    forbidden = {
+        "GITHUB_CLIENT_SECRET",
+        "OPENUI_TOKEN_ENCRYPTION_KEY",
+        "COPILOT_GITHUB_TOKEN",
+        "GH_TOKEN",
+        "GITHUB_TOKEN",
+        "GITHUB_COPILOT_API_TOKEN",
+        "CAPI_HMAC_KEY",
+        "COPILOT_HMAC_KEY",
+        "COPILOT_DISABLE_KEYTAR",
+        "OPENAI_API_KEY",
+        "GROQ_API_KEY",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+    }
+    assert forbidden.isdisjoint(COPILOT_ALLOWED_ENV_KEYS)
+
+
+def test_sanitized_copilot_environment_keeps_only_allowlisted_benign_vars(monkeypatch):
+    from openui.copilot.registry import sanitized_copilot_environment
+
+    # Representative benign process/runtime essentials must survive.
+    benign = {
+        "HOME": "/home/user",
+        "PATH": "/usr/bin",
+        "LANG": "en_US.UTF-8",
+        "TMPDIR": "/tmp",
+        "HTTPS_PROXY": "http://proxy:3128",
+        "NODE_EXTRA_CA_CERTS": "/etc/ca.pem",
+        "XDG_CONFIG_HOME": "/home/user/.config",
+    }
+    for key, value in benign.items():
+        monkeypatch.setenv(key, value)
+
+    result = sanitized_copilot_environment()
+
+    for key, value in benign.items():
+        assert result.get(key) == value, f"{key} must survive sanitization"
+
+
+def test_sanitized_copilot_environment_removes_unrelated_secrets(monkeypatch):
+    from openui.copilot.registry import sanitized_copilot_environment
+
+    secrets_and_noise = {
+        "GITHUB_CLIENT_SECRET": "shhh",
+        "OPENUI_TOKEN_ENCRYPTION_KEY": "v1:key",
+        "COPILOT_GITHUB_TOKEN": "gho_secret",
+        "COPILOT_DISABLE_KEYTAR": "1",
+        "OPENAI_API_KEY": "sk-secret",
+        "AWS_SECRET_ACCESS_KEY": "aws-secret",
+        "SOME_RANDOM_APP_VAR": "keep-me-not",
+    }
+    for key, value in secrets_and_noise.items():
+        monkeypatch.setenv(key, value)
+
+    result = sanitized_copilot_environment()
+
+    for key in secrets_and_noise:
+        assert key not in result, f"{key} must be absent from device environment"
+
+
+def test_sanitized_copilot_environment_sets_copilot_home(monkeypatch):
+    from openui import config
+    from openui.copilot.registry import sanitized_copilot_environment
+
+    result = sanitized_copilot_environment()
+
+    assert result["COPILOT_HOME"] == str(config.COPILOT_HOME)
+
+
+def test_sanitized_copilot_environment_forces_plugin_dir_only_true(monkeypatch):
+    from openui.copilot.registry import sanitized_copilot_environment
+
+    # Ambient env tries to weaken plugin isolation and smuggle a credential.
+    monkeypatch.setenv("COPILOT_PLUGIN_DIR_ONLY", "false")
+    monkeypatch.setenv("COPILOT_DISABLE_KEYTAR", "1")
+    monkeypatch.setenv("COPILOT_GITHUB_TOKEN", "gho_secret")
+
+    result = sanitized_copilot_environment()
+
+    # The runtime control that suppresses automatic marketplace plugin discovery
+    # must be forced on, overriding the ambient "false".
+    assert result["COPILOT_PLUGIN_DIR_ONLY"] == "true"
+    # Arbitrary COPILOT_* credentials and the keytar bypass are still excluded.
+    assert "COPILOT_DISABLE_KEYTAR" not in result
+    assert "COPILOT_GITHUB_TOKEN" not in result
+
+
+def test_sanitized_copilot_environment_sets_plugin_dir_only_when_absent(monkeypatch):
+    from openui.copilot.registry import sanitized_copilot_environment
+
+    monkeypatch.delenv("COPILOT_PLUGIN_DIR_ONLY", raising=False)
+
+    result = sanitized_copilot_environment()
+
+    assert result["COPILOT_PLUGIN_DIR_ONLY"] == "true"
+
+
+def test_sanitized_copilot_environment_preserves_non_credential_keys(monkeypatch):
+    from openui.copilot.registry import sanitized_copilot_environment
+
+    monkeypatch.setenv("HOME", "/test-home")
+    monkeypatch.setenv("PATH", "/usr/bin")
+
+    result = sanitized_copilot_environment()
+
+    assert "HOME" in result
+    assert "PATH" in result
+
+
+# ---------------------------------------------------------------------------
+# Item #1: every Copilot runtime (OAuth per-user + device) gets the minimal env
+# ---------------------------------------------------------------------------
+
+
+class _RecordingCopilotClient:
+    """Captures the kwargs passed to CopilotClient construction."""
+
+    last_kwargs: dict = {}
+
+    def __init__(self, **kwargs):
+        type(self).last_kwargs = kwargs
+
+
+def test_oauth_local_client_env_excludes_secrets_and_isolates_plugins(
+    monkeypatch, tmp_path
+):
+    import openui.copilot.registry as registry
+
+    # Representative secrets that must never reach a per-user Copilot subprocess.
+    secrets = {
+        "GITHUB_CLIENT_SECRET": "shhh-oauth-app-secret",
+        "OPENUI_TOKEN_ENCRYPTION_KEY": "v1:all-user-key",
+        "OPENUI_SESSION_KEY": "session-signing-key",
+        "OPENAI_API_KEY": "sk-provider-secret",
+        "AWS_SECRET_ACCESS_KEY": "aws-cloud-secret",
+        "COPILOT_GITHUB_TOKEN": "gho_ambient_token",
+        "COPILOT_DISABLE_KEYTAR": "1",
+    }
+    for key, value in secrets.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("COPILOT_PLUGIN_DIR_ONLY", "false")
+    monkeypatch.setattr(registry.config, "COPILOT_HOME", tmp_path)
+    monkeypatch.setattr(registry, "CopilotClient", _RecordingCopilotClient)
+
+    registry.create_local_client("user-1", "gho_user_oauth_token")
+
+    kwargs = _RecordingCopilotClient.last_kwargs
+    # OAuth construction contract is preserved.
+    assert kwargs["mode"] == "empty"
+    assert kwargs["github_token"] == "gho_user_oauth_token"
+    assert kwargs["use_logged_in_user"] is False
+    # The minimal environment must be applied (previously env= was omitted).
+    assert "env" in kwargs, "OAuth per-user client must pass a sanitized env"
+    env = kwargs["env"]
+    for key in secrets:
+        assert key not in env, f"{key} must not leak into the OAuth runtime env"
+    assert env["COPILOT_PLUGIN_DIR_ONLY"] == "true"

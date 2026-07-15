@@ -24,7 +24,6 @@ from copilot.session_events import (
 
 from openui.copilot.errors import CopilotProviderError
 from openui.copilot.provider import CopilotProvider
-from openui.copilot.token_store import TokenDecryptionError
 
 
 MODEL = ModelInfo(
@@ -105,23 +104,15 @@ class FakeClient:
         self.deleted.append(session_id)
 
 
-class FakeRegistry:
+class FakeLeases:
     def __init__(self, client):
         self.client = client
-        self.leases = []
+        self.users: list[str] = []
 
     @asynccontextmanager
-    async def lease(self, user_id, token):
-        self.leases.append((user_id, token))
+    async def lease(self, user_id: str):
+        self.users.append(user_id)
         yield self.client
-
-
-class FakeTokenStore:
-    def __init__(self, token="gho_user"):
-        self.token = token
-
-    def get(self, user_id):
-        return self.token
 
 
 @pytest.mark.asyncio
@@ -147,8 +138,7 @@ async def test_generation_streams_deltas_with_tool_free_hardening():
     )
     client = FakeClient(session)
     provider = CopilotProvider(
-        FakeRegistry(client),
-        FakeTokenStore(),
+        FakeLeases(client),
         response_timeout_seconds=1,
     )
 
@@ -170,20 +160,27 @@ async def test_generation_streams_deltas_with_tool_free_hardening():
     assert deltas == ["first", " second"]
     assert client.create_kwargs["available_tools"] == []
     assert client.create_kwargs["system_message"] == {
-        "mode": "append",
+        "mode": "customize",
         "content": "Return HTML.",
+        "sections": {"environment_context": {"action": "remove"}},
     }
     assert client.create_kwargs["streaming"] is True
     assert client.create_kwargs["tools"] == []
     assert client.create_kwargs["enable_skills"] is False
     assert client.create_kwargs["skill_directories"] == []
-    assert client.create_kwargs["plugin_directories"] == []
     assert client.create_kwargs["instruction_directories"] == []
     assert client.create_kwargs["custom_agents"] == []
     assert client.create_kwargs["mcp_servers"] == {}
     assert client.create_kwargs["enable_config_discovery"] is False
     assert client.create_kwargs["enable_session_telemetry"] is False
     assert client.create_kwargs["skip_embedding_retrieval"] is True
+    # Item #8: device clients run in copilot-cli mode, so the SDK's empty-mode
+    # session hardening defaults are not applied automatically. Assert the
+    # provider pins them explicitly.
+    assert client.create_kwargs["skip_custom_instructions"] is True
+    assert client.create_kwargs["custom_agents_local_only"] is True
+    assert client.create_kwargs["coauthor_enabled"] is False
+    assert client.create_kwargs["manage_schedule_enabled"] is False
     assert session.send_calls == [("Build a card.", None)]
     assert session.disconnect_calls == 1
     assert client.deleted == ["sdk-session-1"]
@@ -196,8 +193,7 @@ async def test_screenshot_generation_sends_sdk_blob_attachment():
     )
     client = FakeClient(session, [VISION_MODEL])
     provider = CopilotProvider(
-        FakeRegistry(client),
-        FakeTokenStore(),
+        FakeLeases(client),
         response_timeout_seconds=1,
     )
     image = base64.b64encode(b"png-bytes").decode("ascii")
@@ -248,8 +244,7 @@ async def test_disconnect_aborts_then_deletes_session():
     session = FakeSession([])
     client = FakeClient(session)
     provider = CopilotProvider(
-        FakeRegistry(client),
-        FakeTokenStore(),
+        FakeLeases(client),
         response_timeout_seconds=1,
         disconnect_poll_seconds=0,
     )
@@ -286,8 +281,7 @@ async def test_session_error_maps_to_provider_error_and_cleans_up():
     )
     client = FakeClient(session)
     provider = CopilotProvider(
-        FakeRegistry(client),
-        FakeTokenStore(),
+        FakeLeases(client),
         response_timeout_seconds=1,
     )
     generation = await provider.start_generation(
@@ -309,50 +303,10 @@ async def test_session_error_maps_to_provider_error_and_cleans_up():
 
 
 @pytest.mark.asyncio
-async def test_missing_token_returns_401_before_registry_lease():
-    registry = FakeRegistry(FakeClient(FakeSession([])))
-    provider = CopilotProvider(
-        registry,
-        FakeTokenStore(token=None),
-        response_timeout_seconds=1,
-    )
-
-    with pytest.raises(CopilotProviderError) as raised:
-        await provider.list_models("user-1")
-
-    assert raised.value.status_code == 401
-    assert registry.leases == []
-
-
-class CorruptTokenStore:
-    def get(self, user_id):
-        raise TokenDecryptionError("private ciphertext detail")
-
-
-@pytest.mark.asyncio
-async def test_undecryptable_token_requires_reauthentication():
-    registry = FakeRegistry(FakeClient(FakeSession([])))
-    provider = CopilotProvider(
-        registry,
-        CorruptTokenStore(),
-        response_timeout_seconds=1,
-    )
-
-    with pytest.raises(CopilotProviderError) as raised:
-        await provider.list_models("user-1")
-
-    assert raised.value.status_code == 401
-    assert raised.value.code == "copilot_authentication_required"
-    assert "ciphertext" not in str(raised.value)
-    assert registry.leases == []
-
-
-@pytest.mark.asyncio
 async def test_unavailable_model_returns_400_before_session_creation():
     client = FakeClient(FakeSession([]))
     provider = CopilotProvider(
-        FakeRegistry(client),
-        FakeTokenStore(),
+        FakeLeases(client),
         response_timeout_seconds=1,
     )
 
@@ -381,8 +335,7 @@ async def test_disabled_models_are_filtered_from_discovery():
         policy=ModelPolicy(state="disabled", terms=""),
     )
     provider = CopilotProvider(
-        FakeRegistry(FakeClient(FakeSession([]), [MODEL, disabled])),
-        FakeTokenStore(),
+        FakeLeases(FakeClient(FakeSession([]), [MODEL, disabled])),
         response_timeout_seconds=1,
     )
 
@@ -391,35 +344,20 @@ async def test_disabled_models_are_filtered_from_discovery():
     assert [model.id for model in models] == ["gpt-test"]
 
 
-class PerUserTokenStore:
-    def get(self, user_id):
-        return {
-            "user-1": "gho_first",
-            "user-2": "gho_second",
-        }[user_id]
-
-
 @pytest.mark.asyncio
-async def test_two_users_lease_with_their_own_tokens():
-    registry = FakeRegistry(FakeClient(FakeSession([])))
-    provider = CopilotProvider(
-        registry,
-        PerUserTokenStore(),
-        response_timeout_seconds=1,
-    )
+async def test_two_users_each_get_their_lease():
+    leases = FakeLeases(FakeClient(FakeSession([])))
+    provider = CopilotProvider(leases, response_timeout_seconds=1)
 
     await provider.list_models("user-1")
     await provider.list_models("user-2")
 
-    assert registry.leases == [
-        ("user-1", "gho_first"),
-        ("user-2", "gho_second"),
-    ]
+    assert leases.users == ["user-1", "user-2"]
 
 
-class StartupFailRegistry:
+class StartupFailLeases:
     @asynccontextmanager
-    async def lease(self, user_id, token):
+    async def lease(self, user_id):
         raise RuntimeError("private runtime path")
         yield
 
@@ -427,8 +365,7 @@ class StartupFailRegistry:
 @pytest.mark.asyncio
 async def test_sdk_startup_failure_maps_to_503():
     provider = CopilotProvider(
-        StartupFailRegistry(),
-        FakeTokenStore(),
+        StartupFailLeases(),
         response_timeout_seconds=1,
     )
 
@@ -445,8 +382,7 @@ async def test_response_timeout_has_correlation_id_and_cleans_up():
     session = FakeSession([])
     client = FakeClient(session)
     provider = CopilotProvider(
-        FakeRegistry(client),
-        FakeTokenStore(),
+        FakeLeases(client),
         response_timeout_seconds=0.001,
         disconnect_poll_seconds=0.001,
     )
@@ -484,8 +420,7 @@ async def test_final_message_is_used_when_sdk_emits_no_deltas():
         ]
     )
     provider = CopilotProvider(
-        FakeRegistry(FakeClient(session)),
-        FakeTokenStore(),
+        FakeLeases(FakeClient(session)),
         response_timeout_seconds=1,
     )
     generation = await provider.start_generation(
@@ -511,8 +446,7 @@ async def test_cancellation_aborts_and_deletes_session():
     session = FakeSession([])
     client = FakeClient(session)
     provider = CopilotProvider(
-        FakeRegistry(client),
-        FakeTokenStore(),
+        FakeLeases(client),
         response_timeout_seconds=10,
     )
     generation = await provider.start_generation(
@@ -565,8 +499,7 @@ async def test_cleanup_failures_are_logged_without_raw_exception_text(caplog):
         ]
     )
     provider = CopilotProvider(
-        FakeRegistry(FailingDeleteClient(session)),
-        FakeTokenStore(),
+        FakeLeases(FailingDeleteClient(session)),
         response_timeout_seconds=1,
     )
     generation = await provider.start_generation(
@@ -590,26 +523,26 @@ async def test_cleanup_failures_are_logged_without_raw_exception_text(caplog):
 
 
 class TrackingLease:
-    def __init__(self, client, registry):
+    def __init__(self, client, leases):
         self._client = client
-        self._registry = registry
+        self._leases = leases
 
     async def __aenter__(self):
-        self._registry.enters += 1
+        self._leases.enters += 1
         return self._client
 
     async def __aexit__(self, exc_type, exc, tb):
-        self._registry.exits += 1
+        self._leases.exits += 1
         return False
 
 
-class TrackingRegistry:
+class TrackingLeases:
     def __init__(self, client):
         self.client = client
         self.enters = 0
         self.exits = 0
 
-    def lease(self, user_id, token):
+    def lease(self, user_id):
         return TrackingLease(self.client, self)
 
 
@@ -639,10 +572,9 @@ class HangingCreateSessionClient(FakeClient):
 @pytest.mark.asyncio
 async def test_cancellation_during_model_listing_releases_lease_once():
     client = HangingListModelsClient(FakeSession([]))
-    registry = TrackingRegistry(client)
+    leases = TrackingLeases(client)
     provider = CopilotProvider(
-        registry,
-        FakeTokenStore(),
+        leases,
         response_timeout_seconds=1,
     )
 
@@ -661,18 +593,17 @@ async def test_cancellation_during_model_listing_releases_lease_once():
     with pytest.raises(asyncio.CancelledError):
         await task
 
-    assert registry.enters == 1
-    assert registry.exits == 1
+    assert leases.enters == 1
+    assert leases.exits == 1
     assert client.create_kwargs is None
 
 
 @pytest.mark.asyncio
 async def test_cancellation_during_session_creation_releases_lease_once():
     client = HangingCreateSessionClient(FakeSession([]))
-    registry = TrackingRegistry(client)
+    leases = TrackingLeases(client)
     provider = CopilotProvider(
-        registry,
-        FakeTokenStore(),
+        leases,
         response_timeout_seconds=1,
     )
 
@@ -691,8 +622,8 @@ async def test_cancellation_during_session_creation_releases_lease_once():
     with pytest.raises(asyncio.CancelledError):
         await task
 
-    assert registry.enters == 1
-    assert registry.exits == 1
+    assert leases.enters == 1
+    assert leases.exits == 1
 
 
 class RaisingOnSession(FakeSession):
@@ -705,8 +636,7 @@ async def test_subscription_failure_maps_to_safe_error_and_cleans_up(caplog):
     session = RaisingOnSession([])
     client = FakeClient(session)
     provider = CopilotProvider(
-        FakeRegistry(client),
-        FakeTokenStore(),
+        FakeLeases(client),
         response_timeout_seconds=1,
     )
     generation = await provider.start_generation(

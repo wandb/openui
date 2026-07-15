@@ -51,9 +51,7 @@ describe('Copilot model metadata', () => {
 	})
 
 	it('returns an unavailable status after a catalog network failure', async () => {
-		server.use(
-			http.get('/v1/models', () => HttpResponse.error())
-		)
+		server.use(http.get('/v1/models', () => HttpResponse.error()))
 
 		const models = await getModels()
 
@@ -80,7 +78,8 @@ describe('Copilot model metadata', () => {
 		expect(models.copilot).toEqual([])
 		expect(models.copilotStatus).toEqual({
 			state: 'disabled',
-			message: null
+			message: null,
+			authMode: null
 		})
 	})
 })

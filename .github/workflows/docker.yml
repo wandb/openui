@@ -118,6 +118,41 @@ jobs:
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
+  # No-auth, no-network packaging check: prove the shipped non-root image can
+  # resolve the bundled Copilot runtime. Does not authenticate, use credentials,
+  # or reach the network, and prints no environment values.
+  runtime-check:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Log in to the Container registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get short SHA
+        id: get_short_sha
+        run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+      - name: Verify bundled runtime resolves for the non-root user
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ steps.get_short_sha.outputs.short_sha }}
+        run: |
+          docker pull "$IMAGE"
+          docker run --rm -i --network none --user app --entrypoint python "$IMAGE" - <<'PY'
+          import os
+
+          from openui.copilot.device_auth import resolve_copilot_cli_path
+
+          cli_path = resolve_copilot_cli_path()
+          assert os.path.exists(cli_path), "bundled Copilot runtime is missing"
+          assert os.access(cli_path, os.X_OK), "bundled Copilot runtime is not executable"
+          print("bundled Copilot runtime resolved and executable")
+          PY
+
   test:
     permissions:
       contents: read
@@ -176,7 +211,7 @@ jobs:
           retention-days: 30
 
   release:
-    needs: test
+    needs: [test, runtime-check]
     runs-on: ubuntu-latest
     permissions:
       contents: read

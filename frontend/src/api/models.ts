@@ -23,9 +23,12 @@ export type CopilotStatusState =
 	| 'rate_limited'
 	| 'unavailable'
 
+export type CopilotAuthMode = 'oauth' | 'device'
+
 export interface CopilotStatus {
 	state: CopilotStatusState
 	message: string | null
+	authMode: CopilotAuthMode | null
 }
 
 export interface Models {
@@ -45,7 +48,8 @@ const unavailableModels = (): Models => ({
 	copilot: [],
 	copilotStatus: {
 		state: 'unavailable',
-		message: 'The model catalog is unavailable.'
+		message: 'The model catalog is unavailable.',
+		authMode: null
 	}
 })
 
@@ -69,15 +73,23 @@ export async function getModels(): Promise<Models> {
 		if (!response.ok) return unavailableModels()
 		const body = (await response.json()) as {
 			models: Omit<Models, 'copilotStatus'>
-			copilot_status: CopilotStatus
+			copilot_status?: {
+				state: CopilotStatusState
+				message: string | null
+				auth_mode?: CopilotAuthMode
+			}
 		}
+		const rawStatus = body.copilot_status
 		return {
 			...body.models,
 			copilot: body.models.copilot ?? [],
-			copilotStatus: body.copilot_status ?? {
-				state: 'disabled',
-				message: null
-			}
+			copilotStatus: rawStatus
+				? {
+						state: rawStatus.state,
+						message: rawStatus.message,
+						authMode: rawStatus.auth_mode ?? null
+					}
+				: { state: 'disabled', message: null, authMode: null }
 		}
 	} catch (error) {
 		console.error(error)

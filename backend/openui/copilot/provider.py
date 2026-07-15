@@ -22,7 +22,6 @@ from .errors import (
     map_sdk_exception,
 )
 from .messages import CopilotModel, CopilotRequest, parse_copilot_request
-from .token_store import TokenDecryptionError
 
 
 logger = logging.getLogger(__name__)
@@ -209,39 +208,19 @@ class CopilotGeneration:
 class CopilotProvider:
     def __init__(
         self,
-        registry,
-        token_store,
+        leases,
         *,
         response_timeout_seconds: float,
         disconnect_poll_seconds: float = 0.25,
     ):
-        self._registry = registry
-        self._token_store = token_store
+        self._leases = leases
         self._response_timeout_seconds = response_timeout_seconds
         self._disconnect_poll_seconds = disconnect_poll_seconds
 
-    def _token_for(self, user_id: str) -> str:
-        try:
-            token = self._token_store.get(user_id)
-        except TokenDecryptionError as exc:
-            raise CopilotProviderError(
-                401,
-                "copilot_authentication_required",
-                "Reconnect your GitHub account.",
-            ) from exc
-        if token is None:
-            raise CopilotProviderError(
-                401,
-                "copilot_authentication_required",
-                "Reconnect your GitHub account.",
-            )
-        return token
-
     async def list_models(self, user_id: str) -> list[CopilotModel]:
-        token = self._token_for(user_id)
         correlation_id = uuid.uuid4().hex
         try:
-            async with self._registry.lease(user_id, token) as client:
+            async with self._leases.lease(user_id) as client:
                 models = await client.list_models()
         except CopilotProviderError:
             raise
@@ -262,11 +241,12 @@ class CopilotProvider:
         user_id: str,
         data: dict[str, object],
     ) -> CopilotGeneration:
-        token = self._token_for(user_id)
         correlation_id = uuid.uuid4().hex
-        lease = self._registry.lease(user_id, token)
+        lease = self._leases.lease(user_id)
         try:
             client = await lease.__aenter__()
+        except CopilotProviderError:
+            raise
         except Exception as exc:
             raise map_sdk_exception(
                 exc,
@@ -290,27 +270,25 @@ class CopilotProvider:
                     "Refresh the model list and choose an available Copilot model.",
                 )
             request = parse_copilot_request(data, model)
+            system_message: dict[str, object] = {
+                "mode": "customize",
+                "sections": {"environment_context": {"action": "remove"}},
+            }
+            if request.system_prompt:
+                system_message["content"] = request.system_prompt
             session = await client.create_session(
                 session_id=f"openui-{uuid.uuid4().hex}",
                 model=request.model_id,
                 on_permission_request=reject_permission,
                 tools=[],
                 available_tools=[],
-                system_message=(
-                    {
-                        "mode": "append",
-                        "content": request.system_prompt,
-                    }
-                    if request.system_prompt
-                    else None
-                ),
+                system_message=system_message,
                 streaming=True,
                 mcp_servers={},
                 mcp_oauth_token_storage="in-memory",
                 embedding_cache_storage="in-memory",
                 custom_agents=[],
                 skill_directories=[],
-                plugin_directories=[],
                 instruction_directories=[],
                 enable_config_discovery=False,
                 enable_on_demand_instruction_discovery=False,
@@ -321,6 +299,9 @@ class CopilotProvider:
                 enable_host_git_operations=False,
                 enable_session_store=False,
                 skip_custom_instructions=True,
+                custom_agents_local_only=True,
+                coauthor_enabled=False,
+                manage_schedule_enabled=False,
                 memory={"enabled": False},
             )
         except CopilotProviderError:

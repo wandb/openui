@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { findCopilotModel, getModels, supportsImages } from 'api/models'
 import { Button } from 'components/ui/button'
 import {
@@ -43,6 +43,7 @@ import {
 	systemPromptAtom,
 	temperatureAtom
 } from 'state'
+import CopilotDeviceLogin from './CopilotDeviceLogin'
 import { Textarea } from './ui/textarea'
 
 function slugToNiceName(slug?: string, float = true) {
@@ -76,6 +77,9 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 		queryKey: ['models'],
 		queryFn: getModels
 	})
+	const queryClient = useQueryClient()
+	const refreshModels = () =>
+		void queryClient.invalidateQueries({ queryKey: ['models'] })
 	const [language, setLanguage] = useState(i18n.language)
 	const [searchParams] = useSearchParams()
 	const [model, setModel] = useAtom(modelAtom)
@@ -94,9 +98,7 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 		}
 	}, [error])
 
-	const selectedCopilotModel = data
-		? findCopilotModel(data, model)
-		: undefined
+	const selectedCopilotModel = data ? findCopilotModel(data, model) : undefined
 
 	// Default to another model if no OpenAI models are available
 	useEffect(() => {
@@ -220,9 +222,12 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 										<SelectGroup>
 											<SelectLabel>GitHub Copilot</SelectLabel>
 											{data.copilot.map(copilotModel => (
-												<SelectItem key={copilotModel.id} value={copilotModel.id}>
+												<SelectItem
+													key={copilotModel.id}
+													value={copilotModel.id}
+												>
 													{copilotModel.capabilities.vision && (
-														<ImageIcon className='mx-1 mt-1 h-3 w-3 float-left ml-0' />
+														<ImageIcon className='float-left mx-1 ml-0 mt-1 h-3 w-3' />
 													)}
 													{copilotModel.name}
 												</SelectItem>
@@ -262,29 +267,37 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 								</SelectContent>
 							) : undefined}
 						</Select>
-					{data?.copilotStatus.state === 'reauthenticate' && (
-						<div className='col-start-3 col-span-6 text-sm text-amber-700 dark:text-amber-300'>
-							{data?.copilotStatus.message}{' '}
-							<a
-								className='underline'
-								href='/v1/login?redirect=%2Fai%2Fnew'
-							>
-								Reconnect GitHub
-							</a>
-						</div>
-					)}
-					{(data?.copilotStatus.state === 'no_entitlement' ||
-						data?.copilotStatus.state === 'rate_limited' ||
-						data?.copilotStatus.state === 'unavailable') && (
-						<div className='col-start-3 col-span-6 text-sm text-amber-700 dark:text-amber-300'>
-							{data?.copilotStatus.message}
-						</div>
-					)}
-				</div>
-				<div className='grid grid-cols-8 items-center gap-4'>
-					<Label className='col-span-2 text-right' htmlFor='vision'>
-						Supports Vision
-					</Label>
+						{data?.copilotStatus.authMode === 'device' &&
+							(data.copilotStatus.state === 'signed_out' ||
+								data.copilotStatus.state === 'reauthenticate') && (
+								<div className='col-span-6 col-start-3'>
+									<CopilotDeviceLogin onAuthenticated={refreshModels} />
+								</div>
+							)}
+						{data?.copilotStatus.state === 'reauthenticate' &&
+							data.copilotStatus.authMode !== 'device' && (
+								<div className='col-span-6 col-start-3 text-sm text-amber-700 dark:text-amber-300'>
+									{data.copilotStatus.message}{' '}
+									<a
+										className='underline'
+										href='/v1/login?redirect=%2Fai%2Fnew'
+									>
+										Reconnect GitHub
+									</a>
+								</div>
+							)}
+						{(data?.copilotStatus.state === 'no_entitlement' ||
+							data?.copilotStatus.state === 'rate_limited' ||
+							data?.copilotStatus.state === 'unavailable') && (
+							<div className='col-span-6 col-start-3 text-sm text-amber-700 dark:text-amber-300'>
+								{data?.copilotStatus.message}
+							</div>
+						)}
+					</div>
+					<div className='grid grid-cols-8 items-center gap-4'>
+						<Label className='col-span-2 text-right' htmlFor='vision'>
+							Supports Vision
+						</Label>
 						<Switch
 							id='vision'
 							className='-zoom-1 col-span-1'
@@ -304,8 +317,8 @@ export default function Settings({ trigger }: { trigger: JSX.Element }) {
 								'Vision capability is reported by GitHub Copilot.'
 							) : (
 								<>
-									We attempt to detect if the model has vision capabilities. You can
-									override this if you&apos;re sure it does.
+									We attempt to detect if the model has vision capabilities. You
+									can override this if you&apos;re sure it does.
 									{model === 'gpt-3.5-turbo' && (
 										<span className='italic'>
 											{' '}

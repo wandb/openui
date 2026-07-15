@@ -105,18 +105,66 @@ If you have your OPENAI_API_KEY set in the environment already, just remove `=xx
 ### GitHub Copilot
 
 This fork can use GitHub Copilot as an additional provider for text-to-UI and
-screenshot-to-UI generation. It uses the official Copilot SDK and the signed-in
-user's GitHub OAuth token; it does not turn Copilot into a public
-OpenAI-compatible API.
+screenshot-to-UI generation. It uses the official Copilot SDK; it does not turn
+Copilot into a public OpenAI-compatible API.
 
 - Existing OpenAI, Groq, Ollama, and LiteLLM providers remain available.
 - Copilot sessions run in SDK `empty` mode with no tools, shell, filesystem,
   MCP servers, skills, plugins, or persistent conversation.
-- GitHub tokens remain server-side and are encrypted at rest.
-- Every user needs their own Copilot entitlement.
 - A real-account smoke test is manual because it uses the account's allowance.
 
-See [`backend/README.md`](backend/README.md#github-copilot-provider) for setup.
+Two authentication modes are available:
+
+**Device mode** (local single-user) — the server authenticates using the host
+machine's GitHub credentials via the GitHub device flow. Set
+`OPENUI_COPILOT_AUTH_MODE=device`. All requests share one machine identity and
+allowance; device mode is **not suitable for untrusted multi-user access**.
+Device mode is **strictly local and bare-process only**:
+
+- OpenUI refuses to start unless `OPENUI_ENVIRONMENT=local` and `OPENUI_HOST`
+  binds a loopback address (`localhost`, `127.0.0.1`, or `::1`).
+- The in-app device setup endpoints only accept requests whose TCP peer is
+  loopback, whose `Host` and (any) `Origin` hostnames are loopback, and that
+  carry no proxy headers (`Forwarded`, `X-Forwarded-For`, `X-Real-IP`, `Via`).
+- Device mode must **not** be served through a reverse proxy, a port-forwarding
+  or tunnel platform, a public tunnel, a custom hostname, or Gitpod/Codespaces
+  port exposure — a same-host proxy connects from loopback and would otherwise
+  make remote requests look local.
+- Device mode **cannot run inside a container** (Docker/Kubernetes): bridge
+  networking delivers requests from a non-loopback gateway, so OpenUI refuses
+  to start device mode in a container. Container deployments must use OAuth
+  mode.
+
+The only supported private-remote path is an SSH local port forward to a bare
+host process while you browse a loopback URL
+(`ssh -L 7878:127.0.0.1:7878 host`), rather than exposing OpenUI directly. For
+cloud, container, or multi-user deployments use OAuth mode instead.
+
+```bash
+export OPENUI_COPILOT_ENABLED=1
+export OPENUI_COPILOT_AUTH_MODE=device
+cd backend
+uv run python -m copilot download-runtime
+uv run python -m openui
+```
+
+Then open Settings, select **Connect GitHub Copilot**, copy the one-time code,
+authorize at `https://github.com/login/device`, and wait for models to refresh.
+
+**OAuth mode** (cloud / multi-user) — each user signs in individually with
+their own GitHub account and Copilot entitlement. Requires a GitHub OAuth App
+and a token-encryption key. Set `OPENUI_COPILOT_AUTH_MODE=oauth` (the default).
+
+```bash
+export OPENUI_COPILOT_ENABLED=1
+export OPENUI_COPILOT_AUTH_MODE=oauth
+export OPENUI_TOKEN_ENCRYPTION_KEY='v1:<generated-base64url-key>'
+export GITHUB_CLIENT_ID='<oauth-app-client-id>'
+export GITHUB_CLIENT_SECRET='<oauth-app-client-secret>'
+```
+
+See [`backend/README.md`](backend/README.md#github-copilot-provider) for full
+setup instructions for both modes.
 
 ## Development
 
