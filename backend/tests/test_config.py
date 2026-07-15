@@ -1,6 +1,42 @@
+from pathlib import Path
+
 import pytest
 
 from openui import config
+
+
+REPOSITORY_ROOT = Path(__file__).parents[2]
+
+
+def test_docker_image_home_is_writable_by_app_user():
+    dockerfile = (REPOSITORY_ROOT / "backend" / "Dockerfile").read_text()
+
+    assert "chown app:app /app" in dockerfile
+
+
+def test_playwright_job_authenticates_with_read_only_package_access():
+    workflow = (
+        REPOSITORY_ROOT / ".github" / "workflows" / "docker.yml"
+    ).read_text()
+    test_job = workflow.split("\n  test:\n", maxsplit=1)[1].split(
+        "\n  release:\n", maxsplit=1
+    )[0]
+
+    assert "packages: read" in test_job
+    assert "docker/login-action@" in test_job
+    assert test_job.index("docker/login-action@") < test_job.index("docker pull")
+    assert test_job.index("docker pull") < test_job.index("docker logout")
+    assert test_job.index("docker logout") < test_job.index(
+        "Run Playwright tests"
+    )
+
+
+def test_container_jobs_normalize_repository_name_for_ghcr():
+    workflow = (
+        REPOSITORY_ROOT / ".github" / "workflows" / "docker.yml"
+    ).read_text()
+
+    assert workflow.count("IMAGE_NAME=${GITHUB_REPOSITORY,,}") == 4
 
 
 @pytest.mark.parametrize(

@@ -22,7 +22,9 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 WORKDIR /app
 
-RUN groupadd --system app && useradd --system --gid app --home-dir /app --no-create-home app
+RUN groupadd --system app \
+    && useradd --system --gid app --home-dir /app --no-create-home app \
+    && chown app:app /app
 
 COPY --from=builder --chown=app:app /app /app
 
