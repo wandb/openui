@@ -4,6 +4,21 @@ import server from 'mocks/server'
 import { DESKTOP_RESOLUTION_HEIGHT, DESKTOP_RESOLUTION_WIDTH } from 'testUtils'
 import 'whatwg-fetch'
 
+// Mock ResizeObserver (required by Radix UI Select in jsdom)
+global.ResizeObserver = class ResizeObserver {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+}
+
+// Mock pointer capture APIs (required by Radix UI in jsdom)
+Element.prototype.hasPointerCapture = () => false
+Element.prototype.setPointerCapture = () => {}
+Element.prototype.releasePointerCapture = () => {}
+
+// Mock scrollIntoView (required by Radix UI Select in jsdom)
+window.HTMLElement.prototype.scrollIntoView = () => {}
+
 // Mock indexedDB
 const indexedDB = {
 	open: () => ({

@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { resolveContainerImage } from './src/lib/playwrightContainer'
 
 /**
  * Read environment variables from file.
@@ -77,7 +78,7 @@ export default defineConfig({
 
 	/* Run your local dev server before starting the tests */
 	webServer: {
-		command: `docker run --rm --name openui -p 7979:7878 ghcr.io/wandb/openui:${process.env.DOCKER_TAG ?? 'latest'}`,
+		command: `docker run --rm --name openui -p 7979:7878 ${resolveContainerImage()}`,
 		url: 'http://127.0.0.1:7979',
 		reuseExistingServer: !process.env.CI,
 		timeout: 90_000

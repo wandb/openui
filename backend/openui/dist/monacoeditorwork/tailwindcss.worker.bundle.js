@@ -11535,7 +11535,7 @@
     return TokenNode.isTokenNode(e5);
   }
 
-  // node_modules/.pnpm/@csstools+media-query-list-parser@2.1.13_@csstools+css-parser-algorithms@2.7.1_@csstools+css-_mog6yulxq2u6n424uhd5svp2wq/node_modules/@csstools/media-query-list-parser/dist/index.mjs
+  // node_modules/.pnpm/@csstools+media-query-list-parser@2.1.13_@csstools+css-parser-algorithms@2.7.1_@csstool_81941ebd45a77f24e670996116818141/node_modules/@csstools/media-query-list-parser/dist/index.mjs
   var O2;
   !function(e5) {
     e5.CustomMedia = "custom-media", e5.GeneralEnclosed = "general-enclosed", e5.MediaAnd = "media-and", e5.MediaCondition = "media-condition", e5.MediaConditionListWithAnd = "media-condition-list-and", e5.MediaConditionListWithOr = "media-condition-list-or", e5.MediaFeature = "media-feature", e5.MediaFeatureBoolean = "mf-boolean", e5.MediaFeatureName = "mf-name", e5.MediaFeaturePlain = "mf-plain", e5.MediaFeatureRangeNameValue = "mf-range-name-value", e5.MediaFeatureRangeValueName = "mf-range-value-name", e5.MediaFeatureRangeValueNameValue = "mf-range-value-name-value", e5.MediaFeatureValue = "mf-value", e5.MediaInParens = "media-in-parens", e5.MediaNot = "media-not", e5.MediaOr = "media-or", e5.MediaQueryWithType = "media-query-with-type", e5.MediaQueryWithoutType = "media-query-without-type", e5.MediaQueryInvalid = "media-query-invalid";

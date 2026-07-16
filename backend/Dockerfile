@@ -3,7 +3,9 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
 WORKDIR /app
 
-ENV UV_LINK_MODE=copy UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    COPILOT_CLI_EXTRACT_DIR=/app/.copilot-runtime
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
@@ -13,15 +15,23 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY . /app
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --extra litellm --no-dev
+    uv sync --frozen --extra litellm --no-dev \
+    && /app/.venv/bin/python -m copilot download-runtime
 
-# Copy the virtualenv into a distroless image
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 WORKDIR /app
 
+RUN groupadd --system app \
+    && useradd --system --gid app --home-dir /app --no-create-home app \
+    && chown app:app /app
+
 COPY --from=builder --chown=app:app /app /app
 
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/.venv/bin:$PATH" \
+    COPILOT_CLI_EXTRACT_DIR=/app/.copilot-runtime \
+    HOME=/app
+
+USER app
 
 ENTRYPOINT ["python", "-m", "openui", "--litellm"]
