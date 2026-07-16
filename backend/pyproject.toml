@@ -1,7 +1,7 @@
 [project]
 dependencies = [
     "weave>=0.50.9",
-    "openai>=1.12.0,<2",
+    "openai>=2.20.0,<3",
     "ollama>=0.1.7",
     "itsdangerous>=2.0.1",
     "peewee>=3.0.0",
@@ -10,7 +10,7 @@ dependencies = [
     "fastapi-sso>=0.16.0,<1",
     "boto3>=1.34.67",
     "tiktoken>=0.8.0",
-    "cryptography>=44.0.0,<46",
+    "cryptography>=48.0.1,<49",
     "github-copilot-sdk>=1.0.6,<2",
 ]
 name = "openui"
@@ -43,7 +43,7 @@ CI = "https://github.com/wandb/openui/actions"
 
 [project.optional-dependencies]
 test = ["pytest>=8.0", "pytest-asyncio>=0.24.0", "pre-commit"]
-litellm = ["litellm[proxy]>=1.40.20", "google-generativeai"]
+litellm = ["litellm[proxy]==1.91.3", "google-generativeai"]
 eval = [
     "beautifulsoup4>=4.0.0",
     "mistletoe>=1.0.0",
