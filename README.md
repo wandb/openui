@@ -16,6 +16,10 @@ OpenUI let's you describe UI using your imagination, then see it rendered live. 
 
 [Try the demo](https://openui.fly.dev)
 
+## Deploy
+
+[![Deploy on RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploylobe.svg)](https://repocloud.io/details/OpenUI/)
+
 ## Running Locally
 
 OpenUI supports [OpenAI](https://platform.openai.com/api-keys), [Groq](https://console.groq.com/keys), and any model [LiteLLM](https://docs.litellm.ai/docs/) supports such as [Gemini](https://aistudio.google.com/app/apikey) or [Anthropic (Claude)](https://console.anthropic.com/settings/keys).  The following environment variables are optional, but need to be set in your environment for alternative models to work:
