@@ -9,15 +9,16 @@ from peewee import (
     DateTimeField,
     ForeignKeyField,
     OperationalError,
+    SqliteDatabase,
     fn,
 )
 import uuid
 import datetime
-from playhouse.sqlite_ext import SqliteExtDatabase, JSONField
+from playhouse.sqlite_ext import JSONField
 from playhouse.migrate import SqliteMigrator, migrate
 from openui import config
 
-database = SqliteExtDatabase(
+database = SqliteDatabase(
     config.DB,
     pragmas=(
         ("cache_size", -1024 * 64),  # 64MB page-cache.
